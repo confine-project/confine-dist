@@ -52,9 +52,11 @@ endef
 define copy_files
 	[ ! -d $(BUILD_DIR)/files ] && mkdir -p $(BUILD_DIR)/files
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
+endef
 
 define copy_packages
 	cp -rf $(PACKAGE_DIR)/* $(BUILD_DIR)/package/
+endef
 
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
@@ -81,24 +83,26 @@ define post_build
 endef
 
 
+all: checkout
+	$(call build_src)
+	$(call post_build)
 
-menuconfig: src
-        $(call menuconfig_owrt)
-        
-kernel_menuconfig: src
-        $(call kmenuconfig_owrt)
+checkout: .checkout
 
-
-src:
+.checkout:
 	$(call checkout_src)
 	$(call update_feeds)
 	$(call copy_config)
 	$(call copy_files)
 	$(call copy_packages)
+	@touch .checkout
 
-all: src
-	$(call build_src)
-	$(call post_build)
+menuconfig: checkout
+	$(call menuconfig_owrt)
+        
+kernel_menuconfig: checkout
+	$(call kmenuconfig_owrt)
+
 
 clean:
 	[ -d "$(BUILD_DIR)" ] && rm -rf $(BUILD_DIR)/* || true
