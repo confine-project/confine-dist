@@ -1,0 +1,25 @@
+** Current options are:
+
+- make all
+Execute all needed to have the CONFINE image
+
+- make checkout
+Download the code from OpenWRT and prepare the system to be compiled
+ 
+- make menuconfig
+Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_configs/
+
+- make kernel_menuconfig
+Provides a ncurses menuconfig from the linux kernel and copy the .config file inside my_configs/
+
+** Variables:
+
+J = number of process for compilation time
+V = verbosity level
+
+For instance: make all V=99 J=4
+
+** Output image:
+
+When compilation finishes, you will find the output images inside images/ directory
+To copy it in a compact flash or usb stick: dd if=images/IMAGE_FILE of=/dev/sdX

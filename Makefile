@@ -103,7 +103,9 @@ menuconfig: checkout
 kernel_menuconfig: checkout
 	$(call kmenuconfig_owrt)
 
-
 clean:
 	[ -d "$(BUILD_DIR)" ] && rm -rf $(BUILD_DIR)/* || true
+	rm -f .checkout || true
 
+help:
+	@cat README
