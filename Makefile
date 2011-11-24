@@ -17,7 +17,7 @@
 #
 
 OWRT_SVN = svn://svn.openwrt.org/openwrt/trunk
-OWRT_SVN_REV = 
+OWRT_SVN_REV = -r r28942
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
 BUILD_DIR = src
 FILES_DIR = files
@@ -50,7 +50,7 @@ define copy_config
 endef
 
 define copy_files
-	[ ! -d $(BUILD_DIR)/files ] && mkdir -p $(BUILD_DIR)/files
+	[ ! -d $(BUILD_DIR)/files ] && mkdir -p $(BUILD_DIR)/files || true
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
 endef
 
@@ -96,6 +96,10 @@ checkout: .checkout
 	$(call copy_files)
 	$(call copy_packages)
 	@touch .checkout
+
+sync:
+	$(call copy_files)
+	$(call copy_packages)
 
 menuconfig: checkout
 	$(call menuconfig_owrt)
