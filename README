@@ -12,6 +12,9 @@ Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_c
 - make kernel_menuconfig
 Provides a ncurses menuconfig from the linux kernel and copy the .config file inside my_configs/
 
+- make sync
+Syncronize current files/configs/packages directories with openwrt source tree. Needed when you update confie-dist code (git pull)
+
 ** Variables:
 
 J = number of process for compilation time
@@ -42,4 +45,9 @@ OpenWRT source tree
 ** Output image:
 
 When compilation finishes, you will find the output images inside images/ directory
+
+If you need other kind of images (VMware, VBOX and so on) check inside src/bin/x86/ directory
+
 To copy it in a compact flash or usb stick: dd if=images/IMAGE_FILE of=/dev/sdX
+
+

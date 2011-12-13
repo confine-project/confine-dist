@@ -101,6 +101,7 @@ checkout: .checkout
 sync:
 	$(call copy_files)
 	$(call copy_packages)
+	$(call copy_config)
 
 menuconfig: checkout
 	$(call menuconfig_owrt)
