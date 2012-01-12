@@ -24,7 +24,11 @@ define Package/lxc
   CATEGORY:=Utilities
   TITLE:=LXC userspace tools
   URL:=http://lxc.sourceforge.net/
-  DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT
+
+  DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
+            +patch +coreutils +coreutils-rm \
+            +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
+
   MDEPENDS:=@USE_EGLIBC
 endef
 
@@ -37,10 +41,23 @@ $(call Build/Configure/Default,--with-linuxdir=$(LINUX_DIR))
 endef
 
 define Package/lxc/install
+
+	$(INSTALL_DIR) $(1)/lxc
+	$(INSTALL_DIR) $(1)/cgroup
+	$(INSTALL_DIR) $(1)/tmp/lib
+	ln -s /lxc $(1)/tmp/lib/lxc
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/lxc.init $(1)/etc/init.d/lxc
+	$(INSTALL_DIR) $(1)/sbin
+	$(INSTALL_BIN) ./files/lxc.create $(1)/sbin/lxc.create
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_BIN) ./files/lxc.config $(1)/etc/config/lxc
+
+
 	$(INSTALL_DIR) $(1)/usr/bin	
 	$(INSTALL_DIR) $(1)/usr/lib
-	$(INSTALL_DIR) $(1)/tmp/lib
-	$(INSTALL_DIR) $(1)/tmp/lib/lxc/
+#	$(INSTALL_DIR) $(1)/tmp/lib
+#	$(INSTALL_DIR) $(1)/tmp/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unshare $(1)/usr/bin/lxc-unshare

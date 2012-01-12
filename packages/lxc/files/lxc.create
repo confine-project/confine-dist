@@ -1,0 +1,187 @@
+#!/bin/bash
+
+
+if ! [ -f /etc/init.d/lxc ]; then
+    echo "missing /etc/init.d/lxc"
+    exit 1;
+fi
+
+. /etc/init.d/lxc
+
+
+usage() {
+    echo "usage: $0 -n <name> [-h]"
+}
+
+help() {
+    usage
+    echo
+    echo "creates an lxc system directory based on openwrt host root filesystem"
+    echo
+    echo "Options:"
+    echo "name         : name of the container"
+}
+
+
+
+
+SHORTOPTIONS='hn:c:t:'
+LONGOPTIONS='help,name:config:template:'
+
+LXC_PATH="$(lxc_uci_get default.path)"
+
+
+getopt=$(getopt -o $SHORTOPTIONS --longoptions  $LONGOPTIONS -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
+eval set -- "$getopt"
+
+while true; do
+        case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
+	    -n|--name)
+		shift
+		LXC_NAME=$1
+		if echo $LXC_NAME | grep "/" ; then
+		    echo "illegal name"
+		    exit 1
+		fi
+		if [ -d $LXC_PATH/$LXC_NAME ]; then
+		    echo "container=$LXC_NAME already exist"
+		    exit 1
+		fi
+		shift
+		;;
+	    -c|--config)
+		LXC_CONFIG=$1
+		shift
+		;;
+	    -t|--template)
+		LXC_TEMPLATE=$1
+		shift
+		;;
+            --)
+		shift
+		break;;
+            *)
+		echo $1
+		usage
+		exit 1
+		;;
+        esac
+done
+
+
+if [ -z $LXC_NAME ] ;then
+    usage
+    exit 1
+fi
+
+echo got "$0  name=$LXC_NAME config=$LXC_CONFIG template=$LXC_TEMPLATE"
+
+
+if [ -z $LXC_TEMPLATE ]; then
+    echo "creating rootfs in $LXC_PATH/$LXC_NAME/rootfs"
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs
+
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/bin
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/lib
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/sbin
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/usr
+
+
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/proc
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/sys
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/dev
+
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/null c 1 3
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/zero c 1 5
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/random c 1 8
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/urandom c 1 9
+mkdir -m 755  $LXC_PATH/$LXC_NAME/rootfs/dev/pts
+mkdir -m 1777 $LXC_PATH/$LXC_NAME/rootfs/dev/shm
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty c 5 0
+mknod -m 600  $LXC_PATH/$LXC_NAME/rootfs/dev/console c 5 1
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty0 c 4 0
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/full c 1 7
+mknod -m 600  $LXC_PATH/$LXC_NAME/rootfs/dev/initctl p
+mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/ptmx c 5 2
+
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/etc
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/root
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/tmp
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/var
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs/www
+
+fi
+
+
+
+if [ -z $LXC_CONFIG ]; then
+    echo "creating config in $LXC_PATH/$LXC_NAME/config"
+    cat <<EOF > $LXC_PATH/$LXC_NAME/config
+
+lxc.tty = 4
+lxc.pts = 1024
+lxc.utsname = $LXC_NAME
+
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 4:0 rwm
+lxc.cgroup.devices.allow = c 4:1 rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+
+EOF
+
+for n in $(seq 0 9); do
+
+    if lxc_uci_get default.network${n}_link > /dev/null && lxc_uci_get default.network${n}_name > /dev/null; then
+        cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+lxc.network.type    = veth
+lxc.network.flags   = up
+lxc.network.link    = $(lxc_uci_get default.network${n}_link)
+#lxc.network.hwaddr = a1:b2:c3:d4:e5:f6
+#lxc.network.ipv4   = 192.168.10.2/24
+lxc.network.name    = $(lxc_uci_get default.network${n}_name) 
+EOF
+    fi
+done
+
+    cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+lxc.rootfs = $LXC_PATH/$LXC_NAME/rootfs
+
+lxc.mount.entry=proc    $LXC_PATH/$LXC_NAME/rootfs/proc       proc   nodev,noexec,nosuid 0 0
+lxc.mount.entry=devpts  $LXC_PATH/$LXC_NAME/rootfs/dev/pts    devpts defaults 0 0
+lxc.mount.entry=syfs    $LXC_PATH/$LXC_NAME/rootfs/sys        sysfs  defaults 0 0
+
+lxc.mount.entry=tmpfs   $LXC_PATH/$LXC_NAME/rootfs/dev/shm    tmpfs  defaults 0 0
+
+lxc.mount.entry=/bin    $LXC_PATH/$LXC_NAME/rootfs/bin  none  ro,bind 0 0
+lxc.mount.entry=/lib    $LXC_PATH/$LXC_NAME/rootfs/lib  none  ro,bind 0 0
+lxc.mount.entry=/sbin   $LXC_PATH/$LXC_NAME/rootfs/sbin none  ro,bind 0 0
+lxc.mount.entry=/usr    $LXC_PATH/$LXC_NAME/rootfs/usr  none  ro,bind 0 0
+
+
+EOF
+
+fi
+
+
+

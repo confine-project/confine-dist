@@ -1,0 +1,39 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org 
+
+START=80
+
+lxc_uci_get() {
+	val="$(uci -q get lxc.$1)"
+	ret=$?
+	echo "$val"
+	[ $ret -ne 0 ] && logger -t LXC "UCI returned an error (uci get lxc.$1)"
+	return $ret
+}
+
+
+start() {
+	[ -d /var/lib ] || mkdir -p /var/lib
+	[ -h /var/lib/lxc ] || ln -s /lxc /var/lib/lxc
+
+	[ -d /cgroup  ] || mkdir /cgroup
+	mount | grep cgroups || mount -t cgroup none /cgroup
+
+	[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
+
+
+	for n in $(seq 0 9); do
+	    if lxc_uci_get default.network${n}_link > /dev/null; then
+
+		local link=$(lxc_uci_get default.network${n}_link)
+		if ! brctl setfd $link 0 > /dev/null 2>&1; then
+		    brctl addbr $link
+		    brctl setfd $link 0
+		fi
+		    
+	    fi
+	done
+
+
+}
+
