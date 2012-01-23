@@ -1,0 +1,211 @@
+#!/bin/bash
+
+
+if ! [ -f /etc/init.d/lxc ]; then
+    echo "missing /etc/init.d/lxc"
+    exit 1;
+fi
+
+. /etc/init.d/lxc
+
+
+usage() {
+    echo "usage: $0 -n <name> [-h]"
+}
+
+help() {
+    usage
+    echo
+    echo "creates an lxc system directory based on openwrt host root filesystem"
+    echo
+    echo "Options:"
+    echo "name         : name of the container"
+}
+
+
+
+
+SHORTOPTIONS='hfn:c:t:'
+LONGOPTIONS='help,force,name:config:template:'
+
+getopt=$(getopt -o $SHORTOPTIONS --longoptions  $LONGOPTIONS -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
+eval set -- "$getopt"
+
+while true; do
+        case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
+	    -f|--force)
+		shift
+		LXC_FORCE=1
+		;;
+	    -n|--name)
+		shift
+		LXC_NAME=$1
+		shift
+		;;
+	    -c|--config)
+		shift
+		LXC_CONFIG=$1
+		shift
+		;;
+	    -t|--template)
+		shift
+		LXC_TEMPLATE=$1
+		shift
+		;;
+            --)
+		shift
+		break;;
+            *)
+		echo $1
+		usage
+		exit 1
+		;;
+        esac
+done
+
+
+if [ -z $LXC_NAME ] ;then
+    usage
+    exit 1
+fi
+
+if echo $LXC_NAME | grep "/" ; then
+    echo "illegal name"
+    exit 1
+fi
+
+if [ -d $LXC_PATH/$LXC_NAME ] && [ -z $LXC_FORCE ]; then
+    echo "container=$LXC_NAME already exist"
+    exit 1
+fi
+
+
+echo got "$0  name=$LXC_NAME config=$LXC_CONFIG template=$LXC_TEMPLATE"
+
+
+if [ -z $LXC_CONFIG ]; then
+    echo "creating config in $LXC_PATH/$LXC_NAME/config"
+    mkdir -p $LXC_PATH/$LXC_NAME
+
+    cat <<EOF > $LXC_PATH/$LXC_NAME/config
+
+lxc.tty = 4
+lxc.pts = 1024
+lxc.utsname = $LXC_NAME
+
+lxc.cgroup.devices.deny = a
+# /dev/null and zero
+lxc.cgroup.devices.allow = c 1:3 rwm
+lxc.cgroup.devices.allow = c 1:5 rwm
+# consoles
+lxc.cgroup.devices.allow = c 5:0 rwm
+lxc.cgroup.devices.allow = c 5:1 rwm
+lxc.cgroup.devices.allow = c 5:2 rwm
+lxc.cgroup.devices.allow = c 4:* rwm
+# /dev/{,u}random
+lxc.cgroup.devices.allow = c 1:9 rwm
+lxc.cgroup.devices.allow = c 1:8 rwm
+lxc.cgroup.devices.allow = c 136:* rwm
+# rtc
+lxc.cgroup.devices.allow = c 254:0 rwm
+
+
+EOF
+
+#    for n in $(seq 0 9); do
+    for n in $LXC_NET_KEYS; do
+
+	if ( lxc_uci_test default.net${n}_link || lxc_uci_test $LXC_NAME.net${n}_link ) && \
+           ( lxc_uci_test default.net${n}_name || lxc_uci_test $LXC_NAME.net${n}_name ) && \
+	   !( lxc_uci_test default.net${n}_ignore && [ $(lxc_uci_get default.net${n}_ignore) == 1 ] ) && \
+	   !( lxc_uci_test $LXC_NAME.net${n}_ignore && [ $(lxc_uci_get $LXC_NAME.net${n}_ignore) == 1 ] )
+	then
+
+	    echo "lxc.network.type      = veth"                                  >> $LXC_PATH/$LXC_NAME/config
+	    echo "lxc.network.flags     = up"                                    >> $LXC_PATH/$LXC_NAME/config
+	    echo "lxc.network.veth.pair = ${LXC_NAME}_${n}"                      >> $LXC_PATH/$LXC_NAME/config
+
+	    if lxc_uci_test $LXC_NAME.net${n}_link; then
+		echo "lxc.network.link      = $(lxc_uci_get $LXC_NAME.net${n}_link)" >> $LXC_PATH/$LXC_NAME/config
+	    else
+		echo "lxc.network.link      = $(lxc_uci_get default.net${n}_link)"   >> $LXC_PATH/$LXC_NAME/config
+	    fi
+
+	    if lxc_uci_test $LXC_NAME.net${n}_name; then
+		echo "lxc.network.name      = $(lxc_uci_get $LXC_NAME.net${n}_name)" >> $LXC_PATH/$LXC_NAME/config
+	    else
+		echo "lxc.network.name      = $(lxc_uci_get default.net${n}_name)"   >> $LXC_PATH/$LXC_NAME/config
+	    fi
+
+	    if lxc_uci_test $LXC_NAME.net${n}_ipv4; then
+		echo "lxc.network.ipv4      = $(lxc_uci_get $LXC_NAME.net${n}_ipv4)" >> $LXC_PATH/$LXC_NAME/config
+	    fi
+	    
+	    if lxc_uci_test $LXC_NAME.net${n}_hwaddr; then
+		echo "lxc.network.hwaddr      = $(lxc_uci_get $LXC_NAME.net${n}_hwaddr)" >> $LXC_PATH/$LXC_NAME/config
+	    fi
+
+	    echo                                                                 >> $LXC_PATH/$LXC_NAME/config
+	    
+	fi
+    done
+    
+    cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+
+lxc.rootfs = $LXC_PATH/$LXC_NAME/rootfs
+
+lxc.mount.entry=proc    $LXC_PATH/$LXC_NAME/rootfs/proc       proc   nodev,noexec,nosuid 0 0
+lxc.mount.entry=devpts  $LXC_PATH/$LXC_NAME/rootfs/dev/pts    devpts defaults 0 0
+lxc.mount.entry=syfs    $LXC_PATH/$LXC_NAME/rootfs/sys        sysfs  defaults 0 0
+
+lxc.mount.entry=tmpfs   $LXC_PATH/$LXC_NAME/rootfs/dev/shm    tmpfs  defaults 0 0
+
+# lxc.mount.entry=/selinux /var/lib/lxc/shellsvr/rootfs/selinux bind bind 0 0
+#lxc.mount.entry=/bin    $LXC_PATH/$LXC_NAME/rootfs/bin  none  ro,bind 0 0
+#lxc.mount.entry=/lib    $LXC_PATH/$LXC_NAME/rootfs/lib  none  ro,bind 0 0
+#lxc.mount.entry=/sbin   $LXC_PATH/$LXC_NAME/rootfs/sbin none  ro,bind 0 0
+#lxc.mount.entry=/usr    $LXC_PATH/$LXC_NAME/rootfs/usr  none  ro,bind 0 0
+
+
+EOF
+
+# learned from:
+# http://raw.googlecode.com/svn/trunk/sys-kernel/genpnprd/files/lxc.use
+# http://arstechnica.com/civis/viewtopic.php?f=16&t=1141051
+
+    cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+
+#lxc.cap.drop = audit_control
+#lxc.cap.drop = audit_write
+lxc.cap.drop = mac_admin
+lxc.cap.drop = mac_override
+lxc.cap.drop = mknod
+#lxc.cap.drop = net_raw
+lxc.cap.drop = setfcap
+lxc.cap.drop = setpcap
+lxc.cap.drop = sys_admin
+lxc.cap.drop = sys_boot
+#lxc.cap.drop = sys_chroot
+lxc.cap.drop = sys_module
+lxc.cap.drop = sys_nice
+lxc.cap.drop = sys_pacct
+lxc.cap.drop = sys_rawio
+lxc.cap.drop = sys_resource
+lxc.cap.drop = sys_time
+#lxc.cap.drop = sys_tty_config
+
+EOF
+
+fi
+
+
+

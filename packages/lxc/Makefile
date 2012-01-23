@@ -13,6 +13,8 @@ PKG_SOURCE_URL:=@SF/lxc
 
 PKG_VERSION:=0.7.4.1
 PKG_MD5SUM:=f0a5345c8d9cb927cf15043a3cc1f413
+#PKG_VERSION:=0.7.4.2
+#PKG_MD5SUM:=36fcb0f6a39d2f55130421f342f24ef3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
@@ -26,7 +28,7 @@ define Package/lxc
   URL:=http://lxc.sourceforge.net/
 
   DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
-            +patch +coreutils +coreutils-rm \
+            +patch +diffutils +coreutils +coreutils-rm \
             +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
 
   MDEPENDS:=@USE_EGLIBC
@@ -48,10 +50,17 @@ define Package/lxc/install
 	ln -s /lxc $(1)/tmp/lib/lxc
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/lxc.init $(1)/etc/init.d/lxc
-	$(INSTALL_DIR) $(1)/sbin
-	$(INSTALL_BIN) ./files/lxc.create $(1)/sbin/lxc.create
+
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_BIN) ./files/lxc.config $(1)/etc/config/lxc
+	$(INSTALL_BIN) ./files/lxc.config_lxc $(1)/etc/config/lxc
+#	$(INSTALL_BIN) ./files/lxc.config_network $(1)/etc/config/network
+
+	$(INSTALL_DIR) $(1)/sbin
+	$(INSTALL_BIN) ./files/lxc.checkconfig $(1)/sbin/
+	$(INSTALL_BIN) ./files/lxc.configure $(1)/sbin/
+	$(INSTALL_BIN) ./files/lxc.openwrt $(1)/sbin/
+	$(INSTALL_BIN) ./files/lxc.debian $(1)/sbin/
+
 
 
 	$(INSTALL_DIR) $(1)/usr/bin	

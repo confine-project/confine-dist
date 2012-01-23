@@ -1,0 +1,252 @@
+#!/bin/bash
+
+
+if ! [ -f /etc/init.d/lxc ]; then
+    echo "missing /etc/init.d/lxc"
+    exit 1;
+fi
+
+. /etc/init.d/lxc
+
+
+LXC_IMAGE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic"
+LXC_IMAGE_NAME="openwrt-x86-generic-rootfs.tar.gz"
+
+usage() {
+    echo "usage: $0 -n <name> [-f] [-h]"
+}
+
+help() {
+    usage
+}
+
+SHORTOPTIONS='hmn:c:t:'
+LONGOPTIONS='help,mini,name:config:template:'
+
+getopt=$(getopt -o $SHORTOPTIONS --longoptions  $LONGOPTIONS -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
+eval set -- "$getopt"
+
+while true; do
+        case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
+	    -n|--name)
+		shift
+		LXC_NAME=$1
+		shift
+		;;
+	    -m|--mini)
+		shift
+		LXC_MINI=1
+		;;
+	    -c|--config)
+		shift
+		LXC_CONFIG=$1
+		shift
+		;;
+	    -t|--template)
+		shift
+		LXC_TEMPLATE=$1
+		shift
+		;;
+            --)
+		shift
+		break;;
+            *)
+		echo $1
+		usage
+		exit 1
+		;;
+        esac
+done
+
+
+if [ -z $LXC_NAME ] ;then
+    usage
+    exit 1
+fi
+
+if echo $LXC_NAME | grep "/" ; then
+    echo "illegal name"
+    exit 1
+fi
+
+if [ -d $LXC_PATH/$LXC_NAME ]; then
+    echo "container=$LXC_NAME already exist"
+    exit 1
+fi
+
+echo got "$0  name=$LXC_NAME config=$LXC_CONFIG template=$LXC_TEMPLATE"
+
+
+
+
+
+lxc_empty_rootfs() {
+
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/bin
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/lib
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/sbin
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/usr
+    
+    
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/proc
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/sys
+
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/dev
+    
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/root
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/tmp
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/var
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/www
+    
+    cp -var /etc $LXC_PATH/$LXC_NAME/rootfs/
+
+    rm -rf $LXC_PATH/$LXC_NAME/rootfs/etc/init.d/lxc
+    rm -rf $LXC_PATH/$LXC_NAME/rootfs/etc/config/lxc
+
+}
+
+
+lxc_full_rootfs() {
+
+    mkdir -p $LXC_TEMPLATES_PATH
+
+    if ! [ -f $LXC_TEMPLATES_PATH/$LXC_IMAGE_NAME ]; then
+    	cd $LXC_TEMPLATES_PATH
+	wget -c $LXC_IMAGE_URL/$LXC_IMAGE_NAME
+    fi
+    
+    cd $LXC_PATH/$LXC_NAME/rootfs
+    tar xzvf $LXC_TEMPLATES_PATH/$LXC_IMAGE_NAME
+
+}
+
+lxc_mknod() {
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs/dev
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/null c 1 3
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/zero c 1 5
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/random c 1 8
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/urandom c 1 9
+    mkdir -m 755  $LXC_PATH/$LXC_NAME/rootfs/dev/pts
+    mkdir -m 1777 $LXC_PATH/$LXC_NAME/rootfs/dev/shm
+
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty c 5 0
+    mknod -m 600  $LXC_PATH/$LXC_NAME/rootfs/dev/console c 5 1
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty0 c 4 0
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty1 c 4 1
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty2 c 4 2
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty3 c 4 3
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/tty4 c 4 4
+
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/full c 1 7
+    mknod -m 600  $LXC_PATH/$LXC_NAME/rootfs/dev/initctl p
+    mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/ptmx c 5 2
+}
+
+lxc_configure_rootfs() {
+  
+    
+    rm -rf $LXC_PATH/$LXC_NAME/rootfs/etc/init.d/firewall
+
+    cat <<EOF > $LXC_PATH/$LXC_NAME/rootfs/etc/config/network
+
+config 'interface' 'loopback'
+        option 'ifname' 'lo'
+        option 'proto' 'static'
+        option 'ipaddr' '127.0.0.1'
+        option 'netmask' '255.0.0.0'
+
+EOF
+
+    lxc_config_net $LXC_NAME
+
+
+    cat <<EOF > $LXC_PATH/$LXC_NAME/rootfs/etc/config/system
+
+config system
+        option hostname $LXC_NAME
+        option timezone UTC
+
+config timeserver ntp
+        list server     0.openwrt.pool.ntp.org
+        list server     1.openwrt.pool.ntp.org
+        list server     2.openwrt.pool.ntp.org
+        list server     3.openwrt.pool.ntp.org
+
+EOF
+
+#    LXC_UCI_CONFIG=$LXC_PATH/$LXC_NAME/rootfs/etc/config
+#    LXC_UCI_CHANGES=/tmp/.uci.$LXC_NAME
+#    uci -c $LXC_UCI_CONFIG -P $LXC_UCI_CHANGES revert
+#    uci -c $LXC_UCI_CONFIG -P $LXC_UCI_CHANGES set system.@system[0].hostname=$LXC_NAME
+#    uci -c $LXC_UCI_CONFIG -P $LXC_UCI_CHANGES commit
+
+
+    cat <<EOF > $LXC_PATH/$LXC_NAME/rootfs/etc/inittab
+::sysinit:/etc/init.d/rcS S boot
+::shutdown:/etc/init.d/rcS K stop
+console::askfirst:/bin/ash --login
+#tts/0::askfirst:/bin/ash --login
+#ttyS0::askfirst:/bin/ash --login
+tty1::askfirst:/bin/ash --login
+tty2::askfirst:/bin/ash --login
+tty3::askfirst:/bin/ash --login
+tty4::askfirst:/bin/ash --login
+
+EOF
+
+
+}
+
+
+
+
+if [ -z $LXC_CONFIG ]; then
+    echo "creating config in $LXC_PATH/$LXC_NAME/config"
+    lxc.configure -n $LXC_NAME 
+fi
+
+
+
+mkdir -p $LXC_PATH/$LXC_NAME/rootfs
+
+
+if [ -z $LXC_MINI ]; then
+
+    lxc_full_rootfs
+
+else
+
+    echo "creating read-only mounted rootfs in $LXC_PATH/$LXC_NAME/rootfs"
+    lxc_empty_rootfs
+
+    if [ -z $LXC_CONFIG ]; then
+
+	cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+lxc.mount.entry=/bin    $LXC_PATH/$LXC_NAME/rootfs/bin  none  ro,bind 0 0
+lxc.mount.entry=/lib    $LXC_PATH/$LXC_NAME/rootfs/lib  none  ro,bind 0 0
+lxc.mount.entry=/sbin   $LXC_PATH/$LXC_NAME/rootfs/sbin none  ro,bind 0 0
+lxc.mount.entry=/usr    $LXC_PATH/$LXC_NAME/rootfs/usr  none  ro,bind 0 0
+
+EOF
+	
+    fi
+fi  
+
+lxc_mknod
+
+lxc_configure_rootfs
+
+
+
+
+
+

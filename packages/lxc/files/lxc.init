@@ -3,6 +3,12 @@
 
 START=80
 
+LXC_PATH="/var/lib/lxc"
+LXC_TEMPLATES_PATH="/usr/lib/lxc/templates"
+
+LXC_NET_KEYS="W L 0 1 2 3 4 5 6 7 8 9 A B C D E F"
+
+
 lxc_uci_get() {
 	val="$(uci -q get lxc.$1)"
 	ret=$?
@@ -10,6 +16,48 @@ lxc_uci_get() {
 	[ $ret -ne 0 ] && logger -t LXC "UCI returned an error (uci get lxc.$1)"
 	return $ret
 }
+
+lxc_uci_test() {
+	uci -q get lxc.$1 > /dev/null
+	ret=$?
+	return $ret
+}
+
+
+lxc_config_net() {
+
+    local LXC_NAME=$1
+    local n
+
+    [ -z $LXC_NAME ] && return 1
+
+    for n in $LXC_NET_KEYS; do
+	
+	if ( lxc_uci_test default.net${n}_link || lxc_uci_test $LXC_NAME.net${n}_link ) && \
+	    ( lxc_uci_test default.net${n}_name || lxc_uci_test $LXC_NAME.net${n}_name ) && \
+	    !( lxc_uci_test default.net${n}_ignore && [ $(lxc_uci_get default.net${n}_ignore) == 1 ] ) && \
+	    !( lxc_uci_test $LXC_NAME.net${n}_ignore && [ $(lxc_uci_get $LXC_NAME.net${n}_ignore) == 1 ] )
+	then
+	    
+	    if ( lxc_uci_test $LXC_NAME.net${n}_proto && [ $(lxc_uci_get $LXC_NAME.net${n}_proto) == dhcp ] ) || \
+		( ! ( lxc_uci_test $LXC_NAME.net${n}_proto ) && lxc_uci_test default.net${n}_proto && [ $(lxc_uci_get default.net${n}_proto) == dhcp ] ); then
+		
+		LXC_IFNAME=$( ( lxc_uci_test $LXC_NAME.net${n}_name && lxc_uci_get $LXC_NAME.net${n}_name ) ||  lxc_uci_get default.net${n}_name )
+		
+		cat <<EOF >> $LXC_PATH/$LXC_NAME/rootfs/etc/config/network
+
+config 'interface' $LXC_IFNAME
+        option 'ifname' $LXC_IFNAME
+        option 'proto' 'dhcp'
+
+EOF
+		
+	    fi
+	fi
+    done
+}
+
+
 
 
 start() {
@@ -22,10 +70,10 @@ start() {
 	[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 
 
-	for n in $(seq 0 9); do
-	    if lxc_uci_get default.network${n}_link > /dev/null; then
+	for n in $LXC_NET_KEYS; do
+	    if lxc_uci_get default.net${n}_link > /dev/null; then
 
-		local link=$(lxc_uci_get default.network${n}_link)
+		local link=$(lxc_uci_get default.net${n}_link)
 		if ! brctl setfd $link 0 > /dev/null 2>&1; then
 		    brctl addbr $link
 		    brctl setfd $link 0

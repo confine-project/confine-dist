@@ -1,0 +1,145 @@
+#!/bin/bash
+
+
+if ! [ -f /etc/init.d/lxc ]; then
+    echo "missing /etc/init.d/lxc"
+    exit 1;
+fi
+
+. /etc/init.d/lxc
+
+
+usage() {
+    echo "usage: $0 -n <name> [-h]"
+}
+
+help() {
+    usage
+    echo
+    echo "creates an lxc system directory based on openwrt host root filesystem"
+    echo
+    echo "Options:"
+    echo "name         : name of the container"
+}
+
+SHORTOPTIONS='hn:c:t:'
+LONGOPTIONS='help,name:,config:,template:'
+LXC_DISTRO=openwrt # debian
+
+getopt=$(getopt -o $SHORTOPTIONS --longoptions  $LONGOPTIONS -- "$@")
+if [ $? != 0 ]; then
+    usage
+    exit 1;
+fi
+
+eval set -- "$getopt"
+
+while true; do
+        case "$1" in
+	    -h|--help)
+		help
+		exit 1
+		;;
+	    -n|--name)
+		shift
+		LXC_NAME=$1
+		shift
+		;;
+	    -c|--config)
+		shift
+		LXC_CONFIG=$1
+		shift
+		;;
+	    -t|--template)
+		shift
+		LXC_TEMPLATE=$1
+		shift
+		;;
+            --)
+		shift
+		break;;
+            *)
+		echo $1
+		usage
+		exit 1
+		;;
+        esac
+done
+
+
+if [ -z $LXC_NAME ] ;then
+    usage
+    exit 1
+fi
+
+if echo $LXC_NAME | grep "/" ; then
+    echo "illegal name"
+    exit 1
+fi
+
+if [ -d $LXC_PATH/$LXC_NAME ]; then
+    echo "container=$LXC_NAME already exist"
+    exit 1
+fi
+		
+echo got "$0  name=$LXC_NAME config=$LXC_CONFIG template=$LXC_TEMPLATE"
+
+
+
+
+if [ -z $LXC_CONFIG ]; then
+    echo "creating config in $LXC_PATH/$LXC_NAME/config"
+
+    lxc.configure -n $LXC_NAME 
+
+    cat <<EOF >> $LXC_PATH/$LXC_NAME/config
+
+# lxc.mount.entry=/selinux /var/lib/lxc/shellsvr/rootfs/selinux bind bind 0 0
+EOF
+
+fi
+
+
+
+if [ $LXC_TEMPLATE ] && ! [ -d $LXC_PATH/$LXC_NAME/rootfs ]; then
+    echo "creating empty rootfs in $LXC_PATH/$LXC_NAME/rootfs"
+    mkdir -p $LXC_PATH/$LXC_NAME/rootfs
+    mkdir -p $LXC_TEMPLATES_PATH
+
+#    if ! [ -f $LXC_TEMPLATES_PATH/lxc_basic_squeeze_targz ]; then
+#    	cd $LXC_TEMPLATES_PATH
+#	wget http://clownix.net/downloads/bulk_12.0/lxc_basic_squeeze_targz.tar.gz
+#	tar xzvf lxc_basic_squeeze_targz.tar.gz
+#	rm lxc_basic_squeeze_targz.tar.gz
+#   fi
+    
+    cd $LXC_PATH/$LXC_NAME/
+#    tar xzvf $LXC_TEMPLATES_PATH/lxc_basic_squeeze_targz
+    tar xzvf $LXC_TEMPLATE
+
+    for n in $LXC_NET_KEYS; do
+	
+	if ( lxc_uci_test default.net${n}_link || lxc_uci_test $LXC_NAME.net${n}_link ) && \
+	    ( lxc_uci_test default.net${n}_name || lxc_uci_test $LXC_NAME.net${n}_name ) && \
+	    !( lxc_uci_test default.net${n}_ignore && [ $(lxc_uci_get default.net${n}_ignore) == 1 ] ) && \
+	    !( lxc_uci_test $LXC_NAME.net${n}_ignore && [ $(lxc_uci_get $LXC_NAME.net${n}_ignore) == 1 ] )
+	then
+	    
+	    if ( lxc_uci_test $LXC_NAME.net${n}_proto && [ $(lxc_uci_get $LXC_NAME.net${n}_proto) == dhcp ] ) || \
+		( ! ( lxc_uci_test $LXC_NAME.net${n}_proto ) && lxc_uci_test default.net${n}_proto && [ $(lxc_uci_get default.net${n}_proto) == dhcp ] ); then
+		
+		LXC_IFNAME=$( ( lxc_uci_test $LXC_NAME.net${n}_name && lxc_uci_get $LXC_NAME.net${n}_name ) ||  lxc_uci_get default.net${n}_name )
+		
+		cat <<EOF >> $LXC_PATH/$LXC_NAME/rootfs/etc/network/interfaces
+
+auto $LXC_IFNAME
+     iface $LXC_IFNAME inet dhcp
+
+EOF
+		
+		
+	    fi
+	fi
+    done
+fi
+
