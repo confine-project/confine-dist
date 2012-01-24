@@ -21,7 +21,7 @@ help() {
 }
 
 SHORTOPTIONS='hmn:c:t:'
-LONGOPTIONS='help,mini,name:config:template:'
+LONGOPTIONS='help,mini,name:,config:,template:'
 
 getopt=$(getopt -o $SHORTOPTIONS --longoptions  $LONGOPTIONS -- "$@")
 if [ $? != 0 ]; then
@@ -151,6 +151,39 @@ lxc_mknod() {
     mknod -m 666  $LXC_PATH/$LXC_NAME/rootfs/dev/ptmx c 5 2
 }
 
+lxc_config_net() {
+
+    local n
+
+    [ -z $LXC_NAME ] && return 1
+
+    for n in $LXC_NET_KEYS; do
+	
+	if ( lxc_uci_test default.net${n}_link || lxc_uci_test $LXC_NAME.net${n}_link ) && \
+	    ( lxc_uci_test default.net${n}_name || lxc_uci_test $LXC_NAME.net${n}_name ) && \
+	    !( lxc_uci_test default.net${n}_ignore && [ $(lxc_uci_get default.net${n}_ignore) == 1 ] ) && \
+	    !( lxc_uci_test $LXC_NAME.net${n}_ignore && [ $(lxc_uci_get $LXC_NAME.net${n}_ignore) == 1 ] )
+	then
+	    
+	    if ( lxc_uci_test $LXC_NAME.net${n}_proto && [ $(lxc_uci_get $LXC_NAME.net${n}_proto) == dhcp ] ) || \
+		( ! ( lxc_uci_test $LXC_NAME.net${n}_proto ) && lxc_uci_test default.net${n}_proto && [ $(lxc_uci_get default.net${n}_proto) == dhcp ] ); then
+		
+		LXC_IFNAME=$( ( lxc_uci_test $LXC_NAME.net${n}_name && lxc_uci_get $LXC_NAME.net${n}_name ) ||  lxc_uci_get default.net${n}_name )
+		
+		cat <<EOF >> $LXC_PATH/$LXC_NAME/rootfs/etc/config/network
+
+config 'interface' $LXC_IFNAME
+        option 'ifname' $LXC_IFNAME
+        option 'proto' 'dhcp'
+
+EOF
+		
+	    fi
+	fi
+    done
+}
+
+
 lxc_configure_rootfs() {
   
     
@@ -166,7 +199,7 @@ config 'interface' 'loopback'
 
 EOF
 
-    lxc_config_net $LXC_NAME
+    lxc_config_net
 
 
     cat <<EOF > $LXC_PATH/$LXC_NAME/rootfs/etc/config/system

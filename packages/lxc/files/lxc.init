@@ -24,39 +24,6 @@ lxc_uci_test() {
 }
 
 
-lxc_config_net() {
-
-    local LXC_NAME=$1
-    local n
-
-    [ -z $LXC_NAME ] && return 1
-
-    for n in $LXC_NET_KEYS; do
-	
-	if ( lxc_uci_test default.net${n}_link || lxc_uci_test $LXC_NAME.net${n}_link ) && \
-	    ( lxc_uci_test default.net${n}_name || lxc_uci_test $LXC_NAME.net${n}_name ) && \
-	    !( lxc_uci_test default.net${n}_ignore && [ $(lxc_uci_get default.net${n}_ignore) == 1 ] ) && \
-	    !( lxc_uci_test $LXC_NAME.net${n}_ignore && [ $(lxc_uci_get $LXC_NAME.net${n}_ignore) == 1 ] )
-	then
-	    
-	    if ( lxc_uci_test $LXC_NAME.net${n}_proto && [ $(lxc_uci_get $LXC_NAME.net${n}_proto) == dhcp ] ) || \
-		( ! ( lxc_uci_test $LXC_NAME.net${n}_proto ) && lxc_uci_test default.net${n}_proto && [ $(lxc_uci_get default.net${n}_proto) == dhcp ] ); then
-		
-		LXC_IFNAME=$( ( lxc_uci_test $LXC_NAME.net${n}_name && lxc_uci_get $LXC_NAME.net${n}_name ) ||  lxc_uci_get default.net${n}_name )
-		
-		cat <<EOF >> $LXC_PATH/$LXC_NAME/rootfs/etc/config/network
-
-config 'interface' $LXC_IFNAME
-        option 'ifname' $LXC_IFNAME
-        option 'proto' 'dhcp'
-
-EOF
-		
-	    fi
-	fi
-    done
-}
-
 
 
 

@@ -28,7 +28,7 @@ define Package/lxc
   URL:=http://lxc.sourceforge.net/
 
   DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
-            +patch +diffutils +coreutils +coreutils-rm \
+            +ip +patch +diffutils +coreutils +coreutils-rm \
             +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
 
   MDEPENDS:=@USE_EGLIBC
