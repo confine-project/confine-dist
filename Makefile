@@ -35,9 +35,8 @@ MAKE_SRC = -j$(J) V=$(V)
 
 define checkout_src
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	@if [ ! -d dl ]; then mkdir dl; fi
 	rm -rf $(BUILD_DIR)/dl || true
-	mkdir -p $(DOWNLOAD_DIR)
+	if [ ! -d dl ]; then  mkdir -p $(DOWNLOAD_DIR); fi
 	ln -s ../$(DOWNLOAD_DIR) $(BUILD_DIR)/dl
 endef
 
