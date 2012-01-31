@@ -48,7 +48,10 @@ endef
 
 define copy_config
 	cp -f $(CONFIG_DIR)/owrt_config $(CONFIG)
-	cp -f $(CONFIG_DIR)/kernel_config $(KCONFIG)
+	cd $(BUILD_DIR) && ./scripts/diffconfig.sh > .config.tmp
+	cp -f $(BUILD_DIR)/.config.tmp $(BUILD_DIR)/.config
+	cd $(BUILD_DIR) && make defconfig
+	[ -f $(CONFIG_DIR)/kernel_config ] && cat $(CONFIG_DIR)/kernel_config >> $(CONFIG) || true
 endef
 
 define copy_files
@@ -64,12 +67,15 @@ define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
 	[ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
 	cp -f $(CONFIG) $(MY_CONFIGS)/owrt_config
+	@echo "New OpenWRT configuration file saved on $(MY_CONFIGS)/owrt_config"
 endef
 
 define kmenuconfig_owrt
         make -C $(BUILD_DIR) kernel_menuconfig
         [ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
-        cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
+        cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
+	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^/KERNEL_/g > $(MY_CONFIGS)/kernel_config
+	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
 define build_src
@@ -94,9 +100,9 @@ checkout: .checkout
 .checkout:
 	$(call checkout_src)
 	$(call update_feeds)
+	$(call copy_packages)
 	$(call copy_config)
 	$(call copy_files)
-	$(call copy_packages)
 	@touch .checkout
 
 sync:
