@@ -24,6 +24,7 @@ FILES_DIR = files
 PACKAGE_DIR = packages
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
+DOWNLOAD_DIR = ./dl
 CONFIG = $(BUILD_DIR)/.config
 KCONFIG = $(BUILD_DIR)/target/linux/x86/config-*
 IMAGES = images
@@ -34,9 +35,9 @@ MAKE_SRC = -j$(J) V=$(V)
 
 define checkout_src
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	@if [ ! -d dl ]; then mkdir dl; fi
 	rm -rf $(BUILD_DIR)/dl || true
-	ln -s ../../dl $(BUILD_DIR)/dl
+	if [ ! -d dl ]; then  mkdir -p $(DOWNLOAD_DIR); fi
+	ln -s ../$(DOWNLOAD_DIR) $(BUILD_DIR)/dl
 endef
 
 define update_feeds
