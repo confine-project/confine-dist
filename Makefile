@@ -36,7 +36,7 @@ MAKE_SRC = -j$(J) V=$(V)
 define checkout_src
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
 	rm -rf $(BUILD_DIR)/dl
-	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR)
+	mkdir -p $(DOWNLOAD_DIR)
 	ln -s ../$(DOWNLOAD_DIR) $(BUILD_DIR)/dl
 endef
 
@@ -55,7 +55,7 @@ define copy_config
 endef
 
 define copy_files
-	[ ! -d $(BUILD_DIR)/files ] && mkdir -p $(BUILD_DIR)/files || true
+	mkdir -p $(BUILD_DIR)/files
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
 endef
 
@@ -65,14 +65,14 @@ endef
 
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
-	[ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
+	mkdir -p $(MY_CONFIGS)
 	cp -f $(CONFIG) $(MY_CONFIGS)/owrt_config
 	@echo "New OpenWRT configuration file saved on $(MY_CONFIGS)/owrt_config"
 endef
 
 define kmenuconfig_owrt
 	make -C $(BUILD_DIR) kernel_menuconfig
-	[ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
+	mkdir -p $(MY_CONFIGS)
 	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
 	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^/KERNEL_/g > $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
