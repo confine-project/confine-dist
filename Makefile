@@ -1,7 +1,7 @@
 # CONFINE firmware generator (http://confine-project.eu)
 #
 #    Copyright (C) 2011 Universitat Politecnica de Barcelona (UPC)
-#    
+#
 #    Thiss program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
@@ -48,7 +48,7 @@ endef
 
 define copy_config
 	cp -f $(CONFIG_DIR)/owrt_config $(CONFIG)
-	cd $(BUILD_DIR) && ./scripts/diffconfig.sh > .config.tmp
+	cd $(BUILD_DIR) && scripts/diffconfig.sh > .config.tmp
 	cp -f $(BUILD_DIR)/.config.tmp $(BUILD_DIR)/.config
 	cd $(BUILD_DIR) && make defconfig
 	[ -f $(CONFIG_DIR)/kernel_config ] && cat $(CONFIG_DIR)/kernel_config >> $(CONFIG) || true
