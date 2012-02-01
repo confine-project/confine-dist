@@ -35,9 +35,9 @@ MAKE_SRC = -j$(J) V=$(V)
 
 define checkout_src
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	rm -rf $(BUILD_DIR)/dl
 	mkdir -p $(DOWNLOAD_DIR)
-	ln -s ../$(DOWNLOAD_DIR) $(BUILD_DIR)/dl
+	rm -f $(BUILD_DIR)/dl
+	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
 endef
 
 define update_feeds
