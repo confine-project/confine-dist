@@ -71,9 +71,9 @@ define menuconfig_owrt
 endef
 
 define kmenuconfig_owrt
-        make -C $(BUILD_DIR) kernel_menuconfig
-        [ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
-        cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
+	make -C $(BUILD_DIR) kernel_menuconfig
+	[ ! -d $(MY_CONFIGS) ] && mkdir -p $(MY_CONFIGS) || true
+	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
 	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^/KERNEL_/g > $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
@@ -83,11 +83,11 @@ define build_src
 endef
 
 define post_build
-        [ ! -d $(IMAGES) ] && mkdir $(IMAGES) || true
+	[ ! -d $(IMAGES) ] && mkdir $(IMAGES) || true
 	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE).gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE).gz || true
-        cp -f $(BUILD_DIR)/bin/x86/$(IMAGE) $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
-        @echo 
-        @echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
+	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE) $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
+	@echo 
+	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
 
 
@@ -112,7 +112,7 @@ sync:
 
 menuconfig: checkout
 	$(call menuconfig_owrt)
-        
+
 kernel_menuconfig: checkout
 	$(call kmenuconfig_owrt)
 
