@@ -42,8 +42,8 @@ endef
 
 define update_feeds
 	@echo "Updating feed $(1)"
-	./$(BUILD_DIR)/$(1)/scripts/feeds update -a
-	./$(BUILD_DIR)/$(1)/scripts/feeds install -a
+	$(BUILD_DIR)/$(1)/scripts/feeds update -a
+	$(BUILD_DIR)/$(1)/scripts/feeds install -a
 endef
 
 define copy_config
