@@ -83,7 +83,7 @@ define build_src
 endef
 
 define post_build
-	[ ! -d $(IMAGES) ] && mkdir $(IMAGES) || true
+	mkdir -p $(IMAGES)
 	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE).gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE).gz || true
 	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE) $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
 	@echo 
@@ -117,8 +117,8 @@ kernel_menuconfig: checkout
 	$(call kmenuconfig_owrt)
 
 clean:
-	[ -d "$(BUILD_DIR)" ] && rm -rf $(BUILD_DIR)/* || true
-	rm -f .checkout || true
+	rm -rf $(BUILD_DIR)
+	rm -f .checkout
 
 help:
 	@cat README
