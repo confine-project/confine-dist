@@ -17,11 +17,14 @@
 #
 
 OWRT_SVN = svn://svn.openwrt.org/openwrt/trunk
+OWRT_PKG_SVN = svn://svn.openwrt.org/openwrt/packages 
 OWRT_SVN_REV = -r r28942
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
 BUILD_DIR = src
 FILES_DIR = files
-PACKAGE_DIR = packages
+PACKAGE_DIR = packages/confine
+OWRT_PACKAGE_DIR = packages/openwrt
+OWRT_FEEDS = feeds.conf
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
@@ -34,8 +37,12 @@ V ?= 0
 MAKE_SRC = -j$(J) V=$(V)
 
 define checkout_src
+	[ ! -d $(PACKAGE_DIR) ] && mkdir -p $(PACKAGE_DIR) || true
+	[ ! -d $(OWRT_PACKAGE_DIR) ] && mkdir -p $(OWRT_PACKAGE_DIR) || true
+	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	mkdir -p $(DOWNLOAD_DIR)
+	svn --quiet co $(OWRT_SVN_REV) $(OWRT_PKG_SVN) $(OWRT_PACKAGE_DIR)
+	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(OWRT_PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	rm -f $(BUILD_DIR)/dl
 	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
 endef
