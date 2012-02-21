@@ -22,8 +22,7 @@ OWRT_SVN_REV = -r r28942
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
 BUILD_DIR = src
 FILES_DIR = files
-PACKAGE_DIR = packages/confine
-OWRT_PACKAGE_DIR = packages/openwrt
+PACKAGE_DIR = packages
 OWRT_FEEDS = feeds.conf
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
@@ -38,11 +37,11 @@ MAKE_SRC = -j$(J) V=$(V)
 
 define checkout_src
 	[ ! -d $(PACKAGE_DIR) ] && mkdir -p $(PACKAGE_DIR) || true
-	[ ! -d $(OWRT_PACKAGE_DIR) ] && mkdir -p $(OWRT_PACKAGE_DIR) || true
+	[ ! -d $(PACKAGE_DIR)/openwrt ] && mkdir -p $(PACKAGE_DIR)/openwrt || true
 	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	svn --quiet co $(OWRT_SVN_REV) $(OWRT_PKG_SVN) $(OWRT_PACKAGE_DIR)
-	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(OWRT_PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
+	svn --quiet co $(OWRT_SVN_REV) $(OWRT_PKG_SVN) $(PACKAGE_DIR)/openwrt
+	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	rm -f $(BUILD_DIR)/dl
 	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
 endef
@@ -64,10 +63,6 @@ endef
 define copy_files
 	mkdir -p $(BUILD_DIR)/files
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
-endef
-
-define copy_packages
-	cp -rf $(PACKAGE_DIR)/* $(BUILD_DIR)/package/
 endef
 
 define menuconfig_owrt
@@ -107,14 +102,12 @@ checkout: .checkout
 .checkout:
 	$(call checkout_src)
 	$(call update_feeds)
-	$(call copy_packages)
 	$(call copy_config)
 	$(call copy_files)
 	@touch .checkout
 
 sync:
 	$(call copy_files)
-	$(call copy_packages)
 	$(call copy_config)
 
 menuconfig: checkout
