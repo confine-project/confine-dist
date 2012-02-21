@@ -11,9 +11,9 @@ PKG_NAME:=libcap
 PKG_VERSION:=2.21
 PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/
-PKG_MD5SUM:=61966ef40f2dee8731b69db895e4548d
+#PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+#PKG_SOURCE_URL:=http://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/
+#PKG_MD5SUM:=61966ef40f2dee8731b69db895e4548d
 
 PKG_INSTALL:=1
 
@@ -44,6 +44,11 @@ MAKE_FLAGS += \
     LIBATTR="no" \
     DYNAMIC="yes" \
     lib="lib"
+
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) ./src/* $(PKG_BUILD_DIR)/
+endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include
