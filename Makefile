@@ -76,7 +76,7 @@ define kmenuconfig_owrt
 	make -C $(BUILD_DIR) kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
 	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
-	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^/KERNEL_/g > $(MY_CONFIGS)/kernel_config
+	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^CONFIG/CONFIG_KERNEL/g > $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
