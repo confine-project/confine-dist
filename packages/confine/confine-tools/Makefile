@@ -33,7 +33,7 @@ define Package/confine-tools
   TITLE:=Toolcollection for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
-	+nano +less +fdisk \
+	+nano +less +fdisk +vim \
 	+iputils-arping +iputils-clockdiff +iputils-ping +iputils-tracepath \
 	+radvd \
 	+hostapd \
