@@ -42,7 +42,7 @@ define Package/openvswitch
   DEFAULT:=y
   TITLE:=OpenVSwitch
   URL:=http://openvswitch.org
-  DEPENDS:= +libopenssl
+  DEPENDS:= +librt +libopenssl
 endef
 
 define Package/openvswitch/description
@@ -70,6 +70,11 @@ define Package/openvswitch/install
 		install
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/lib/modules/$(LINUX_VERSION)
+	$(INSTALL_DIR) $(1)/etc/openvswitch
+	$(INSTALL_DIR) $(1)/etc/init.d
+
+	$(INSTALL_BIN) ./files/ovs.init $(1)/etc/init.d/openvswitch
+
 	$(CP) $(PKG_INSTALL_DIR)/usr/* $(1)/usr
 	$(CP) $(PKG_BUILD_DIR)/datapath/linux/{brcompat_mod.ko,openvswitch_mod.ko} $(1)/lib/modules/$(LINUX_VERSION)
 endef

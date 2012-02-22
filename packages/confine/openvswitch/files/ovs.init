@@ -1,0 +1,45 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2011 confine-project.eu 
+
+START=06
+STOP=98
+
+CONF_DB=/etc/openvswitch/conf.db
+CONF_DB_SCHEMA=/usr/share/openvswitch/vswitch.ovsschema
+VAR_DIR=/var/run/openvswitch
+
+start() {
+    # Check if the directories and configuration exists, if not create
+    [ ! -d $VAR_DIR ] && mkdir -p $VAR_DIR
+
+    [ ! -f $CONF_DB ] && /usr/bin/ovsdb-tool create $CONF_DB $CONF_DB_SCHEMA
+
+    # Remove bridge and install openvswitch module
+    /sbin/rmmod bridge
+    /sbin/insmod /lib/modules/$(uname -r)/openvswitch_mod.ko
+
+    # Start openvswitch db server
+    /usr/sbin/ovsdb-server --remote=punix:/var/run/openvswitch/db.sock \
+                 --remote=db:Open_vSwitch,manager_options \
+                 --private-key=db:SSL,private_key \
+                 --certificate=db:SSL,certificate \
+                 --bootstrap-ca-cert=db:SSL,ca_cert \
+                 --pidfile --detach
+
+    /usr/bin/ovs-vsctl --no-wait init 
+    
+    # Start openvswitch daemon
+    /usr/sbin/ovs-vswitchd --pidfile --detach
+
+    # Start bridge compatibility layer
+    /sbin/insmod /lib/modules/$(uname -r)/brcompat_mod.ko
+    /usr/sbin/ovs-brcompatd --pidfile --detach
+
+}
+
+stop() {
+    # Just unload modules and kill the processes started previously
+    kill $(cd /var/run/openvswitch && cat *.pid)
+    /sbin/rmmod /lib/modules/$(uname -r)/brcompat_mod.ko
+    /sbin/rmmod /lib/modules/$(uname -r)/openvswitch_mod.ko
+}
