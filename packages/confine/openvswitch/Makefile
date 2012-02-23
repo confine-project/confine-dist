@@ -33,6 +33,8 @@ PKG_MD5SUM:=45e2ded1ee48f1e8490719deb270f2c3
 
 PKG_INSTALL:=1
 
+PKG_BUILD_DEPENDS:=openssl
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/kernel.mk
 
