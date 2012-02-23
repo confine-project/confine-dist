@@ -1,11 +1,5 @@
 #!/bin/sh
 
-#Two stupid patches... there is some problem with shared libs
-#[ ! -f "/lib/libruby.so.1.9" ] && ln -s /usr/lib/libruby.so.1.9.1 /lib/libruby.so.1.9
-#[ ! -f "/lib/libncurses.so.5" ] && ln -s /usr/lib/libncurses.so.5.7 /lib/libncurses.so.5
-
 mount -t cgroup none /cgroup
-
-export LD_LIBRARY_PATH="/lib:/var/lib:/usr/lib"
 
 exit 0

@@ -42,7 +42,7 @@ define Package/openvswitch
   DEFAULT:=y
   TITLE:=OpenVSwitch
   URL:=http://openvswitch.org
-  DEPENDS:= +librt +libopenssl
+  DEPENDS:= +librt +libopenssl +openssl-util
 endef
 
 define Package/openvswitch/description
@@ -95,7 +95,7 @@ define KernelPackage/bridge
 	TITLE:=Ethernet bridging support
 	DEPENDS:=+kmod-stp
 	KCONFIG:= \
-		CONFIG_BRIDGE \
+		CONFIG_BRIDGE=m \
 		CONFIG_BRIDGE_IGMP_SNOOPING=y
 	FILES:= $(LINUX_DIR)/net/bridge/bridge.ko
 endef
@@ -110,7 +110,8 @@ define KernelPackage/stp
 	SUBMENU:=$(NETWORK_SUPPORT_MENU)
 	DEFAULT:=y
 	TITLE:=Ethernet Spanning Tree Protocol support
-	KCONFIG:=CONFIG_STP
+	KCONFIG:= \
+		CONFIG_STP=m
 	FILES:=$(LINUX_DIR)/net/802/stp.ko
 endef
 

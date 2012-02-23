@@ -9,6 +9,9 @@ CONF_DB_SCHEMA=/usr/share/openvswitch/vswitch.ovsschema
 VAR_DIR=/var/run/openvswitch
 
 start() {
+    # Update ldconfig cache
+    /sbin/ldconfig
+
     # Check if the directories and configuration exists, if not create
     [ ! -d $VAR_DIR ] && mkdir -p $VAR_DIR
 
