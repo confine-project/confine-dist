@@ -31,6 +31,7 @@ CONFIG = $(BUILD_DIR)/.config
 KCONFIG = $(BUILD_DIR)/target/linux/x86/config-*
 IMAGES = images
 IMAGE = openwrt-x86-generic-combined-squashfs.img
+RECIPES = $(shell ls -d recipes/*.sh)
 J ?= 1
 V ?= 0
 MAKE_SRC = -j$(J) V=$(V)
@@ -81,6 +82,10 @@ define kmenuconfig_owrt
 endef
 
 define build_src
+	for recipe in $$(ls recipes/*.sh); do \
+		echo --- Executing $$recipe; \
+		$$recipe || true; \
+	done
 	make -C $(BUILD_DIR) $(MAKE_SRC)
 endef
 
