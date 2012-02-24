@@ -42,6 +42,9 @@ Output image directory
 - src/
 OpenWRT source tree
 
+- recipes/
+The scripts inside this directory get executed just before compiling openwrt. Usefull to do customization steps.
+
 ** Output image:
 
 When compilation finishes, you will find the output images inside images/ directory
