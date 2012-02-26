@@ -65,6 +65,13 @@ define copy_files
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
 endef
 
+define apply_recipes
+	for recipe in $$(ls recipes/*.sh); do \
+		echo --- Executing $$recipe; \
+		$$recipe || true; \
+	done
+endef
+
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
 	mkdir -p $(MY_CONFIGS)
@@ -81,10 +88,6 @@ define kmenuconfig_owrt
 endef
 
 define build_src
-	for recipe in $$(ls recipes/*.sh); do \
-		echo --- Executing $$recipe; \
-		$$recipe || true; \
-	done
 	make -C $(BUILD_DIR) $(MAKE_SRC)
 endef
 
@@ -108,6 +111,7 @@ checkout: .checkout
 	$(call update_feeds)
 	$(call copy_config)
 	$(call copy_files)
+	$(call apply_recipes)
 	@touch .checkout
 
 sync:
@@ -122,6 +126,7 @@ kernel_menuconfig: checkout
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf $(PACKAGE_DIR)/openwrt
 	rm -f .checkout
 
 help:
