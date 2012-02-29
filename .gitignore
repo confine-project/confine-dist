@@ -1,5 +1,6 @@
-.checkout*
+.prepared*
 /dl
 /images
 /my_configs
-/src
+/openwrt
+/packages/openwrt
