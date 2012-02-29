@@ -1,6 +1,0 @@
-[submodule "openwrt"]
-	path = openwrt
-	url = git@github.com:confine-project/openwrt.git
-[submodule "packages/openwrt"]
-	path = packages/openwrt
-	url = git@github.com:confine-project/packages.git

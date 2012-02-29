@@ -18,6 +18,8 @@
 
 OWRT_GIT = git@github.com:confine-project/openwrt.git
 OWRT_PKG_GIT = git@github.com:confine-project/packages.git
+OWRT_GIT_RO = git://github.com/confine-project/openwrt.git
+OWRT_PKG_GIT_RO = git://github.com/confine-project/packages.git
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
 BUILD_DIR = openwrt
 FILES_DIR = files
@@ -28,7 +30,7 @@ CONFIG_DIR = configs
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
 CONFIG = $(BUILD_DIR)/.config
-KCONFIG = $(BUILD_DIR)/target/linux/x86/config-*
+KCONFIG = $(BUILD_DIR)/target/linux/x86/config-default
 IMAGES = images
 IMAGE = openwrt-x86-generic-combined
 J ?= 1
@@ -49,8 +51,9 @@ define update_feeds
 endef
 
 define copy_config
-	cat $(CONFIG_DIR)/owrt_config $(CONFIG_DIR)/kernel_config |sort -u > $(CONFIG)
-	cd $(BUILD_DIR) && make defconfig
+	cp -f $(CONFIG_DIR)/owrt_config $(CONFIG)
+	cp -f $(CONFIG_DIR)/kernel_config $(KCONFIG)
+	(cd $(BUILD_DIR) && make defconfig)
 endef
 
 define copy_files
@@ -61,14 +64,14 @@ endef
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cd $(BUILD_DIR) && scripts/diffconfig.sh | sort -u > $(MY_CONFIGS)/owrt_config
+	(cd $(BUILD_DIR) && scripts/diffconfig.sh) > $(MY_CONFIGS)/owrt_config
 	@echo "New OpenWRT configuration file saved on $(MY_CONFIGS)/owrt_config"
 endef
 
 define kmenuconfig_owrt
 	make -C $(BUILD_DIR) kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cat $(KCONFIG) | grep CONFIG | sort -u | sed s/^CONFIG/CONFIG_KERNEL/g > $(MY_CONFIGS)/kernel_config
+	cp -f $(KCONFIG) > $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
@@ -78,7 +81,7 @@ endef
 
 define post_build
 	mkdir -p $(IMAGES)
-	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE).gz || true
+	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz || true
 	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
 	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi
 	@echo 
@@ -93,10 +96,8 @@ all: prepare sync
 prepare: .prepared
 
 .prepared:
-	git submodule init
-	git submodule update
-	(cd $(BUILD_DIR) && git checkout master)
-	(cd $(OWRT_PKG_DIR) && git checkout master)
+	git clone $(OWRT_GIT) openwrt
+	git clone $(OWRT_PKG_GIT) packages/openwrt
 	@touch .prepared
 
 sync: prepare
@@ -104,6 +105,14 @@ sync: prepare
 	$(call update_feeds)
 	$(call copy_files)
 	$(call copy_config)
+
+jenkins_fast: 
+	git clone $(OWRT_GIT_RO) openwrt
+	git clone $(OWRT_PKG_GIT_RO) openwrt
+	$(call prepare_workspace)
+	$(call update_feeds)
+	$(call build_src)
+	$(call post_build)
 
 menuconfig: prepare
 	$(call menuconfig_owrt)
