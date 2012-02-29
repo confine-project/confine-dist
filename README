@@ -3,8 +3,8 @@
 - make all
 Execute all needed to have the CONFINE image
 
-- make checkout
-Download the code from OpenWRT and prepare the system to be compiled
+- make prepare
+Prepare the download dir if not existing and point the feeds.conf file to the proper place
  
 - make menuconfig
 Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_configs/
@@ -13,7 +13,16 @@ Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_c
 Provides a ncurses menuconfig from the linux kernel and copy the .config file inside my_configs/
 
 - make sync
-Syncronize current files/configs/packages directories with openwrt source tree. Needed when you update confie-dist code (git pull)
+Syncronize current files/configs directories with openwrt build tree. Needed when you update confie-dist code (git pull).
+
+- make clean
+Removes from $(BUILD_DIR) bin/ and build_dir/ directories
+
+- make dirclean
+Removes from $(BUILD_DIR) bin/, build_dir/, staging_dir/ and toolchain/ directories
+
+- make distclean
+Removes everything you have compiled and configured -- leaves $(BUILD_DIR) like after a clean checkout
 
 ** Variables:
 
