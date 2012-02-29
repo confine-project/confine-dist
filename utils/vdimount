@@ -1,0 +1,72 @@
+#!/bin/sh
+# Arguments are -u (umount) -i (file) and -d (mount point)
+#if [ $# -ne 2 ]; then
+#    echo "Usage: vdimount [image.vdi] [mount]"
+#    exit 1
+#fi
+
+usage()
+{
+cat << EOF
+Usage: $0 -i file.vdi -d directory [-u -h]
+
+This script mounts (unmount if -u is specified) the virtualbox image file on the mount point.
+
+OPTIONS:
+  -h Show this message
+  -u unmount the mount point (specified by -d)
+  -i VDI file to mount
+  -d Mount point directory
+
+EOF
+}
+
+FILE=
+DIR=
+UNMOUNT=
+
+while getopts "hui:d:" OPTION
+do
+    case $OPTION in
+        h)
+            usage
+            exit 1
+            ;;
+        i)
+            FILE=$OPTARG
+            ;;
+        d)
+            DIR=$OPTARG
+            ;;
+        u)
+            UNMOUNT=1
+            ;;
+        ?)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+
+
+if [ -z $FILE ] || [ -z $DIR ]; then
+    usage
+    exit 1
+fi
+
+
+if [ -z $UNMOUNT ]; then
+    # Mount the file
+    sudo modprobe nbd
+    sudo qemu-nbd -c /dev/nbd1 $FILE
+    sudo mount /dev/nbd1p2 $DIR
+    echo "$FILE mounted on $DIR"
+else
+    # Unmount the file
+    sudo umount $DIR
+    sudo qemu-nbd -d /dev/nbd1
+    sudo qemu-nbd -d $FILE
+    sudo rmmod nbd
+    echo "$DIR unmounted"
+fi

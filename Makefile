@@ -16,13 +16,13 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-OWRT_SVN = svn://svn.openwrt.org/openwrt/trunk
-OWRT_PKG_SVN = svn://svn.openwrt.org/openwrt/packages 
-OWRT_SVN_REV = -r r28942
+OWRT_GIT = git@github.com:confine-project/openwrt.git
+OWRT_PKG_GIT = git@github.com:confine-project/packages.git
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
-BUILD_DIR = src
+BUILD_DIR = openwrt
 FILES_DIR = files
 PACKAGE_DIR = packages
+OWRT_PKG_DIR = $(PACKAGE_DIR)/openwrt
 OWRT_FEEDS = feeds.conf
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
@@ -30,17 +30,13 @@ DOWNLOAD_DIR = dl
 CONFIG = $(BUILD_DIR)/.config
 KCONFIG = $(BUILD_DIR)/target/linux/x86/config-*
 IMAGES = images
-IMAGE = openwrt-x86-generic-combined-squashfs.img
+IMAGE = openwrt-x86-generic-combined
 J ?= 1
 V ?= 0
 MAKE_SRC = -j$(J) V=$(V)
 
-define checkout_src
-	[ ! -d $(PACKAGE_DIR) ] && mkdir -p $(PACKAGE_DIR) || true
-	[ ! -d $(PACKAGE_DIR)/openwrt ] && mkdir -p $(PACKAGE_DIR)/openwrt || true
+define prepare_workspace
 	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
-	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
-	svn --quiet co $(OWRT_SVN_REV) $(OWRT_PKG_SVN) $(PACKAGE_DIR)/openwrt
 	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	rm -f $(BUILD_DIR)/dl
 	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
@@ -53,11 +49,8 @@ define update_feeds
 endef
 
 define copy_config
-	cp -f $(CONFIG_DIR)/owrt_config $(CONFIG)
-	cd $(BUILD_DIR) && scripts/diffconfig.sh > .config.tmp
-	cp -f $(BUILD_DIR)/.config.tmp $(BUILD_DIR)/.config
+	cat $(CONFIG_DIR)/owrt_config $(CONFIG_DIR)/kernel_config |sort -u > $(CONFIG)
 	cd $(BUILD_DIR) && make defconfig
-	[ -f $(CONFIG_DIR)/kernel_config ] && cat $(CONFIG_DIR)/kernel_config >> $(CONFIG) || true
 endef
 
 define copy_files
@@ -65,25 +58,17 @@ define copy_files
 	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
 endef
 
-define apply_recipes
-	for recipe in $$(ls recipes/*.sh); do \
-		echo --- Executing $$recipe; \
-		$$recipe || true; \
-	done
-endef
-
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cp -f $(CONFIG) $(MY_CONFIGS)/owrt_config
+	cd $(BUILD_DIR) && scripts/diffconfig.sh | sort -u > $(MY_CONFIGS)/owrt_config
 	@echo "New OpenWRT configuration file saved on $(MY_CONFIGS)/owrt_config"
 endef
 
 define kmenuconfig_owrt
 	make -C $(BUILD_DIR) kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config.tmp
-	cat $(MY_CONFIGS)/kernel_config.tmp | grep CONFIG | grep -v "#" | sed s/^CONFIG/CONFIG_KERNEL/g > $(MY_CONFIGS)/kernel_config
+	cat $(KCONFIG) | grep CONFIG | sort -u | sed s/^CONFIG/CONFIG_KERNEL/g > $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
@@ -93,41 +78,49 @@ endef
 
 define post_build
 	mkdir -p $(IMAGES)
-	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE).gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE).gz || true
-	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE) $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
+	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE).gz || true
+	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
+	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi
 	@echo 
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
 
 
-all: checkout
+all: prepare sync
 	$(call build_src)
 	$(call post_build)
 
-checkout: .checkout
+prepare: .prepared
 
-.checkout:
-	$(call checkout_src)
+.prepared:
+	git submodule init
+	git submodule update
+	(cd $(BUILD_DIR) && git checkout master)
+	(cd $(OWRT_PKG_DIR) && git checkout master)
+	@touch .prepared
+
+sync: prepare
+	$(call prepare_workspace)
 	$(call update_feeds)
-	$(call copy_config)
-	$(call copy_files)
-	$(call apply_recipes)
-	@touch .checkout
-
-sync:
 	$(call copy_files)
 	$(call copy_config)
 
-menuconfig: checkout
+menuconfig: prepare
 	$(call menuconfig_owrt)
 
-kernel_menuconfig: checkout
+kernel_menuconfig: prepare
 	$(call kmenuconfig_owrt)
 
 clean:
-	rm -rf $(BUILD_DIR)
-	rm -rf $(PACKAGE_DIR)/openwrt
-	rm -f .checkout
+	make -C $(BUILD_DIR) clean
+
+dirclean:
+	make -C $(BUILD_DIR) dirclean
+
+distclean:
+	make -C $(BUILD_DIR) distclean
+	$(call copy_files)
+	$(call copy_config)
 
 help:
 	@cat README
