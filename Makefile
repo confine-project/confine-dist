@@ -71,7 +71,7 @@ endef
 define kmenuconfig_owrt
 	make -C $(BUILD_DIR) kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cp -f $(KCONFIG) > $(MY_CONFIGS)/kernel_config
+	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
