@@ -100,18 +100,25 @@ prepare: .prepared
 .prepared:
 	git clone $(OWRT_GIT) openwrt
 	git clone $(OWRT_PKG_GIT) packages/openwrt
+	$(call prepare_workspace)
 	@touch .prepared
 
-sync: prepare
+prepare_jenkins: .prepared_jenkins
+
+.prepared_jenkins:
+	git clone $(OWRT_GIT_RO) openwrt
+	git clone $(OWRT_PKG_GIT_RO) packages/openwrt
 	$(call prepare_workspace)
+	@touch .prepared_jenkins
+
+sync: prepare
 	$(call update_feeds)
 	$(call copy_files)
 	$(call copy_config)
 
-jenkins_fast: 
-	git clone $(OWRT_GIT_RO) openwrt
-	git clone $(OWRT_PKG_GIT_RO) openwrt
-	$(call prepare_workspace)
+jenkins_fast: prepare_jenkins
+	(cd $(BUILD_DIR) && git pull)
+	(cd $(OWRT_PKG_DIR) && git pull)
 	$(call update_feeds)
 	$(call build_src)
 	$(call post_build)
