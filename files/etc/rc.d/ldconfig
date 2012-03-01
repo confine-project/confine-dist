@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+#
+# Copyright (C) 2011 OpenWrt.org
+#
+
+START=04
+
+start() {
+    # Update ldconfig cache
+    [ -e /sbin/ldconfig ] && [ -e /etc/ld.so.conf ] && /sbin/ldconfig
+}
