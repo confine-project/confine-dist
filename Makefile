@@ -42,8 +42,10 @@ define checkout_src
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_SVN) $(BUILD_DIR)
 	svn --quiet co $(OWRT_SVN_REV) $(OWRT_PKG_SVN) $(PACKAGE_DIR)/openwrt
 	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
-	rm -f $(BUILD_DIR)/dl
+	rm -f $(BUILD_DIR)/dl || true
 	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
+	rm -rf $(BUILD_DIR)/files || true
+	ln -s ../$(FILES_DIR) $(BUILD_DIR)/files
 endef
 
 define update_feeds
@@ -58,11 +60,6 @@ define copy_config
 	cp -f $(BUILD_DIR)/.config.tmp $(BUILD_DIR)/.config
 	cd $(BUILD_DIR) && make defconfig
 	[ -f $(CONFIG_DIR)/kernel_config ] && cat $(CONFIG_DIR)/kernel_config >> $(CONFIG) || true
-endef
-
-define copy_files
-	mkdir -p $(BUILD_DIR)/files
-	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
 endef
 
 define apply_recipes
@@ -110,12 +107,10 @@ checkout: .checkout
 	$(call checkout_src)
 	$(call update_feeds)
 	$(call copy_config)
-	$(call copy_files)
 	$(call apply_recipes)
 	@touch .checkout
 
 sync:
-	$(call copy_files)
 	$(call copy_config)
 
 menuconfig: checkout
