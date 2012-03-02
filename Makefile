@@ -58,11 +58,6 @@ define copy_config
 	(cd $(BUILD_DIR) && make defconfig)
 endef
 
-define copy_files
-	mkdir -p $(BUILD_DIR)/files
-	cp -rf $(FILES_DIR)/* $(BUILD_DIR)/files/
-endef
-
 define menuconfig_owrt
 	make -C $(BUILD_DIR) menuconfig
 	mkdir -p $(MY_CONFIGS)
@@ -113,13 +108,13 @@ prepare_jenkins: .prepared_jenkins
 
 sync: prepare
 	$(call update_feeds)
-	$(call copy_files)
 	$(call copy_config)
 
 jenkins_fast: prepare_jenkins
 	(cd $(BUILD_DIR) && git pull)
 	(cd $(OWRT_PKG_DIR) && git pull)
 	$(call update_feeds)
+	$(call copy_config)
 	$(call build_src)
 	$(call post_build)
 
