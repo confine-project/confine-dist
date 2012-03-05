@@ -110,8 +110,8 @@ target: prepare update sync
 prepare: .prepared 
 
 .prepared:
-	$(call update_workspace)
 	$(call prepare_workspace)
+	$(call update_workspace)
 	@touch .prepared
 
 sync: prepare 
