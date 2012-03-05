@@ -16,10 +16,14 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+ifndef READ_ONLY
 OWRT_GIT = git@github.com:confine-project/openwrt.git
 OWRT_PKG_GIT = git@github.com:confine-project/packages.git
-OWRT_GIT_RO = git://github.com/confine-project/openwrt.git
-OWRT_PKG_GIT_RO = git://github.com/confine-project/packages.git
+else
+OWRT_GIT = git://github.com/confine-project/openwrt.git
+OWRT_PKG_GIT = git://github.com/confine-project/packages.git
+endif
+
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
 BUILD_DIR = openwrt
 FILES_DIR = files
@@ -36,8 +40,11 @@ IMAGE = openwrt-x86-generic-combined
 J ?= 1
 V ?= 0
 MAKE_SRC = -j$(J) V=$(V)
+CONFINE_VERSION ?= testing
 
 define prepare_workspace
+	git clone $(OWRT_GIT) $(BUILD_DIR)
+	git clone $(OWRT_PKG_GIT) $(OWRT_PKG_DIR)
 	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
 	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	rm -f $(BUILD_DIR)/dl || true
@@ -72,6 +79,12 @@ define kmenuconfig_owrt
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
+define update_workspace
+	git pull && git checkout $(CONFINE_VERSION)
+	(cd $(BUILD_DIR) && git pull && git checkout $(CONFINE_VERSION))
+	(cd $(OWRT_PKG_DIR) && git pull && git checkout $(CONFINE_VERSION))
+endef
+
 define build_src
 	make -C $(BUILD_DIR) $(MAKE_SRC)
 endef
@@ -90,33 +103,23 @@ all: prepare sync
 	$(call build_src)
 	$(call post_build)
 
-prepare: .prepared
+target: prepare update sync
+	$(call build_src)
+	$(call post_build)
+
+prepare: .prepared 
 
 .prepared:
-	git clone $(OWRT_GIT) openwrt
-	git clone $(OWRT_PKG_GIT) packages/openwrt
+	$(call update_workspace)
 	$(call prepare_workspace)
 	@touch .prepared
 
-prepare_jenkins: .prepared_jenkins
-
-.prepared_jenkins:
-	git clone $(OWRT_GIT_RO) openwrt
-	git clone $(OWRT_PKG_GIT_RO) packages/openwrt
-	$(call prepare_workspace)
-	@touch .prepared_jenkins
-
-sync: prepare
+sync: prepare 
 	$(call update_feeds)
 	$(call copy_config)
 
-jenkins_fast: prepare_jenkins
-	(cd $(BUILD_DIR) && git pull && git checkout testing)
-	(cd $(OWRT_PKG_DIR) && git pull && git checkout testing)
-	$(call update_feeds)
-	$(call copy_config)
-	$(call build_src)
-	$(call post_build)
+update: prepare
+	$(call update_workspace)
 
 menuconfig: prepare
 	$(call menuconfig_owrt)
