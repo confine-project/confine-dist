@@ -111,8 +111,8 @@ sync: prepare
 	$(call copy_config)
 
 jenkins_fast: prepare_jenkins
-	(cd $(BUILD_DIR) && git pull)
-	(cd $(OWRT_PKG_DIR) && git pull)
+	(cd $(BUILD_DIR) && git pull && git checkout testing)
+	(cd $(OWRT_PKG_DIR) && git pull && git checkout testing)
 	$(call update_feeds)
 	$(call copy_config)
 	$(call build_src)
@@ -132,7 +132,6 @@ dirclean:
 
 distclean:
 	make -C $(BUILD_DIR) distclean
-	$(call copy_files)
 	$(call copy_config)
 
 help:
