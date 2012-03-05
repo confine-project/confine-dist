@@ -53,11 +53,8 @@ When you execute a menuconfig or kernel_menuconfig, the new config files will be
 - images/
 Output image directory
 
-- src/
+- openwrt/
 OpenWRT source tree
-
-- recipes/
-The scripts inside this directory get executed just before compiling openwrt. Usefull to do customization steps.
 
 ** Output image:
 
