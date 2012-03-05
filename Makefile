@@ -80,7 +80,7 @@ define kmenuconfig_owrt
 endef
 
 define update_workspace
-	git pull && git checkout $(CONFINE_VERSION)
+	git pull origin $(CONFINE_VERSION) && git checkout $(CONFINE_VERSION)
 	(cd $(BUILD_DIR) && git pull && git checkout $(CONFINE_VERSION))
 	(cd $(OWRT_PKG_DIR) && git pull && git checkout $(CONFINE_VERSION))
 endef
