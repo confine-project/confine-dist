@@ -99,11 +99,11 @@ define post_build
 endef
 
 
-all: prepare sync
+all: prepare 
 	$(call build_src)
 	$(call post_build)
 
-target: prepare update sync
+target: prepare 
 	$(call build_src)
 	$(call post_build)
 
@@ -112,6 +112,8 @@ prepare: .prepared
 .prepared:
 	$(call prepare_workspace)
 	$(call update_workspace)
+	$(call update_feeds)
+	$(call copy_config)
 	@touch .prepared
 
 sync: prepare 
