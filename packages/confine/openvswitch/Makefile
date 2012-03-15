@@ -24,12 +24,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openvswitch
-PKG_VERSION:=1.3.0
+PKG_VERSION:=1.4.0
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://openvswitch.org/releases/
-PKG_MD5SUM:=45e2ded1ee48f1e8490719deb270f2c3
+PKG_MD5SUM:=3847c60af329bfe81ff7220b9f489fa5
 
 PKG_INSTALL:=1
 
@@ -82,44 +82,3 @@ define Package/openvswitch/install
 endef
 
 $(eval $(call BuildPackage,openvswitch))
-
-#
-# Kernel Modules necessary by Openvswitch not provided by OpenWRT
-#
-# TODO: remove when bridge and STP support is included in default OpenWRT as modules
-#
-
-NETWORK_SUPPORT_MENU:=Network Support
-
-define KernelPackage/bridge
-	SUBMENU:=$(NETWORK_SUPPORT_MENU)
-	DEFAULT:=y
-	TITLE:=Ethernet bridging support
-	DEPENDS:=+kmod-stp
-	KCONFIG:= \
-		CONFIG_BRIDGE=m \
-		CONFIG_BRIDGE_IGMP_SNOOPING=y
-	FILES:= $(LINUX_DIR)/net/bridge/bridge.ko
-endef
-
-define KernelPackage/bridge/description
- Kernel module for Ethernet bridging
-endef
-
-$(eval $(call KernelPackage,bridge))
-
-define KernelPackage/stp
-	SUBMENU:=$(NETWORK_SUPPORT_MENU)
-	DEFAULT:=y
-	TITLE:=Ethernet Spanning Tree Protocol support
-	KCONFIG:= \
-		CONFIG_STP=m
-	FILES:=$(LINUX_DIR)/net/802/stp.ko
-endef
-
-define KernelPackage/stp/description
- Kernel module for Ethernet Spanning Tree
-endef
-
-$(eval $(call KernelPackage,stp))
-
