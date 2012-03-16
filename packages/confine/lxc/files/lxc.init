@@ -37,17 +37,19 @@ start() {
 	[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 
 
-	for n in $LXC_NET_KEYS; do
-	    if lxc_uci_get default.net${n}_link > /dev/null; then
-
-		local link=$(lxc_uci_get default.net${n}_link)
-		if ! brctl setfd $link 0 > /dev/null 2>&1; then
-		    brctl addbr $link
-		    brctl setfd $link 0
-		fi
-		    
-	    fi
-	done
+# this must be done from /etc/config/network
+#
+#	for n in $LXC_NET_KEYS; do
+#	    if lxc_uci_get default.net${n}_link > /dev/null; then
+#
+#		local link=$(lxc_uci_get default.net${n}_link)
+#		if ! ip link show dev $link > /dev/null 2>&1; then
+#		    brctl addbr $link
+#		    brctl setfd $link 0
+#		fi
+#		    
+#	    fi
+#	done
 
 
 }
