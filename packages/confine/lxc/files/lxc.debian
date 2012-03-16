@@ -9,7 +9,7 @@ fi
 . /etc/init.d/lxc
 
 
-LXC_IMAGE_URL="http://upc.qmp.cat/axel/confine/misc"
+LXC_IMAGE_URL="http://upc2.qmp.cat/axel/confine/misc"
 LXC_IMAGE_NAME="debian32-rootfs.tgz"
 
 usage() {
