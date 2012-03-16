@@ -2,13 +2,13 @@
 config 'lxc' 'default'
 
 
-       option 'netW_link'  'br-wan'
-       option 'netW_name'  'wan0'
-       option 'netW_proto' 'dhcp'
+       option 'netL_link'  'br-local'
+       option 'netL_name'  'local'
+       option 'netL_proto' 'static'
 
-       option 'netL_link'  'br-lan'
-       option 'netL_name'  'lan0'
-       option 'netL_proto' 'dhcp'
+       option 'netI_link'  'br-internal'
+       option 'netI_name'  'internal'
+       option 'netI_proto' 'static'
 
        option 'net0_link'  'lxc0'
        option 'net0_name'  'eth0'
@@ -17,7 +17,7 @@ config 'lxc' 'default'
 config 'container' 'cn01'
 
        option 'boot' '0'
-       option 'netW_hwaddr' 'ce:00:00:00:01:00'
-       option 'netL_hwaddr' 'ce:00:00:00:02:00'
+       option 'netL_hwaddr' 'ce:00:00:00:01:00'
+       option 'netI_hwaddr' 'ce:00:00:00:02:00'
        option 'net0_hwaddr' 'ce:00:00:00:03:00'
        option 'net0_ipv4'   '10.56.101.1/24'
