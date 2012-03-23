@@ -651,7 +651,7 @@ scp6() {
     fi
 
     
-    ssh4prepare $VCRD_ID
+#    ssh4prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
@@ -659,7 +659,7 @@ scp6() {
 }
 
 
-create_rpc_rd_basics() {
+create_rpc_custom0() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
     local RPC_TYPE="basics"
@@ -682,7 +682,7 @@ uci set network.local_ipv6_rescue_net.netmask=$VCT_RD_RESCUE_V6_PL
 
 uci set network.internal=interface
 uci set network.internal.type=bridge
-uci set network.internal.iface=none
+uci set network.internal.iface='sl01_I sl02_I sl03_I sl04_I '
 uci set network.internal.proto=static
 uci set network.internal.ipaddr=$VCT_RD_INTERNAL_V4_IP
 uci set network.internal.netmask=$( ip4_net_to_mask $VCT_RD_INTERNAL_V4_IP/$VCT_RD_INTERNAL_V4_PL )
@@ -696,6 +696,19 @@ uci commit network
 
 /etc/init.d/network restart
 
+
+
+uci revert system
+uci set system.@system[0].hostname="rd${VCRD_ID}"
+uci commit system
+echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
+
+
+# remove useless busybox links:
+[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
+[ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
+
+
 EOF
 
     chmod u+x $RPC_PATH
@@ -704,14 +717,14 @@ EOF
 }
 
 
-customize_basics() {
+customize0() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
 
 
     scp4 $VCRD_ID "$VCT_RD_AUTHORIZED_KEY" /etc/dropbear/authorized_keys 
 
-    local RPC_BASICS=$( create_rpc_rd_basics $VCRD_ID )
+    local RPC_BASICS=$( create_rpc_custom0 $VCRD_ID )
     ssh4 $VCRD_ID "mkdir -p /tmp/rpc-files"
     scp4 $VCRD_ID $VCT_RPC_DIR/$RPC_BASICS /tmp/rpc-files
     ssh4 $VCRD_ID "/tmp/rpc-files/$RPC_BASICS"
