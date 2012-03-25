@@ -145,9 +145,14 @@ system_install_check() {
     if ! [ $CMD_QUICK ]; then
 
 	local PACKAGE=
+	local UPDATED=
 	for PACKAGE in $VCT_DEB_PACKAGES; do
-	    dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep "install" |grep "ok" |grep "installed" > /dev/null ||\
-		{ dbg $FUNCNAME "missing debian package: $PACKAGE" $CMD_SOFT || return 1 ;}
+	    if ! dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep "install" |grep "ok" |grep "installed" > /dev/null ; then
+		echo "Missing debian package: $PACKAGE! Trying to install all required packets..."
+		( [ $CMD_INSTALL ] && ( [ $UPDATED ] || UPDATED=$( vct_sudo "aptitude update") ) && vct_sudo "aptitude install $PACKAGE" && \
+		    dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep "install" |grep "ok" |grep "installed" > /dev/null ) ||\
+                   { dbg $FUNCNAME "Missing debian packages $PACKAGE !!!" $CMD_SOFT || return 1 ;}
+	    fi
 	done
 
 	local TOOL_POS=
@@ -155,7 +160,7 @@ system_install_check() {
 	for TOOL_POS in $(seq 0 $(( ${#VCT_TOOL_TESTS[@]} - 1)) ); do
 	    TOOL_CMD=${VCT_TOOL_TESTS[$TOOL_POS]}
 	    $TOOL_CMD  > /dev/null 2>&1 ||\
-		{ dbg $FUNCNAME "tool test: $TOOL_CMD failed" $CMD_SOFT || return 1 ;}
+		{ dbg $FUNCNAME "Please install linux tool: $TOOL_CMD  !! " $CMD_SOFT || return 1 ;}
 	done
 
     fi
