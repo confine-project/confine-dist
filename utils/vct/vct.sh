@@ -158,12 +158,6 @@ system_install_check() {
 		{ dbg $FUNCNAME "tool test: $TOOL_CMD failed" $CMD_SOFT || return 1 ;}
 	done
 
-	local MODULE=
-	for MODULE in $VCT_KERNEL_MODULES; do
-	    lsmod | grep -e "^$MODULE" > /dev/null ||\
-		{ dbg $FUNCNAME "missing kernel module: $MODULE" $CMD_SOFT || return 1 ;}
-	done
-
     fi
 
     # check if user in required groups:
@@ -293,6 +287,17 @@ system_init_check() {
     local CMD_INIT=$( echo "$OPT_CMD" | grep -e "init" > /dev/null && echo "init," || echo "" )
 
     system_install_check $( [ $CMD_SOFT ] && echo "soft," )$( [ $CMD_QUICK ] && echo "quick," )
+
+    # check if  kernel modules are loaded:
+    local KMOD=
+    for KMOD in $VCT_KERNEL_MODULES; do
+	if ! lsmod | grep "$( echo $KMOD | sed s/-/_/ )" > /dev/null ; then
+	    ( [ $CMD_INIT ]  &&\
+		  vct_sudo "modprobe $KMOD " ) ||\
+                	{ dbg $FUNCNAME "Failed loading module $KMOD" $CMD_SOFT || return 1 ;}
+	fi
+    done
+
 
     # check if libvirtd is running:
     ! virsh --connect qemu:///system list --all > /dev/null &&\
