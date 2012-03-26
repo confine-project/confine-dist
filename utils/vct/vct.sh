@@ -764,6 +764,18 @@ help() {
     ssh4|ssh6 <rd-id> ["commands"] : connect (& execute commands) via ssh (IPv4 or IPv6)
     scp4|scp6 <rd-id> <local src-path> <remote dst-path> : copy data via scp (IPv4 or IPv6)
 
+
+
+    Future requests (commands not yet implemnted):
+
+    link-get [rd-id]               : show configured links
+    link-add <rd-id-A:direct-if-A> <rd-id-B:direct-if-B> <[packet-loss]> 
+                                     virtually link rd-id a via direct if a with rd b
+                                     example $ ./vct.sh link-add 0003:1 0005:1 10
+                                     to setup a link between given RDs with 10% packet loss
+    link-del [<rd-id-A[:direct-if-A]>] [<rd-id-B[:direct-if-B>]] : del configured link(s)
+
+
 EOF
 
 }
