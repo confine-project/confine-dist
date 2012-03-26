@@ -16,7 +16,7 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifndef READ_ONLY
+ifdef DEV=1
 OWRT_GIT = git@github.com:confine-project/openwrt.git
 OWRT_PKG_GIT = git@github.com:confine-project/packages.git
 else
