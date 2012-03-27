@@ -56,9 +56,8 @@ define Package/openvswitch/description
 endef
 
 define Build/Configure
-	$(call Build/Configure/Default, --with-linux=$(LINUX_DIR) \
-									--prefix=/usr \
-									--enable-ssl)
+	$(call Build/Configure/Default, --prefix=/usr \
+		                            --enable-ssl)
 endef
 
 define Build/Compile
@@ -78,7 +77,23 @@ define Package/openvswitch/install
 	$(INSTALL_BIN) ./files/ovs.init $(1)/etc/init.d/openvswitch
 
 	$(CP) $(PKG_INSTALL_DIR)/usr/* $(1)/usr
-	$(CP) $(PKG_BUILD_DIR)/datapath/linux/{brcompat_mod.ko,openvswitch_mod.ko} $(1)/lib/modules/$(LINUX_VERSION)
 endef
 
 $(eval $(call BuildPackage,openvswitch))
+
+NETWORK_SUPPORT_MENU:=Network Support
+
+define KernelPackage/openvswitch
+  SUBMENU:=$(NETWORK_SUPPORT_MENU)
+  TITLE:=Openvswitch datapath kernel module.
+  DEPENDS:=+kmod-bridge
+  KCONFIG:=CONFIG_OPENVSWITCH=m
+  FILES:=$(LINUX_DIR)/net/openvswitch/openvswitch.ko
+  AUTOLOAD:=$(call AutoLoad,06,openvswitch)
+endef
+
+define KernelPackage/openvswitch/description
+ Openvswitch datapath kernel module.
+endef
+
+$(eval $(call KernelPackage,openvswitch))   
