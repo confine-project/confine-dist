@@ -16,7 +16,7 @@ start() {
 
     # Remove bridge and install openvswitch module
     /sbin/rmmod bridge
-    /sbin/insmod /lib/modules/$(uname -r)/openvswitch_mod.ko
+    /sbin/insmod /lib/modules/$(uname -r)/openvswitch.ko
 
     # Start openvswitch db server
     /usr/sbin/ovsdb-server --remote=punix:/var/run/openvswitch/db.sock \
@@ -31,15 +31,10 @@ start() {
     # Start openvswitch daemon
     /usr/sbin/ovs-vswitchd --pidfile --detach
 
-    # Start bridge compatibility layer
-    /sbin/insmod /lib/modules/$(uname -r)/brcompat_mod.ko
-    /usr/sbin/ovs-brcompatd --pidfile --detach
-
 }
 
 stop() {
     # Just unload modules and kill the processes started previously
     kill $(cd /var/run/openvswitch && cat *.pid)
-    /sbin/rmmod /lib/modules/$(uname -r)/brcompat_mod.ko
     /sbin/rmmod /lib/modules/$(uname -r)/openvswitch_mod.ko
 }
