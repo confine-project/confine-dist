@@ -53,7 +53,6 @@ define Package/lxc/install
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_BIN) ./files/lxc.config_lxc $(1)/etc/config/lxc
-#	$(INSTALL_BIN) ./files/lxc.config_network $(1)/etc/config/network
 
 	$(INSTALL_DIR) $(1)/sbin
 	$(INSTALL_BIN) ./files/lxc.checkconfig $(1)/sbin/

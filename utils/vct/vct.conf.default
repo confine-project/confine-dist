@@ -1,0 +1,145 @@
+#!/bin/bash
+
+
+
+#################################################
+# install/init related parameters:
+
+VCT_USER="$(whoami)"  # better put your username here
+
+VCT_SUDO_ASK="YES"    # default:"YES" ask whether to execute sudo commands befor doing so"
+
+VCT_VIRT_DIR=/var/lib/vct
+
+# the following variables expect a downloadable image at:
+# http://upc2.qmp.cat/axel/confine/misc/openwrt-x86-generic-combined-ext4-0E.2.raw.tgz
+VCT_TEMPLATE_URL="http://upc2.qmp.cat/axel/confine/misc/" # http://, https://, ftp://, file://, ssh:[port]:<user>@<domain>:path/to/bin/dir/
+VCT_TEMPLATE_NAME="openwrt-x86-generic-combined-ext4"     #
+VCT_TEMPLATE_VERS="-0E.2"                                 # optional
+VCT_TEMPLATE_TYPE="raw"                                   # raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
+VCT_TEMPLATE_COMP="tgz"                                   # tgz or gz only
+
+
+# for developers:
+# by using url-tpye ssh or file one can quickly switch to
+# the latest compiled image from a given build path.
+# Note that: templates must be updated: $ .vct.sh system_install update
+# and old domains must be removed:      $ .vct.sh remove <rd-id> 
+# and re-installed:                     $ .vct.sh create <rd-id> 
+#
+# VCT_TEMPLATE_URL="ssh:22:user@example.org:confine/firmware/confine-dist/openwrt/bin/x86/"
+ VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/"
+ VCT_TEMPLATE_NAME="openwrt-x86-generic-combined-ext4"
+ VCT_TEMPLATE_VERS=""
+ VCT_TEMPLATE_TYPE="img"
+ VCT_TEMPLATE_COMP="gz"
+
+
+VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel "
+
+
+
+#################################################
+# Host network configuration:
+
+
+VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01"    # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
+VCT_BR00_NAME="vct-local"
+VCT_BR00_MODEL=""                          # optional, default rtl8139
+VCT_BR00_MAC48=""                          # optional, mac-address or RANDOM, empy->default VCT_INTERFACE_MAC24:#br:rd-id
+
+VCT_BR00_V6_IP="FDC0::fffe"
+VCT_BR00_V6_PL="48"
+
+VCT_BR00_V4_IP="192.168.241.242"          # use 192.168.241.241/30 as static rescue ip for vct bridge (see also VCT_RESCUE_V4_IP for RD)
+VCT_BR00_V4_PL="30"
+
+#VCT_BR00_V4_NAT_OUT_DEV="eth0"             # or undefine (="") to disable NAT/SNAT
+#VCT_BR00_V4_NAT_OUT_SRC="192.168.243.0/24" # or undefine (="") to disable NAT/SNAT
+
+VCT_BR01_NAME="vct-direct0"
+
+
+#################################################
+# Research Device (RD) configuration:
+
+VCT_RD_AUTHORIZED_KEY="/home/$VCT_USER/.ssh/id_rsa.pub"
+
+VCT_RD_NAME_PREFIX="vcrd${VCT_TEMPLATE_VERS}-rd"
+VCT_RD_MEM="64"                             # RD Memory in MB
+
+
+VCT_RD_INTERNAL_V6_IP="FDC1::1"
+VCT_RD_INTERNAL_V6_PL="64"
+VCT_RD_INTERNAL_V4_IP="192.168.242.254"
+VCT_RD_INTERNAL_V4_PL="24"
+
+
+VCT_RD_RESCUE_BRIDGE="vct-local"
+
+VCT_RD_RESCUE_V6_PREFIX48="FDC0:0:0"                 # ULA testbed prefix (to be combinded with RDID to /48 RD specific IPv6)
+VCT_RD_RESCUE_V6_SUFFIX64="fffe"
+VCT_RD_RESCUE_V6_PL="48"
+
+VCT_RD_RESCUE_V4_IP="192.168.241.241"         # always available static testbed rescue IPv4 
+
+
+#################################################
+
+
+
+
+#################################################
+#################################################
+# expected parameters:
+
+PATH="$PATH=:/sbin:/usr/sbin"
+
+VCT_DL_DIR=$VCT_VIRT_DIR/downloads
+VCT_SYS_DIR=$VCT_VIRT_DIR/images
+VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
+VCT_KNOWN_HOSTS_FILE=$VCT_VIRT_DIR/known_hosts
+
+VCT_DEB_PACKAGES=" \
+    bridge-utils \
+    ebtables \
+    ipcalc \
+    iptables \
+    iputils-arping \
+    iputils-ping \
+    libvirt-bin \
+    net-tools \
+    qemu-kvm \
+    kvm \
+    virtinst \
+    xmlstarlet \
+    wget \
+"
+
+VCT_TOOL_TESTS=( \
+    'arping -V' \
+    'awk --version' \
+    'brctl --version' \
+    'ebtables --version' \
+    'ip -V' \
+    'ipcalc --version' \
+    'iptables --version' \
+    'mkdir --version' \
+    'ping -V'\
+    'ssh -V' \
+    'which scp' \
+    'virsh --version' \
+    'virt-install --version' \
+    'xmlstarlet --version' \
+    'wget --version' \
+    )
+
+
+VCT_OPT_PACKAGES="uml-utilities ipv6calc"
+
+VCT_VIRT_GROUP="libvirt"
+
+
+VCT_INTERFACE_MODEL="rtl8139"
+VCT_INTERFACE_MAC24="52:54:00"    # leave untuched for qemu/kvm 
+
