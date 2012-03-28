@@ -87,7 +87,7 @@ define KernelPackage/openvswitch
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Openvswitch datapath kernel module.
   DEPENDS:=+kmod-bridge
-  KCONFIG:=CONFIG_OPENVSWITCH=m
+  KCONFIG:=CONFIG_OPENVSWITCH
   FILES:=$(LINUX_DIR)/net/openvswitch/openvswitch.ko
   AUTOLOAD:=$(call AutoLoad,06,openvswitch)
 endef
