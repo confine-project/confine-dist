@@ -1,0 +1,33 @@
+Index: lxc-0.7.5/src/lxc/utmp.c
+===================================================================
+--- lxc-0.7.5.orig/src/lxc/utmp.c	2011-10-25 14:02:11.000000000 +0200
++++ lxc-0.7.5/src/lxc/utmp.c	2012-03-29 14:23:14.243040705 +0200
+@@ -37,9 +37,11 @@
+ #include "mainloop.h"
+ #include "lxc.h"
+ #include "log.h"
++#ifndef __UCLIBC__
+ #define __USE_GNU
+ #include <utmpx.h>
+ #undef __USE_GNU
++#endif /* __UCLIBC__ */
+ 
+ /* This file watches the /var/run/utmp file in the container
+  * (that should probably be configurable)
+@@ -166,6 +168,7 @@
+ 
+ static int utmp_get_runlevel(struct lxc_utmp *utmp_data)
+ {
++#ifndef __UCLIBC__
+ 	struct utmpx *utmpx;
+ 	char path[MAXPATHLEN];
+ 	struct lxc_handler *handler = utmp_data->handler;
+@@ -207,6 +210,8 @@
+ 
+ 	endutxent();
+ 
++#endif /* __UCLIBC__ */
++
+ 	return 0;
+ }
+ 

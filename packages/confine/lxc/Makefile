@@ -31,7 +31,7 @@ define Package/lxc
             +ip +patch +diffutils +coreutils +coreutils-rm \
             +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
 
-  MDEPENDS:=@USE_EGLIBC
+  #MDEPENDS:=@USE_EGLIBC
 endef
 
 define Package/lxc/description
