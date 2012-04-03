@@ -322,17 +322,29 @@ system_init_check() {
                 	{ dbg $FUNCNAME "unconfigured bridge $BR_NAME" $CMD_SOFT || return 1 ;}
 	    fi
 
-            # check if local bridge has IPv4 for resuce network : 
-	    local BR_V4_IP=$( variable_check ${BRIDGE}_V4_IP soft 2>/dev/null ) 
-	    local BR_V4_PL=$( variable_check ${BRIDGE}_V4_PL soft 2>/dev/null )
-	    if [ $BR_V4_IP ] && [ $BR_V4_PL ]; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4_IP/$BR_V4_PL " |grep -e " $BR_NAME" >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4_IP/$BR_V4_PL dev $BR_NAME ) ||\
-                	{ dbg $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4_IP/$BR_V4_PL " $CMD_SOFT || return 1 ;}
+            # check if local bridge has rescue IPv4 address (A) for local network: 
+	    local BR_V4A_IP=$( variable_check ${BRIDGE}_V4A_IP soft 2>/dev/null ) 
+	    local BR_V4A_PL=$( variable_check ${BRIDGE}_V4A_PL soft 2>/dev/null )
+	    if [ $BR_V4A_IP ] && [ $BR_V4A_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4A_IP/$BR_V4A_PL " |grep -e " $BR_NAME" >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4A_IP/$BR_V4A_PL dev $BR_NAME ) ||\
+                	{ dbg $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4A_IP/$BR_V4A_PL " $CMD_SOFT || return 1 ;}
 		fi
 	    fi
 
-            # check if local bridge has IPv6 for rescue network:
+            # check if local bridge has rescue IPv4 address (B) for local network: 
+	    local BR_V4B_IP=$( variable_check ${BRIDGE}_V4B_IP soft 2>/dev/null ) 
+	    local BR_V4B_PL=$( variable_check ${BRIDGE}_V4B_PL soft 2>/dev/null )
+	    if [ $BR_V4B_IP ] && [ $BR_V4B_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4B_IP/$BR_V4B_PL " |grep -e " $BR_NAME" >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4B_IP/$BR_V4B_PL dev $BR_NAME ) ||\
+                	{ dbg $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4B_IP/$BR_V4B_PL " $CMD_SOFT || return 1 ;}
+		fi
+	    fi
+
+
+
+            # check if local bridge has rescue IPv6 for local network:
 	    local BR_V6_IP=$( variable_check ${BRIDGE}_V6_IP soft 2>/dev/null ) 
 	    local BR_V6_PL=$( variable_check ${BRIDGE}_V6_PL soft 2>/dev/null )
 	    if [ $BR_V6_IP ] && [ $BR_V6_PL ]; then
@@ -352,11 +364,17 @@ system_init_check() {
 	    local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
 	    local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
 	    
-	    if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ]; then
+	    if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ] && [ -z $CMD_QUICK ]; then
+
                 if ! vct_sudo iptables -t nat -L POSTROUTING -nv |grep -e "MASQUERADE" |grep -e "$BR_V4_NAT_OUT" |grep -e "$BR_V4_NAT_SRC" >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo iptables -t nat -I POSTROUTING -o $BR_V4_NAT_OUT -s $BR_V4_NAT_SRC -j MASQUERADE ) ||\
                   	{ dbg $FUNCNAME "invalid NAT from $BR_NAME" $CMD_SOFT || return 1 ;}
 		fi 
+
+		if ! [ $(cat /proc/sys/net/ipv4/ip_forward) = "1" ]; then
+		    [ $CMD_INIT ] && vct_sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
+		fi
+
 	    fi
 	    
 
@@ -573,26 +591,26 @@ ssh4prepare() {
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
 
-    variable_check VCT_RD_RESCUE_BRIDGE quiet
-    variable_check VCT_RD_RESCUE_V4_IP quiet
+    variable_check VCT_RD_LOCAL_BRIDGE quiet
+    variable_check VCT_RD_LOCAL_V4A_IP quiet
     variable_check VCT_KNOWN_HOSTS_FILE quiet
 
 
-    local RESCUE_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+    local LOCAL_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
 	xmlstarlet sel -T -t -m "/domain/devices/interface" \
 	-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	grep -e "^$VCT_RD_RESCUE_BRIDGE " | awk '{print $2 }' || \
-	dbg $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_RESCUE_BRIDGE" )
+	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	dbg $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
-    # echo "connecting to $VCT_RD_RESCUE_V4_IP via $RESCUE_MAC"
+    # echo "connecting to $VCT_RD_LOCAL_V4A_IP via $LOCAL_MAC"
 
-    if ! arp -n | grep -e "^$VCT_RD_RESCUE_V4_IP" | grep -e "$RESCUE_MAC" > /dev/null; then
-	vct_sudo arp -s $VCT_RD_RESCUE_V4_IP  $RESCUE_MAC
+    if ! arp -n | grep -e "^$VCT_RD_LOCAL_V4A_IP" | grep -e "$LOCAL_MAC" > /dev/null; then
+	vct_sudo arp -s $VCT_RD_LOCAL_V4A_IP  $LOCAL_MAC
     fi
 
-    if ! ping -c 1 -w 2 -W 2 $VCT_RD_RESCUE_V4_IP > /dev/null; then
-	echo "Waiting for $VCRD_ID to listen on $VCT_RD_RESCUE_V4_IP... (after boot this may take upto 40 secs)"
-	time ping -c 1 -w 60 -W 1 $VCT_RD_RESCUE_V4_IP > /dev/null | grep -e "^user"
+    if ! ping -c 1 -w 2 -W 2 $VCT_RD_LOCAL_V4A_IP > /dev/null; then
+	echo "Waiting for $VCRD_ID to listen on $VCT_RD_LOCAL_V4A_IP... (after boot this may take upto 40 secs)"
+	time ping -c 1 -w 60 -W 1 $VCT_RD_LOCAL_V4A_IP > /dev/null | grep -e "^user"
     fi
 }
 
@@ -610,9 +628,9 @@ ssh4() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@$VCT_RD_RESCUE_V4_IP "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
+	root@$VCT_RD_LOCAL_V4A_IP "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
 
-#    arp -d $VCT_RESCUE_V4_IP 
+#    arp -d $VCT_LOCAL_V4A_IP 
 }
 
 ssh6() {
@@ -628,7 +646,7 @@ ssh6() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@${VCT_RD_RESCUE_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_RESCUE_V6_SUFFIX64} "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
+	root@${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64} "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
 
 }
 
@@ -647,7 +665,7 @@ scp4() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@$VCT_RD_RESCUE_V4_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
+	"$SRC" root@$VCT_RD_LOCAL_V4A_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
 scp6() {
@@ -665,13 +683,14 @@ scp6() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@\[${VCT_RD_RESCUE_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_RESCUE_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
+	"$SRC" root@\[${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
 
 create_rpc_custom0() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
+    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:3} ))
     local RPC_TYPE="basics"
     local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${RPC_TYPE}.sh"
     local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
@@ -684,15 +703,18 @@ echo "Configuring CONFINE $RPC_TYPE "
 
 uci revert network
 
+uci set network.local.ifname="eth0 sl00_L"
+
+
 uci set network.local_ipv6_rescue_net=alias
 uci set network.local_ipv6_rescue_net.interface=local
 uci set network.local_ipv6_rescue_net.proto=static
-uci set network.local_ipv6_rescue_net.ipaddr=${VCT_RD_RESCUE_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_RESCUE_V6_SUFFIX64}
-uci set network.local_ipv6_rescue_net.netmask=$VCT_RD_RESCUE_V6_PL
+uci set network.local_ipv6_rescue_net.ipaddr=${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}
+uci set network.local_ipv6_rescue_net.netmask=$VCT_RD_LOCAL_V6_PL
 
 uci set network.internal=interface
 uci set network.internal.type=bridge
-uci set network.internal.iface='sl01_I sl02_I sl03_I sl04_I '
+uci set network.internal.ifname="sl00_I"
 uci set network.internal.proto=static
 uci set network.internal.ipaddr=$VCT_RD_INTERNAL_V4_IP
 uci set network.internal.netmask=$( ip4_net_to_mask $VCT_RD_INTERNAL_V4_IP/$VCT_RD_INTERNAL_V4_PL )
@@ -702,10 +724,36 @@ uci set network.internal_ipv6_net.interface=internal
 uci set network.internal_ipv6_net.proto=static
 uci set network.internal_ipv6_net.ipaddr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
 
+
+EOF
+
+    
+    if [ ${VCT_RD_LOCAL_V4B_PREFIX24:-} ]; then
+
+	cat <<EOF >> $RPC_PATH
+
+uci set network.local_ip4b_rescue_net=alias
+uci set network.local_ip4b_rescue_net.interface=local
+uci set network.local_ip4b_rescue_net.proto=static
+uci set network.local_ip4b_rescue_net.ipaddr=${VCT_RD_LOCAL_V4B_PREFIX24}.${VCRD_ID_LSB8BIT_DEC}
+uci set network.local_ip4b_rescue_net.netmask=$VCT_RD_LOCAL_V4B_PL
+uci set network.local_ip4b_rescue_net.dns=$VCT_RD_LOCAL_V4B_DNS
+
+uci set network.local_ip4b_default=route
+uci set network.local_ip4b_default.interface=local
+uci set network.local_ip4b_default.target=0.0.0.0
+uci set network.local_ip4b_default.netmask=0.0.0.0
+uci set network.local_ip4b_default.gateway=$VCT_BR00_V4B_IP
+
+EOF
+    fi
+
+    cat <<EOF >> $RPC_PATH
+
 uci commit network
 
+echo restarting network...
 /etc/init.d/network restart
-
 
 
 uci revert system
@@ -736,7 +784,7 @@ customize0() {
 
     local RPC_BASICS=$( create_rpc_custom0 $VCRD_ID )
     ssh4 $VCRD_ID "mkdir -p /tmp/rpc-files"
-    scp4 $VCRD_ID $VCT_RPC_DIR/$RPC_BASICS /tmp/rpc-files
+    scp4 $VCRD_ID $VCT_RPC_DIR/$RPC_BASICS /tmp/rpc-files/
     ssh4 $VCRD_ID "/tmp/rpc-files/$RPC_BASICS"
 }
 
