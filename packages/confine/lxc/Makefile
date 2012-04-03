@@ -13,8 +13,6 @@ PKG_SOURCE_URL:=@SF/lxc
 
 PKG_VERSION:=0.7.5
 PKG_MD5SUM:=cf001ad3f465b17d48dfd623b0011e73
-#PKG_VERSION:=0.7.4.2
-#PKG_MD5SUM:=36fcb0f6a39d2f55130421f342f24ef3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
@@ -31,7 +29,6 @@ define Package/lxc
             +ip +patch +diffutils +coreutils +coreutils-rm \
             +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
 
-  MDEPENDS:=@USE_EGLIBC
 endef
 
 define Package/lxc/description
