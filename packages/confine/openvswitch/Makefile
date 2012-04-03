@@ -41,10 +41,9 @@ include $(INCLUDE_DIR)/kernel.mk
 define Package/openvswitch
   SECTION:=utils
   CATEGORY:=Utilities
-  DEFAULT:=y
   TITLE:=OpenVSwitch
   URL:=http://openvswitch.org
-  DEPENDS:= +librt +libopenssl +openssl-util
+  DEPENDS:= +librt +libopenssl +openssl-util +kmod-openvswitch
 endef
 
 define Package/openvswitch/description
