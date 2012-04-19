@@ -1,0 +1,770 @@
+#!/bin/bash
+
+
+
+
+
+
+
+
+UCI_CHANGES_PATH=/tmp/.uci
+UCI_DEFAULT_PATH=/etc/config
+
+LXC_IMAGES_LINK='/var/lib/lxc'
+LXC_IMAGES_PATH='/lxc/images'
+LXC_TEMPLATES_PATH='/lxc/templates'
+LXC_STASH_PATH='/lxc/uci-stash'
+LXC_SCRIPTS_PATH='/lxc/scripts'
+
+LXC_SL_ID_MIN=1
+LXC_SL_ID_MAX=253
+LXC_MAC_PREFIX16="52:c0"
+
+set -u
+
+
+MAIN_PID=$BASHPID
+
+exit_all() {
+#   echo "terminating due to previous error, killing PID=$MAIN_PID from $BASHPID" >&2
+    kill $MAIN_PID
+    sleep 10
+    echo "this should never be printed (PID=$MAIN_PID) !!!!!!!!!!!!!!!"
+}
+
+
+
+err() {
+    local FUNC=$1
+    local MSG=$2
+    local OPT_CMD=${3:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+
+    [ ${CMD_QUIET:-} ] || echo -e       "ERROR ${FUNC}(): ${MSG}" >&2
+    [ ${CMD_QUIET:-} ] || logger -t LXC "ERROR ${FUNC}(): ${MSG}"
+
+    [ ${CMD_SOFT:-} ] && return 1 || exit_all
+}
+
+uci_path() {
+    local OPT_CMD=${1:-}
+    
+    local CMD_PATH=$( echo "$OPT_CMD" | awk -F'path=' '{print $2}' | awk -F',' '{print $1 }' )
+    
+    if [ "$CMD_PATH" ]; then
+	echo "$CMD_PATH" | grep -e "^/" | grep -v " " >/dev/null || \
+	    err $FUNCNAME "Invalid path=\"$CMD_PATH\""
+	
+	echo "-c $CMD_PATH "
+	    
+    else
+	echo "-c $UCI_DEFAULT_PATH "
+    fi
+}
+
+uci_get() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_PATH=$( uci_path "$OPT_CMD"  )
+    local UCI_CONFIG=$( echo $VAR_NAME | awk -F'.' '{print $1}' )
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && \
+	err $FUNCNAME "uci stash exist, do rm -f $LXC_STASH_PATH/$UCI_CONFIG"
+    [ -f $UCI_CHANGES_PATH/$UCI_CONFIG ] && mv $UCI_CHANGES_PATH/$UCI_CONFIG $LXC_STASH_PATH/$UCI_CONFIG
+
+    local VAR_VALUE=; VAR_VALUE="$(uci $CMD_PATH -q get $VAR_NAME)"
+    local RET_VALUE=$?
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && mv $LXC_STASH_PATH/$UCI_CONFIG $UCI_CHANGES_PATH/$UCI_CONFIG
+
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $CMD_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    echo "$VAR_VALUE"
+    return $RET_VALUE
+}
+
+
+uci_show() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_PATH=$( uci_path "$OPT_CMD"  )
+    local UCI_CONFIG=$( echo $VAR_NAME | awk -F'.' '{print $1}' )
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && \
+	err $FUNCNAME "uci stash exist, do rm -f $LXC_STASH_PATH/$UCI_CONFIG"
+    [ -f $UCI_CHANGES_PATH/$UCI_CONFIG ] && mv $UCI_CHANGES_PATH/$UCI_CONFIG $LXC_STASH_PATH/$UCI_CONFIG
+
+    uci $CMD_PATH show $VAR_NAME
+    local RET_VALUE=$?
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && mv $LXC_STASH_PATH/$UCI_CONFIG $UCI_CHANGES_PATH/$UCI_CONFIG
+
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $CMD_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    return $RET_VALUE
+}
+
+
+uci_del() {
+    local UCI_ASSIGNEMENT="$1"
+    local OPT_CMD=${2:-}
+    local CMD_PATH=$( uci_path "$OPT_CMD"  )
+    local UCI_CONFIG=$( echo $UCI_ASSIGNEMENT | awk -F'.' '{print $1}' )
+    local UCI_SEC_OPT=$( echo $UCI_ASSIGNEMENT | awk -F"${UCI_CONFIG}." '{print $2}' )
+
+    [ "$( uci $CMD_PATH changes $UCI_CONFIG )" = "" ] || err $FUNCNAME "uci $CMD_PATH changes $UCI_CONFIG NOT empty"
+
+#    echo "$0 UCI_CONFIG=$UCI_CONFIG UCI_SEC_OPT=$UCI_SEC_OPT"
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && \
+	err $FUNCNAME "uci stash exist, do rm -f $LXC_STASH_PATH/$UCI_CONFIG"
+    [ -f $UCI_CHANGES_PATH/$UCI_CONFIG ] && mv $UCI_CHANGES_PATH/$UCI_CONFIG $LXC_STASH_PATH/$UCI_CONFIG
+
+    uci $CMD_PATH delete $UCI_CONFIG.$UCI_SEC_OPT || err $FUNCNAME "$@"
+
+    uci $CMD_PATH commit $UCI_CONFIG
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && mv $LXC_STASH_PATH/$UCI_CONFIG $UCI_CHANGES_PATH/$UCI_CONFIG
+}
+
+
+uci_set() {
+    local UCI_ASSIGNEMENT="$1"
+    local OPT_CMD=${2:-}
+    local CMD_DEL=$( echo "$OPT_CMD" | grep -e "del" > /dev/null && echo "del," )
+    local CMD_ADD=$( echo "$OPT_CMD" | grep -e "add" > /dev/null && echo "add," )
+    local CMD_PATH=$( uci_path "$OPT_CMD"  )
+    local UCI_CONFIG=$( echo $UCI_ASSIGNEMENT | awk -F'.' '{print $1}' )
+    local UCI_SEC_OPT=$( echo $UCI_ASSIGNEMENT | awk -F"${UCI_CONFIG}." '{print $2}' | awk -F'=' '{print $1}' )
+    local UCI_VALUE="$( echo $UCI_ASSIGNEMENT | awk -F'=' '{print $2}' )"
+
+
+    if [ $CMD_ADD ] || [ $CMD_DEL ]; then
+	[ $(echo "$UCI_VALUE" | wc -w) = 1 ] || err $FUNCNAME "illegal whitespace in value=$UCI_VALUE"
+    fi
+
+#    echo "$0 UCI_CONFIG=$UCI_CONFIG UCI_SEC_OPT=$UCI_SEC_OPT UCI_VALUE=$UCI_VALUE"
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && \
+	err $FUNCNAME "uci stash exist, do rm -f $LXC_STASH_PATH/$UCI_CONFIG"
+    [ -f $UCI_CHANGES_PATH/$UCI_CONFIG ] && mv $UCI_CHANGES_PATH/$UCI_CONFIG $LXC_STASH_PATH/$UCI_CONFIG
+
+    if [ $CMD_ADD ] || [ $CMD_DEL ]; then
+
+	if uci $CMD_PATH get $UCI_CONFIG.$UCI_SEC_OPT 2>/dev/null | \
+	    grep -e "^$UCI_VALUE$" -e "^$UCI_VALUE " -e " $UCI_VALUE " -e " $UCI_VALUE$" >/dev/null; then
+
+	    if [ $CMD_DEL ]; then
+		local CUR_VAL="$(uci $CMD_PATH get $UCI_CONFIG.$UCI_SEC_OPT 2>/dev/null)"
+		local TMP_VAL=
+		local NEW_VAL=""
+	        for TMP_VAL in $CUR_VAL ; do
+		    if ! [ "$TMP_VAL" = "$UCI_VALUE" ]; then
+			NEW_VAL="$( [ "$NEW_VAL" ] && echo $NEW_VAL $TMP_VAL || echo $TMP_VAL )"
+		    fi
+		done
+		    
+		uci $CMD_PATH set $UCI_CONFIG.$UCI_SEC_OPT="$NEW_VAL" || err $FUNCNAME "$@ soft"
+	    fi
+
+	else
+
+	    [ $CMD_ADD ] &&  { uci $CMD_PATH add_list $UCI_CONFIG.$UCI_SEC_OPT="$UCI_VALUE" || err $FUNCNAME "$@" soft;}
+
+	fi
+
+    else
+	uci $CMD_PATH set $UCI_CONFIG.$UCI_SEC_OPT="$UCI_VALUE" || err $FUNCNAME "$@" soft
+    fi
+
+
+    uci $CMD_PATH commit $UCI_CONFIG
+
+    [ -f $LXC_STASH_PATH/$UCI_CONFIG ] && mv $LXC_STASH_PATH/$UCI_CONFIG $UCI_CHANGES_PATH/$UCI_CONFIG
+}
+
+
+var_get() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local VAR_VALUE=
+
+    if [ -z $VAR_NAME ]; then
+        err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
+    fi
+
+    set +u # temporary disable set -o nounset
+    VAR_VALUE=$( eval echo \$$VAR_NAME )
+    set -u
+
+    if [ -z "$VAR_VALUE" ]; then
+        err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
+    fi
+
+    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
+    return 0
+}
+
+
+
+
+install_url() {
+
+    local URL=$1
+    local URL_SITE=$2
+    local URL_NAME=$3
+    local URL_COMP=$4
+    local CACHE_DIR=$5
+    local INSTALL_PATH=$6  # /path/to/dir or "-"
+
+    local OPT_CMD=${7:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
+    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
+    local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
+
+    echo $@ >&2
+    
+    [ "$URL" = "${URL_SITE}${URL_NAME}.${URL_COMP}" ] ||\
+           { err $FUNCNAME "Invalid $URL != ${URL_SITE}${URL_NAME}.${URL_COMP}" $CMD_SOFT || return 1 ;}
+
+
+    
+    echo $CACHE_DIR | grep  -e "^/" >/dev/null ||
+             { err $FUNCNAME "Invalid CACHE_DIR=$CACHE_DIR" $CMD_SOFT || return 1 ;}
+
+    echo $URL_NAME | grep -e "/" -e "*" -e " " >/dev/null &&\
+	     { err $FUNCNAME "Illegal fs-template name $URL_NAME" $CMD_SOFT || return 1 ;}
+
+    ( [ $URL_COMP = "tgz" ] ||  [ $URL_COMP = "tar.gz" ] || [ $URL_COMP = "gz" ]  ) ||\
+	     { err $FUNCNAME "Non-supported fs template compression $URL_COMP" $CMD_SOFT || return 1 ;}
+
+    if [ $CMD_UPDATE ]; then
+	rm -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}"
+    fi
+
+    if ! [ -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}" ] ; then 
+	
+	if [ $CMD_INSTALL ]; then
+
+	    if echo $URL_SITE | grep -e "^ftp://"  -e "^http://"  -e "^https://" >/dev/null; then
+		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
+                       { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
+		
+	    elif echo $URL_SITE | grep -e "file://" ; then
+
+		cp $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/  ||\
+                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
+
+	    elif echo $URL_SITE | grep -e "^ssh:" ; then
+		local SCP_PORT=$( echo $URL_SITE | awk -F':' '{print $2}' )
+		local SCP_PORT_USAGE=$( [ $SCP_PORT ] && echo "-P $SCP_PORT" )
+		local SCP_USER_DOMAIN=$( echo $URL_SITE | awk -F':' '{print $3}' )
+		local SCP_PATH=$( echo $URL_SITE | awk -F'://' '{print $2}' )
+
+		[ $SCP_USER_DOMAIN ] && [ $SCP_PATH ] ||\
+                       { err $FUNCNAME "Invalid SCP_USER_DOMAIN=$SCP_USER_DOMAIN or SCP_PATH=$SCP_PATH" $CMD_SOFT || return 1 ;}
+
+ 		scp ${SCP_PORT_USAGE} ${SCP_USER_DOMAIN}:${SCP_PATH}/${URL_NAME}.${URL_COMP} $CACHE_DIR/ ||\
+                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
+		
+	    else
+                err $FUNCNAME "Non-supported URL=$URL" $CMD_SOFT || return 1
+	    fi
+	else
+	    err $FUNCNAME "Non-existing image $CACHE_DIR/${URL_NAME}.${URL_COMP} " $CMD_SOFT || return 1
+	fi
+    fi
+
+    if echo $INSTALL_PATH | grep -e "^/" >/dev/null &&  ! [ -f $INSTALL_PATH ]; then
+
+	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
+            ( [ -d $INSTALL_PATH ] && \
+	    tar -xzvf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    tar -xzvOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    
+	    echo "nop" > /dev/null
+	    
+	elif [ $CMD_INSTALL ] && [ "$URL_COMP" = "gz" ] && \
+            gunzip --stdout $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH"   ; then
+	    
+	    echo "nop" > /dev/null
+	    
+	else
+	    
+#	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
+#	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
+	    
+	    err $FUNCNAME "Non-existing image: $INSTALL_PATH" $CMD_SOFT || return 1
+	    
+	fi
+    fi
+}
+
+
+
+
+
+
+system_init() {
+
+    [ -d $LXC_IMAGES_PATH ]    || mkdir -p $LXC_IMAGES_PATH
+    [ -d $LXC_TEMPLATES_PATH ] || mkdir -p $LXC_TEMPLATES_PATH
+    [ -d $LXC_SCRIPTS_PATH ]   || mkdir -p $LXC_SCRIPTS_PATH
+    [ -d $LXC_STASH_PATH ]     || mkdir -p $LXC_STASH_PATH
+
+    if ! [ -d $LXC_IMAGES_LINK ]; then
+	mkdir -p $LXC_IMAGES_LINK; rmdir $LXC_IMAGES_LINK # make sure the mother dir does exist
+	ln -s $LXC_IMAGES_PATH $LXC_IMAGES_LINK
+    fi
+
+    [ -d /cgroup  ] || mkdir /cgroup
+    mount | grep -e "cgroup" > /dev/null || mount -t cgroup none /cgroup
+
+    mkdir -p /usr/lib/lxc/rootfs # For some strange reasons this is wanted
+}
+
+sl_name() {
+    local SL_NAME="$1"
+    local SL_ID_HEX=${SL_NAME:0:2}
+
+    echo $SL_NAME | grep -e " " -e "-" -e ":" >/dev/null && \
+	err $FUNCNAME "Sliver name must NOT contain ' ', '-', ':'"
+
+    echo $SL_ID_HEX | grep -e "^[0-9,a-f][0-9,a-f]$" >/dev/null || \
+	err $FUNCNAME "Sliver name must start with unique 2-digit hex value"
+    
+    local SL_ID_DEC=$(( 16#${SL_ID_HEX} ))
+
+    [ $SL_ID_DEC -ge $LXC_SL_ID_MIN ] && [ $SL_ID_DEC -le $LXC_SL_ID_MAX ] || \
+	err $FUNCNAME "Sliver id must be >= $LXC_SL_ID_MIN and <= $LXC_SL_ID_MAX"
+
+    echo "$SL_NAME"
+}
+
+
+sl_remove() {
+    local SL_NAME=$( sl_name "$1" )
+
+    lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null && \
+	err $FUNCNAME "Container $SL_NAME still running"
+    
+    [ -d $LXC_IMAGES_PATH/$SL_NAME ] && rm -rf $LXC_IMAGES_PATH/$SL_NAME
+}
+
+sl_purge() {
+    local SL_NAME=$( sl_name "$1" )
+
+    system_init
+
+    lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null && \
+	err $FUNCNAME "Container $SL_NAME still running"
+
+    sl_remove $SL_NAME
+
+    uci_get lxc.$SL_NAME soft,quiet >/dev/null && uci_del lxc.$SL_NAME
+
+}
+
+
+sl_create() {
+    local SL_NAME=$( sl_name "$1" )
+    local SL_CONFIG=$2
+    local SL_ID_HEX=${SL_NAME:0:2}
+    local SL_ID_DEC=$(( 16#${SL_ID_HEX} ))
+
+    system_init
+
+    [ "$SL_NAME" != "$SL_CONFIG" ] && uci_get lxc.$SL_NAME  soft,quiet 1>/dev/null 2>&1 && \
+	err $FUNCNAME "config=$SL_CONFIG defined but lxc.$SL_NAME already exists"
+
+    [ "$( uci_get lxc.$SL_CONFIG soft 2>/dev/null)" = "container" ] || \
+	err $FUNCNAME "Missing section lxc.$SL_CONFIG=container"
+
+    [ -d $LXC_IMAGES_PATH/$SL_NAME ] && err $FUNCNAME "$LXC_IMAGES_PATH/$SL_NAME already exist"
+
+    
+    uci -c $UCI_DEFAULT_PATH show lxc | grep -e "=container$" | awk -F'lxc.' '{print $2}' | awk -F'=' '{print $1}' | \
+	grep -e "^$SL_ID_HEX" > /dev/null && \
+	err $FUNCNAME "Container config section=$SL_ID_HEX already exist!"
+
+    uci -c $UCI_DEFAULT_PATH show lxc | grep -e ".container_id=$" | awk -F'=' '{print $1}' | \
+	grep -e "^$SL_ID_HEX" > /dev/null && \
+	err $FUNCNAME "Container config with container_id=$SL_ID_HEX already exist!"
+
+
+    echo creating sliver $SL_NAME using config section=$SL_CONFIG >&2
+    
+
+    mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs
+
+
+    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/config
+lxc.utsname = $SL_NAME
+lxc.tty = 4
+lxc.pts = 1024
+
+EOF
+
+    
+    local SL_DROP="$( uci_get lxc.$SL_CONFIG.cap_drop soft )"
+    if [ "$SL_DROP" ]; then
+	local DROP=
+	for DROP in $SL_DROP; do
+	    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+lxc.cap.drop = $DROP
+EOF
+	done
+    fi
+
+
+
+    local FS_URL="$( uci_get lxc.$SL_CONFIG.rootfs_url soft,quiet )"
+    if [ "$FS_URL" ]; then
+
+	local FS_COMP=$( ( echo $FS_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $FS_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo ".gz" ) )
+
+	local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
+	local FS_SITE=$(echo $FS_URL | awk -F ${FS_NAME}.${FS_COMP} '{print $1}')
+
+	[ "$FS_URL" = "${FS_SITE}${FS_NAME}.${FS_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $FS_URL != ${FS_SITE}${FS_NAME}.${FS_COMP}"
+
+	install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$SL_NAME/rootfs install
+    fi
+
+
+
+    local SL_MKDIR="$( uci_get lxc.$SL_CONFIG.mkdir soft,quiet )"
+    if [ "$SL_MKDIR" ]; then
+	local MKDIR=
+
+	for MKDIR in $SL_MKDIR; do
+	    local DIR="$(echo $MKDIR | awk -F':' '{print $1}')"
+	    local MOD="$(echo $MKDIR | awk -F':' '{print $2}')"
+	    MOD=$( [ $MOD ] && echo $MOD || echo 755 )
+	    mkdir -m $MOD -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/$DIR
+	done
+    fi
+
+
+
+    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+
+lxc.rootfs = $LXC_IMAGES_PATH/$SL_NAME/rootfs
+lxc.mount.entry = proc     $LXC_IMAGES_PATH/$SL_NAME/rootfs/proc       proc   nodev,noexec,nosuid 0 0
+lxc.mount.entry = syfs     $LXC_IMAGES_PATH/$SL_NAME/rootfs/sys        sysfs  defaults 0 0
+# lxc.mount.entry=/selinux $LXC_IMAGES_PATH/$SL_NAME/rootfs/selinux    bind bind 0 0
+lxc.mount.entry = devpts   $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/pts    devpts defaults 0 0
+lxc.mount.entry = tmpfs    $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/shm    tmpfs  defaults 0 0
+EOF
+
+
+
+    local SL_REMOUNT="$( uci_get lxc.$SL_CONFIG.remount soft,quiet )"
+    if [ "$SL_REMOUNT" ]; then
+	local REMOUNT=
+	for REMOUNT in $SL_REMOUNT; do
+	    mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT
+
+	    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+lxc.mount.entry = /$REMOUNT  $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT   none ro,bind 0 0
+EOF
+	done
+    fi
+
+
+
+    local SL_COPY="$( uci_get lxc.$SL_CONFIG.copy soft,quiet )"
+    if [ "$SL_COPY" ]; then
+	local COPY=
+	for COPY in $SL_COPY; do
+	    if ! echo "$COPY" | grep -e "^!" >/dev/null; then
+		cp -ar /$COPY $LXC_IMAGES_PATH/$SL_NAME/rootfs/$COPY
+	    fi
+	done
+
+	for COPY in $SL_COPY; do
+	    if echo "$COPY" | grep -e "^!" >/dev/null; then
+		rm -rf $LXC_IMAGES_PATH/$SL_NAME/rootfs/$COPY
+	    fi
+	done
+    fi
+
+
+
+    local SL_CUSTOM="$( uci_get lxc.$SL_CONFIG.customize soft,quiet )"
+    if [ "$SL_CUSTOM" ]; then
+	local CUSTOM=
+	for CUSTOM in $SL_CUSTOM; do
+
+	    [ -f $LXC_SCRIPTS_PATH/$CUSTOM ] && [ -x $LXC_SCRIPTS_PATH/$CUSTOM ] || \
+		err $FUNCNAME "Invalid customization script $LXC_SCRIPTS_PATH/$CUSTOM"
+
+	    if [ -e $LXC_IMAGES_PATH/$SL_NAME/rootfs ]; then
+		customize_rootfs() { err $FUNCNAME "NOT defined"; }
+		. $LXC_SCRIPTS_PATH/$CUSTOM 
+		customize_rootfs $SL_NAME
+	    fi
+
+	done
+    fi
+
+
+
+    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+
+lxc.cgroup.devices.deny = a
+EOF
+
+    local SL_MKNOD="$( uci_get lxc.$SL_CONFIG.mknod soft,quiet )"
+    if [ "$SL_MKNOD" ]; then
+	local MKNOD=
+	for MKNOD in $SL_MKNOD; do
+
+	    [ "$((`echo $MKNOD | sed 's/[^:]//g'|wc -m`-1))" = 5 ] || \
+		{ sl_remove $SL_NAME; err $FUNCNAME "Illegal format $MKNOD in lxc.$SL_CONFIG.mknod"; }
+
+	    if [ "$(echo $MKNOD | awk -F':' '{print $6}')" ]; then
+		cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+lxc.cgroup.devices.allow = $( echo $MKNOD | awk -F':' '{print $3 " " $4 ":" $5 " " $6}' )
+EOF
+	    fi
+
+	    if [ "$(echo $MKNOD | awk -F':' '{print $1}')" ]; then
+		mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev
+		mknod -m $(echo $MKNOD | awk -F':' '{print $2}') \
+		    $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/$(echo $MKNOD | awk -F':' '{print $1}') \
+		    $(echo $MKNOD | awk -F':' '{print $3 " " $4 " " $5 }')
+	    fi
+	done
+    fi
+
+
+
+    if [ "$SL_NAME" != "$SL_CONFIG" ]; then
+	uci_set lxc.$SL_NAME=container
+	uci_set lxc.$SL_NAME.container_id=$SL_ID_HEX
+	uci_set lxc.$SL_NAME.auto_boot="$( uci_get lxc.$SL_CONFIG.auto_boot soft || echo 0 )"
+	uci_set lxc.$SL_NAME.auto_create="$( uci_get lxc.$SL_CONFIG.auto_create soft || echo 0 )"
+
+	[ "$SL_DROP" ]    && uci_set lxc.$SL_NAME.cap_drop="$SL_DROP"
+	[ "$FS_URL" ]     && uci_set lxc.$SL_NAME.rootfs_url="$FS_URL"
+	[ "$SL_MKDIR" ]   && uci_set lxc.$SL_NAME.mkdir="$SL_MKDIR"
+	[ "$SL_REMOUNT" ] && uci_set lxc.$SL_NAME.remount="$SL_REMOUNT"
+	[ "$SL_COPY" ]    && uci_set lxc.$SL_NAME.copy="$SL_COPY"
+	[ "$SL_CUSTOM" ]  && uci_set lxc.$SL_NAME.customize="$SL_CUSTOM"
+	[ "$SL_MKNOD" ]   && uci_set lxc.$SL_NAME.mknod="$SL_MKNOD"
+    fi
+
+
+    local HOST_ID="$( uci_get lxc.general.lxc_host_id )"
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+
+    local IF_KEY=
+    for IF_KEY in $IF_KEYS; do
+	
+	local IF_NAME="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_name soft,quietc 2>/dev/null )"
+
+	if [ $IF_NAME ]; then
+
+	    local IF_TYPE="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_type soft 2>/dev/null )"
+	    local IF_INTERFACE="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_interface soft 2>/dev/null )"
+
+	    local IF_MAC=$([ $SL_NAME = $SL_CONFIG ] && uci_get lxc.$SL_CONFIG.if${IF_KEY}_mac soft 2>/dev/null)
+	    if [ -z $IF_MAC ]; then
+		IF_MAC=${LXC_MAC_PREFIX16}:${SL_ID_HEX}:${IF_KEY}:${HOST_ID:0:2}:${HOST_ID:2:2}
+	    fi
+
+	    local IF_PAIR=$([ $SL_NAME = $SL_CONFIG ] && uci_get lxc.$SL_CONFIG.if${IF_KEY}_pair soft 2>/dev/null)
+	    if [ -z $IF_PAIR ]; then
+		IF_PAIR=sl-${SL_ID_HEX}-${IF_KEY}
+	    fi
+	
+	    if [ "$IF_TYPE" = "veth" ]; then
+		cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+
+lxc.network.type      = $IF_TYPE
+lxc.network.flags     = up
+lxc.network.name      = $IF_NAME
+lxc.network.hwaddr    = $IF_MAC
+lxc.network.veth.pair = $IF_PAIR
+EOF
+	    fi
+	    
+	    if [ "$SL_NAME" != "$SL_CONFIG" ]; then
+		uci_set lxc.$SL_NAME.if${IF_KEY}_name=$IF_NAME
+		uci_set lxc.$SL_NAME.if${IF_KEY}_type=$IF_TYPE
+		uci_set lxc.$SL_NAME.if${IF_KEY}_interface=$IF_INTERFACE
+		uci_set lxc.$SL_NAME.if${IF_KEY}_mac=$IF_MAC
+		uci_set lxc.$SL_NAME.if${IF_KEY}_pair=$IF_PAIR
+	    fi
+
+	fi
+	    
+    done
+}
+
+
+
+
+check_bridge_ifnames() {
+    local IFPATTERN=$1
+    local OPT_CMD=${2:-}
+    local CMD_RESET=$( echo "$OPT_CMD" | grep -e "reset" > /dev/null && echo "reset," || echo "" )
+
+    for IFSECTION in $( uci_show network | grep "type=bridge" | awk -F'.' '{print $2}' ); do
+
+	local IFNAMES=$( uci_get network.$IFSECTION.ifname soft,quiet )
+
+	for IFNAME in $IFNAMES; do
+
+	    if echo $IFNAME | grep -e "^$IFPATTERN" >/dev/null; then
+
+		if [ $CMD_RESET ]; then	    
+		    uci_set network.$IFSECTION.ifname=$IFNAME del
+		else
+		    return 1
+		fi
+	    fi
+	done
+    done
+}
+
+
+sl_stop() {
+    local SL_NAME=$( sl_name "$1" )
+
+    system_init
+
+    lxc-stop -n $SL_NAME
+
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+    local IF_KEY=
+    for IF_KEY in $IF_KEYS; do
+	
+	local IF_NAME="$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )"
+	
+	if [ $IF_NAME ]; then
+	    
+	    local IF_TYPE=$(      uci_get lxc.$SL_NAME.if${IF_KEY}_type soft 2>/dev/null )
+	    local IF_INTERFACE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_interface soft 2>/dev/null )
+	    local IF_PAIR=$(      uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft 2>/dev/null)
+	    
+	    if [ "$IF_TYPE" = "veth" ]; then
+		uci_set network.$IF_INTERFACE.ifname=$IF_PAIR del
+	    fi
+	fi
+    done
+    /etc/init.d/network reload
+}
+
+
+sl_start() {
+    local SL_NAME=$( sl_name "$1" )
+
+    system_init
+
+    if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ;then
+
+	err $FUNCNAME "Container $SL_NAME already running" soft
+
+    else
+
+	lxc-start -n $SL_NAME -d 
+	sleep 1
+	
+	if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	    
+
+	    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+	    local IF_KEY=
+	    for IF_KEY in $IF_KEYS; do
+		
+		
+		local IF_NAME="$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )"
+
+		if [ $IF_NAME ]; then
+
+		    local IF_TYPE=$(      uci_get lxc.$SL_NAME.if${IF_KEY}_type soft 2>/dev/null )
+		    local IF_INTERFACE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_interface soft 2>/dev/null )
+		    local IF_PAIR=$(      uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft 2>/dev/null)
+
+		    if [ "$IF_TYPE" = "veth" ]; then
+			
+			[ $(uci_get network.$IF_INTERFACE.type soft) = bridge ] || \
+			    err $FUNCNAME "network.$IF_INTERFACE.type != bridge"
+			
+			uci_set network.$IF_INTERFACE.ifname=$IF_PAIR del
+
+			check_bridge_ifnames $IF_PAIR || \
+			    { sl_stop $SL_NAME; err $FUNCNAME "interface pair $IF_PAIR already used in network config";}
+
+			uci_set network.$IF_INTERFACE.ifname=$IF_PAIR add
+
+		    fi
+		    
+		fi
+		
+	    done
+	    /etc/init.d/network reload
+
+	else
+	    err $FUNCNAME "Failed starting container $SL_NAME" >&2
+
+	    local DEV=
+	    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | \
+		awk -F'#' '{print $1}' | awk -F'=' '{print $2}' ); do 
+
+		if [$DEV]; then
+		#echo "$0: checking $DEV"  >&2
+
+		    if ip link show dev $DEV > /dev/null 2>&1 ; then 
+			echo "$0: cleaning up $DEV" >&2
+			ip link del dev $DEV
+		    fi
+		fi
+	    done
+	fi
+    fi
+}
+
+
+
+help() {
+
+cat <<EOF
+lxc.lib help 
+lxc.lib sl_create <id_name> <template or id_name>   # eg:$ sl_create 01_host_clone default
+                                                   # template can be default, openwrt, debian
+lxc.lib sl_start  <id_name>
+lxc.lib sl_stop   <id_name>
+lxc.lib sl_remove <id_name>
+lxc.lib sl_prune  <id_name>
+EOF
+
+}
+
+
+
+
+
+
+
+if [ "${1:-}" ]; then
+
+    $1 \
+	$( [ "${2:-}" ] && echo "$2" ) \
+	$( [ "${3:-}" ] && echo "$3" ) \
+	$( [ "${4:-}" ] && echo "$4" ) \
+	$( [ "${5:-}" ] && echo "$5" ) \
+	
+else
+    help
+fi

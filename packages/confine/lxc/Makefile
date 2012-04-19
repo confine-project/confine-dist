@@ -29,6 +29,12 @@ define Package/lxc
             +ip +coreutils +coreutils-rm \
             +perl +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
 
+
+# TODO:
+# remove bash dependencie, ensure availability of 
+# $BASHPID (needed by /etc/init.d/lxc), getopt (full version), ...
+# 
+
 endef
 
 define Package/lxc/description
@@ -42,28 +48,19 @@ endef
 define Package/lxc/install
 
 	$(INSTALL_DIR) $(1)/lxc
+	$(INSTALL_DIR) $(1)/lxc/images
+	$(INSTALL_DIR) $(1)/lxc/templates
+	$(INSTALL_DIR) $(1)/lxc/scripts
+	$(INSTALL_DIR) $(1)/lxc/uci-stash
 	$(INSTALL_DIR) $(1)/cgroup
-	$(INSTALL_DIR) $(1)/tmp/lib
-	ln -s /lxc $(1)/tmp/lib/lxc
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/lxc.init $(1)/etc/init.d/lxc
 
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_BIN) ./files/lxc.config_lxc $(1)/etc/config/lxc
-
-	$(INSTALL_DIR) $(1)/sbin
-	$(INSTALL_BIN) ./files/lxc.checkconfig $(1)/sbin/
-	$(INSTALL_BIN) ./files/lxc.configure $(1)/sbin/
-	$(INSTALL_BIN) ./files/lxc.openwrt $(1)/sbin/
-	$(INSTALL_BIN) ./files/lxc.debian $(1)/sbin/
-
+	$(CP) -rva ./files/* $(1)/
 
 
 	$(INSTALL_DIR) $(1)/usr/bin	
 	$(INSTALL_DIR) $(1)/usr/lib
-#	$(INSTALL_DIR) $(1)/tmp/lib
-#	$(INSTALL_DIR) $(1)/tmp/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
+
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unshare $(1)/usr/bin/lxc-unshare
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-stop $(1)/usr/bin/lxc-stop
