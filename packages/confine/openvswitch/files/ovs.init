@@ -15,8 +15,8 @@ start() {
     [ ! -f $CONF_DB ] && /usr/bin/ovsdb-tool create $CONF_DB $CONF_DB_SCHEMA
 
     # Remove bridge and install openvswitch module
-    /sbin/rmmod bridge
-    /sbin/insmod /lib/modules/$(uname -r)/openvswitch.ko
+    # /sbin/rmmod bridge
+    # /sbin/insmod /lib/modules/$(uname -r)/openvswitch.ko
 
     # Start openvswitch db server
     /usr/sbin/ovsdb-server --remote=punix:/var/run/openvswitch/db.sock \
@@ -36,5 +36,5 @@ start() {
 stop() {
     # Just unload modules and kill the processes started previously
     kill $(cd /var/run/openvswitch && cat *.pid)
-    /sbin/rmmod /lib/modules/$(uname -r)/openvswitch_mod.ko
+    # /sbin/rmmod /lib/modules/$(uname -r)/openvswitch_mod.ko
 }
