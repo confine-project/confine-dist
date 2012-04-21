@@ -58,31 +58,37 @@ define Package/lxc/install
 
 
 	$(INSTALL_DIR) $(1)/usr/bin	
+
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unshare $(1)/usr/bin/lxc-unshare
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-stop $(1)/usr/bin/lxc-stop
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-start $(1)/usr/bin/lxc-start
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-wait $(1)/usr/bin/lxc-wait
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-console $(1)/usr/bin/lxc-console
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-freeze $(1)/usr/bin/lxc-freeze
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-info $(1)/usr/bin/lxc-info
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-cgroup $(1)/usr/bin/lxc-cgroup
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unfreeze $(1)/usr/bin/lxc-unfreeze
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-checkconfig $(1)/usr/bin/lxc-checkconfig
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-checkpoint $(1)/usr/bin/lxc-checkpoint
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-restart $(1)/usr/bin/lxc-restart
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-kill $(1)/usr/bin/lxc-kill
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-clone $(1)/usr/bin/lxc-clone
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-console $(1)/usr/bin/lxc-console
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-create $(1)/usr/bin/lxc-create
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-destroy $(1)/usr/bin/lxc-destroy
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-execute $(1)/usr/bin/lxc-execute
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-freeze $(1)/usr/bin/lxc-freeze
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-info $(1)/usr/bin/lxc-info
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-init $(1)/usr/bin/lxc-init
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-kill $(1)/usr/bin/lxc-kill
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-ls $(1)/usr/bin/lxc-ls
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-monitor $(1)/usr/bin/lxc-monitor
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-netstat $(1)/usr/bin/lxc-netstat
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-ps $(1)/usr/bin/lxc-ps
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-ls $(1)/usr/bin/lxc-ls
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-restart $(1)/usr/bin/lxc-restart
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-setcap $(1)/usr/bin/lxc-setcap
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-start $(1)/usr/bin/lxc-start
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-stop $(1)/usr/bin/lxc-stop
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-restart $(1)/usr/bin/lxc-restart
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unfreeze $(1)/usr/bin/lxc-unfreeze
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-unshare $(1)/usr/bin/lxc-unshare
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-version $(1)/usr/bin/lxc-version
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-checkconfig $(1)/usr/bin/lxc-checkconfig
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-monitor $(1)/usr/bin/lxc-monitor
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-wait $(1)/usr/bin/lxc-wait
+
 	$(CP)  $(PKG_BUILD_DIR)/src/lxc/liblxc* $(1)/usr/lib/
 	ln -s liblxc.so $(1)/usr/lib/liblxc.so.0
 endef
