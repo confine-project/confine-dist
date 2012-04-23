@@ -16,12 +16,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifdef DEV=1
-OWRT_GIT = git@github.com:confine-project/openwrt.git
-OWRT_PKG_GIT = git@github.com:confine-project/packages.git
+ifdef DEV
+OWRT_GIT = gitosis@git.confine-project.eu:confine/openwrt.git
+OWRT_PKG_GIT = gitosis@git.confine-project.eu:confine/packages.git
 else
-OWRT_GIT = git://github.com/confine-project/openwrt.git
-OWRT_PKG_GIT = git://github.com/confine-project/packages.git
+OWRT_GIT = http://git.confine-project.eu/confine/openwrt.git
+OWRT_PKG_GIT = http://git.confine-project.eu/confine/packages.git
 endif
 
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
@@ -110,6 +110,7 @@ target: prepare
 prepare: .prepared 
 
 .prepared:
+	@echo "Developer mode enabled"
 	$(call prepare_workspace)
 	$(call update_workspace)
 	$(call update_feeds)
