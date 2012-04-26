@@ -758,6 +758,9 @@ create_rpc_custom0() {
 
 echo "Configuring CONFINE $RPC_TYPE "
 
+# customizing network:
+echo "Configuring network... "
+
 uci revert network
 
 uci set network.local.ifname="eth0"
@@ -765,7 +768,7 @@ uci set network.local.ifname="eth0"
 uci set network.local_ipv6_rescue_net=alias
 uci set network.local_ipv6_rescue_net.interface=local
 uci set network.local_ipv6_rescue_net.proto=static
-uci set network.local_ipv6_rescue_net.ipaddr=${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}
+uci set network.local_ipv6_rescue_net.ipaddr=${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}/$VCT_RD_LOCAL_V6_PL
 uci set network.local_ipv6_rescue_net.netmask=$VCT_RD_LOCAL_V6_PL
 
 uci set network.internal=interface
@@ -779,7 +782,7 @@ uci set network.internal_ipv6_net=alias
 uci set network.internal_ipv6_net.interface=internal
 uci set network.internal_ipv6_net.proto=static
 uci set network.internal_ipv6_net.ipaddr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
-
+uci set network.internal_ipv6_net.netmask=$VCT_RD_INTERNAL_V6_PL
 
 EOF
 
