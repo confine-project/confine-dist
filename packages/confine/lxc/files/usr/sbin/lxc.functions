@@ -254,16 +254,10 @@ uci_set_default() {
     local SET_OPT=$6
     local ALT_VAL=${7:-}
 
-    echo "uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR" >&2
     local SRC_VAL="$( uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR )"
-
-    echo "uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR" >&2
     local DEF_VAL="$( uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR )"
-
     local DST_VAL="${SRC_VAL:-${DEF_VAL:-${ALT_VAL}}}"
     
-    echo "[ $DST_VAL ] && uci_set $DST_CFG.$SET_OPT=$DST_VAL path=$DST_DIR" >&2
-
     [ "$DST_VAL" ] && uci_set $DST_CFG.$SET_OPT="$DST_VAL" path=$DST_DIR
 }
 

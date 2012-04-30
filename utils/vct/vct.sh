@@ -928,6 +928,8 @@ uci set confine-node.node.id=$VCRD_ID
 uci set confine-node.node.rd_pubkey="\$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
 uci set confine-node.node.cn_url=""
 uci set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16
+uci set confine-node.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24
+uci set confine-node.node.priv_ipv6_prefix48=$VCT_TESTBED_PRIV_IPV6_PREFIX48
 uci set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO
 
 [ "$VCT_NODE_PUBLIC_IPV4_PROTO" = "static" ] && \
@@ -1003,7 +1005,7 @@ config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
     option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
-#   option if01_type       internal  # autocreated
+    option if00_type       internal
     option if01_type       public
     option if02_type       isolated
     option if01_parent     eth1

@@ -51,15 +51,15 @@ lxc_name() {
     local SL_ID_HEX=${SL_NAME:0:2}
 
     echo $SL_NAME | grep -e " " -e "-" -e ":" >/dev/null && \
-	err $FUNCNAME "Sliver name must NOT contain ' ', '-', ':'"
+	err $FUNCNAME "Container name must NOT contain ' ', '-', ':'"
 
     echo $SL_ID_HEX | grep -e "^[0-9,a-f][0-9,a-f]$" >/dev/null || \
-	err $FUNCNAME "Sliver name must start with unique 2-digit hex value"
+	err $FUNCNAME "Container name must start with unique 2-digit hex value"
     
     local SL_ID_DEC=$(( 16#${SL_ID_HEX} ))
 
     [ $SL_ID_DEC -ge $LXC_SL_ID_MIN ] && [ $SL_ID_DEC -le $LXC_SL_ID_MAX ] || \
-	err $FUNCNAME "Sliver id must be >= $LXC_SL_ID_MIN and <= $LXC_SL_ID_MAX"
+	err $FUNCNAME "Container id must be >= $LXC_SL_ID_MIN and <= $LXC_SL_ID_MAX"
 
     echo "$SL_NAME"
 }
@@ -190,7 +190,7 @@ lxc_create() {
 	err $FUNCNAME "$LXC_IMAGES_PATH/$SL_NAME already exist"
 
     
-    echo creating sliver $SL_NAME using config=$SL_CONFIG >&2
+    echo creating container $SL_NAME using config=$SL_CONFIG >&2
 
 
     [ "lxc.$SL_NAME" != "$SL_CONFIG" ] &&  ! uci_test lxc.$SL_NAME soft,quiet \
