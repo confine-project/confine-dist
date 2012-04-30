@@ -364,36 +364,91 @@ system_init_check() {
 	    fi
 
             # check if local bridge has rescue IPv4 address (A) for local network: 
-	    local BR_V4A_IP=$( variable_check ${BRIDGE}_V4A_IP soft 2>/dev/null ) 
-	    local BR_V4A_PL=$( variable_check ${BRIDGE}_V4A_PL soft 2>/dev/null )
-	    if [ $BR_V4A_IP ] && [ $BR_V4A_PL ]; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4A_IP/$BR_V4A_PL " |grep -e " $BR_NAME" >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4A_IP/$BR_V4A_PL dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4A_IP/$BR_V4A_PL " $CMD_SOFT || return 1 ;}
+	    local BR_V4_RESCUE_IP=$( variable_check ${BRIDGE}_V4_RESCUE_IP soft 2>/dev/null ) 
+	    local BR_V4_RESCUE_PL=$( variable_check ${BRIDGE}_V4_RESCUE_PL soft 2>/dev/null )
+	    if [ $BR_V4_RESCUE_IP ] && [ $BR_V4_RESCUE_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4_RESCUE_IP/$BR_V4_RESCUE_PL " |grep -e " $BR_NAME" >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4_RESCUE_IP/$BR_V4_RESCUE_PL dev $BR_NAME label $BR_NAME:resc) ||\
+                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4_RESCUE_IP/$BR_V4_RESCUE_PL " $CMD_SOFT || return 1 ;}
 		fi
 	    fi
 
-            # check if local bridge has rescue IPv4 address (B) for local network: 
-	    local BR_V4B_IP=$( variable_check ${BRIDGE}_V4B_IP soft 2>/dev/null ) 
-	    local BR_V4B_PL=$( variable_check ${BRIDGE}_V4B_PL soft 2>/dev/null )
-	    if [ $BR_V4B_IP ] && [ $BR_V4B_PL ]; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4B_IP/$BR_V4B_PL " |grep -e " $BR_NAME" >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4B_IP/$BR_V4B_PL dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4B_IP/$BR_V4B_PL " $CMD_SOFT || return 1 ;}
+            # check if local bridge has IPv4 address for local network: 
+	    local BR_V4_IP=$( variable_check ${BRIDGE}_V4_IP soft 2>/dev/null ) 
+	    local BR_V4_PL=$( variable_check ${BRIDGE}_V4_PL soft 2>/dev/null )
+	    if [ $BR_V4_IP ] && [ $BR_V4_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4_IP/$BR_V4_PL " |grep -e " $BR_NAME" >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4_IP/$BR_V4_PL dev $BR_NAME ) ||\
+                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4_IP/$BR_V4_PL " $CMD_SOFT || return 1 ;}
 		fi
+
+            # check if bridge needs routed NAT:
+		local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
+		local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
+		
+		if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ] && [ -z $CMD_QUICK ]; then
+		    
+                    if ! vct_sudo iptables -t nat -L POSTROUTING -nv | \
+			grep -e "MASQUERADE" |grep -e "$BR_V4_NAT_OUT" |grep -e "$BR_V4_NAT_SRC" >/dev/null; then
+
+			( [ $CMD_INIT ] && vct_sudo iptables -t nat -I POSTROUTING -o $BR_V4_NAT_OUT -s $BR_V4_NAT_SRC -j MASQUERADE ) ||\
+                  	{ err $FUNCNAME "invalid NAT from $BR_NAME" $CMD_SOFT || return 1 ;}
+		    fi 
+		    
+		    if ! [ $(cat /proc/sys/net/ipv4/ip_forward) = "1" ]; then
+		    [ $CMD_INIT ] && vct_sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
+		    fi
+		fi
+
+	    # check if bridge needs udhcpd:
+		local DHCPD_IP_MIN=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MIN soft 2>/dev/null )
+		local DHCPD_IP_MAX=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MAX soft 2>/dev/null )
+		local DHCPD_DNS=$( variable_check ${BRIDGE}_V4_DHCPD_DNS soft 2>/dev/null )
+
+		local UDHCPD_CONF_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.conf
+		local UDHCPD_LEASE_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.leases
+		local UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
+		local UDHCPD_PID=$( ps aux | grep "$UDHCPD_COMMAND" | grep -v grep | awk '{print $2}' )
+	    
+		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID && sleep 1
+		
+
+		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
+
+		    if [ $CMD_INIT ] ; then
+			cat <<EOF > $UDHCPD_CONF_FILE
+start           $DHCPD_IP_MIN
+end             $DHCPD_IP_MAX
+interface       $BR_NAME 
+lease_file      $UDHCPD_LEASE_FILE
+option router   $BR_V4_IP
+option dns      $DHCPD_DNS
+option serverid $BR_V4_IP
+EOF
+
+			vct_sudo udhcpd $UDHCPD_CONF_FILE
+		    fi
+		    
+		    [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
+			err $FUNCNAME "NO udhcpd server running for $BR_NAME "
+
+		fi
+
+
 	    fi
-
-
 
             # check if local bridge has rescue IPv6 for local network:
 	    local BR_V6_IP=$( variable_check ${BRIDGE}_V6_IP soft 2>/dev/null ) 
 	    local BR_V6_PL=$( variable_check ${BRIDGE}_V6_PL soft 2>/dev/null )
 	    if [ $BR_V6_IP ] && [ $BR_V6_PL ]; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet6 " |grep -ie " $BR_V6_IP/$BR_V6_PL " >/dev/null; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
+		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_IP/$BR_V6_PL -O ipv6 ) " >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_IP/$BR_V6_PL dev $BR_NAME ) ||\
                 	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME  $BR_V6_IP/$BR_V6_PL " $CMD_SOFT || return 1 ;}
 		fi
 	    fi
+
+
 
             # check if bridge is UP:
 	    if ! ip link show dev $BR_NAME | grep ",UP" >/dev/null; then
@@ -401,23 +456,7 @@ system_init_check() {
                 	{ err $FUNCNAME "disabled link $BR_NAME" $CMD_SOFT || return 1 ;}
 	    fi
 
-            # check if bridge needs routed NAT:
-	    local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
-	    local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
-	    
-	    if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ] && [ -z $CMD_QUICK ]; then
-
-                if ! vct_sudo iptables -t nat -L POSTROUTING -nv |grep -e "MASQUERADE" |grep -e "$BR_V4_NAT_OUT" |grep -e "$BR_V4_NAT_SRC" >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo iptables -t nat -I POSTROUTING -o $BR_V4_NAT_OUT -s $BR_V4_NAT_SRC -j MASQUERADE ) ||\
-                  	{ err $FUNCNAME "invalid NAT from $BR_NAME" $CMD_SOFT || return 1 ;}
-		fi 
-
-		if ! [ $(cat /proc/sys/net/ipv4/ip_forward) = "1" ]; then
-		    [ $CMD_INIT ] && vct_sudo sysctl -w net.ipv4.ip_forward=1 > /dev/null
-		fi
-
-	    fi
-	    
+  
 
 	fi
     done
@@ -454,7 +493,7 @@ check_rd_id() {
 	err $FUNCNAME "Invalid RD_ID=$VCRD_ID usage: $FUNCNAME <4-digit-hex RD ID>" ${CMD_SOFT:-} ; return 1
     fi
     
-    if [  "$(( 16#${VCRD_ID:2:3} ))" == 0 ] ||  [ "$(( 16#${VCRD_ID:2:3} ))" -gt 253 ]; then
+    if [  "$(( 16#${VCRD_ID:2:2} ))" == 0 ] ||  [ "$(( 16#${VCRD_ID:2:2} ))" -gt 253 ]; then
 	err $FUNCNAME "sorry, two least significant digits 00, FE, FF are reserved"  ${CMD_SOFT:-} ; return 1
     fi
 
@@ -649,7 +688,7 @@ ssh4prepare() {
 
 
     variable_check VCT_RD_LOCAL_BRIDGE quiet
-    variable_check VCT_RD_LOCAL_V4A_IP quiet
+    variable_check VCT_RD_RESCUE_V4_IP quiet
     variable_check VCT_KNOWN_HOSTS_FILE quiet
 
 
@@ -659,15 +698,15 @@ ssh4prepare() {
 	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
 	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
-    # echo "connecting to $VCT_RD_LOCAL_V4A_IP via $LOCAL_MAC"
+    # echo "connecting to $VCT_RD_RESCUE_V4_IP via $LOCAL_MAC"
 
-    if ! arp -n | grep -e "^$VCT_RD_LOCAL_V4A_IP" | grep -e "$LOCAL_MAC" > /dev/null; then
-	vct_sudo arp -s $VCT_RD_LOCAL_V4A_IP  $LOCAL_MAC
+    if ! arp -n | grep -e "^$VCT_RD_RESCUE_V4_IP" | grep -e "$LOCAL_MAC" > /dev/null; then
+	vct_sudo arp -s $VCT_RD_RESCUE_V4_IP  $LOCAL_MAC
     fi
 
-    if ! ping -c 1 -w 2 -W 2 $VCT_RD_LOCAL_V4A_IP > /dev/null; then
-	echo "Waiting for $VCRD_ID to listen on $VCT_RD_LOCAL_V4A_IP... (after boot this may take upto 40 secs)"
-	time ping -c 1 -w 60 -W 1 $VCT_RD_LOCAL_V4A_IP > /dev/null | grep -e "^user"
+    if ! ping -c 1 -w 2 -W 2 $VCT_RD_RESCUE_V4_IP > /dev/null; then
+	echo "Waiting for $VCRD_ID to listen on $VCT_RD_RESCUE_V4_IP... (after boot this may take upto 40 secs)"
+	time ping -c 1 -w 60 -W 1 $VCT_RD_RESCUE_V4_IP > /dev/null | grep -e "^user"
     fi
 }
 
@@ -685,9 +724,9 @@ ssh4() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@$VCT_RD_LOCAL_V4A_IP "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
+	root@$VCT_RD_RESCUE_V4_IP "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
 
-#    arp -d $VCT_LOCAL_V4A_IP 
+#    arp -d $VCT_LOCAL_V4_RESCUE_IP 
 }
 
 ssh6() {
@@ -722,7 +761,7 @@ scp4() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@$VCT_RD_LOCAL_V4A_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
+	"$SRC" root@$VCT_RD_RESCUE_V4_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
 scp6() {
@@ -747,14 +786,21 @@ scp6() {
 create_rpc_custom0() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:3} ))
+    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
+    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+    local VCRD_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+	xmlstarlet sel -T -t -m "/domain/devices/interface" \
+	-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+
     local RPC_TYPE="basics"
     local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${RPC_TYPE}.sh"
     local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
 
     
     cat <<EOF > $RPC_PATH
-#!/bin/sh
+#!/bin/bash
 
 echo "Configuring CONFINE $RPC_TYPE "
 
@@ -763,55 +809,78 @@ echo "Configuring network... "
 
 uci revert network
 
-uci set network.local.ifname="eth0"
-
-uci set network.local_ipv6_rescue_net=alias
-uci set network.local_ipv6_rescue_net.interface=local
-uci set network.local_ipv6_rescue_net.proto=static
-uci set network.local_ipv6_rescue_net.ipaddr=${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}/$VCT_RD_LOCAL_V6_PL
-uci set network.local_ipv6_rescue_net.netmask=$VCT_RD_LOCAL_V6_PL
-
 uci set network.internal=interface
 uci set network.internal.type=bridge
-uci set network.internal.ifname=""
 uci set network.internal.proto=static
 uci set network.internal.ipaddr=$VCT_RD_INTERNAL_V4_IP
 uci set network.internal.netmask=$( ip4_net_to_mask $VCT_RD_INTERNAL_V4_IP/$VCT_RD_INTERNAL_V4_PL )
+uci set network.internal.ip6addr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
 
 uci set network.internal_ipv6_net=alias
 uci set network.internal_ipv6_net.interface=internal
 uci set network.internal_ipv6_net.proto=static
-uci set network.internal_ipv6_net.ipaddr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
-uci set network.internal_ipv6_net.netmask=$VCT_RD_INTERNAL_V6_PL
+uci set network.internal_ipv6_net.ip6addr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
+
+uci set network.local=interface
+uci set network.local.type=bridge
+uci set network.local.ifname=eth0
+uci set network.local.macaddr=$VCRD_MAC
+uci set network.local.proto=none
+uci set network.local.ip6addr=$VCT_RD_LOCAL_V6_PREFIX48:$VCRD_ID::$VCT_RD_LOCAL_V6_SUFFIX64/$VCT_RD_LOCAL_V6_PL
+
+uci set network.rescue_ipv4_net=alias
+uci set network.rescue_ipv4_net.interface=local
+uci set network.rescue_ipv4_net.proto=static
+uci set network.rescue_ipv4_net.ipaddr=$VCT_RD_RESCUE_V4_IP
+uci set network.rescue_ipv4_net.netmask=$( ip4_net_to_mask $VCT_RD_RESCUE_V4_IP/$VCT_RD_RESCUE_V4_PL )
 
 EOF
 
     
-    if [ ${VCT_RD_LOCAL_V4B_PREFIX24:-} ]; then
+    if [ "${VCT_RD_LOCAL_V4_PROTO}" = "static" ] && [ ${VCT_RD_LOCAL_V4_PREFIX16:-} ]; then
 
 	cat <<EOF >> $RPC_PATH
 
-uci set network.local_ip4b_rescue_net=alias
-uci set network.local_ip4b_rescue_net.interface=local
-uci set network.local_ip4b_rescue_net.proto=static
-uci set network.local_ip4b_rescue_net.ipaddr=${VCT_RD_LOCAL_V4B_PREFIX24}.${VCRD_ID_LSB8BIT_DEC}
-uci set network.local_ip4b_rescue_net.netmask=$VCT_RD_LOCAL_V4B_PL
-uci set network.local_ip4b_rescue_net.dns=$VCT_RD_LOCAL_V4B_DNS
+uci set network.local.proto=static
+uci set network.local.ipaddr=$VCT_RD_LOCAL_V4_PREFIX16.0.$VCRD_ID_LSB8BIT_DEC
+uci set network.local.netmask=$( ip4_net_to_mask $VCT_RD_LOCAL_V4_PREFIX16.0.0/$VCT_RD_LOCAL_V4_PL )
+uci set network.local.dns=$VCT_RD_LOCAL_V4_DNS
 
-uci set network.local_ip4b_default=route
-uci set network.local_ip4b_default.interface=local
-uci set network.local_ip4b_default.target=0.0.0.0
-uci set network.local_ip4b_default.netmask=0.0.0.0
-uci set network.local_ip4b_default.gateway=$VCT_BR00_V4B_IP
+uci set network.dflt_route=route
+uci set network.dflt_route.interface=local
+uci set network.dflt_route.target=0.0.0.0
+uci set network.dflt_route.netmask=0.0.0.0
+uci set network.dflt_route.gateway=$VCT_BR00_V4_IP
 
+EOF
+
+    elif [ "${VCT_RD_LOCAL_V4_PROTO}" = "dhcp" ] ; then
+
+	cat <<EOF >> $RPC_PATH
+uci set network.local.proto=dhcp
+uci -q delete network.local.ipaddr
+uci -q delete network.local.netmask
+uci -q delete network.local.dns
+uci -q delete network.dflt_route
 EOF
     fi
 
 
     cat <<EOF >> $RPC_PATH
-
 uci commit network
+EOF
 
+
+    cat <<EOF >> $RPC_PATH
+lxc.lib lxc_stop       fd_dummy
+lxc.lib lxc_purge      fd_dummy
+lxc.lib lxc_create_uci fd_dummy default
+lxc.lib uci_set lxc.fd_dummy.auto_boot=1
+lxc.lib uci_set lxc.fd_dummy.auto_create=1
+lxc.lib lxc_start      fd_dummy
+EOF
+
+    cat <<EOF >> $RPC_PATH
 echo restarting network...
 /etc/init.d/network restart
 
@@ -828,6 +897,51 @@ uci commit lxc
 [ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 [ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
 
+EOF
+
+
+
+
+
+    cat <<EOF >> $RPC_PATH
+
+#echo "" > /etc/config/confine-defaults
+#uci reset confine-defaults
+#uci commit confine-defaults
+
+echo "" > /etc/config/confine-testbed
+uci reset confine-testbed
+uci set confine-testbed.testbed=testbed
+uci set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48
+uci set confine-testbed.testbed.priv_dflt_ipv6_prefix48=$VCT_TESTBED_PRIV_IPV6_PREFIX48
+uci set confine-testbed.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24
+uci set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16
+uci commit confine-testbed
+
+echo "" > /etc/config/confine-server
+uci reset confine-server
+uci set confine-server.server=server
+uci set confine-server.server.cn_url=""
+uci set confine-server.server.mgmt_pubkey="$( cat $VCT_SERVER_MGMT_PUBKEY )"
+uci set confine-server.server.tinc_ip=$VCT_SERVER_TINC_IP
+uci set confine-server.server.tinc_port=$VCT_SERVER_TINC_PORT
+uci commit confine-server
+
+echo "" > /etc/config/confine-node
+uci reset confine-node
+uci set confine-node.node=node
+uci set confine-node.node.id=$VCRD_ID
+uci set confine-node.node.rd_pubkey="\$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
+uci set confine-node.node.cn_url=""
+uci set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16
+uci set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO
+
+[ "$VCT_NODE_PUBLIC_IPV4_PROTO" = "static" ] && \
+uci set confine-node.node.rd_public_ipv4_addrs="$( echo $( for i in $( seq 1 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i; done )  )"
+
+uci set confine-node.node.rd_public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL
+uci set confine-node.node.state=install
+uci commit confine-node
 
 EOF
 
@@ -839,7 +953,7 @@ EOF
 
 customize0() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
+    local VCRD_ID=$(check_rd_id $1 )
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
 
@@ -853,6 +967,58 @@ customize0() {
     scp4 $VCRD_ID $VCT_RPC_DIR/$RPC_BASICS /tmp/rpc-files/
     ssh4 $VCRD_ID "/tmp/rpc-files/$RPC_BASICS"
 }
+
+
+
+create_rpc_allocate() {
+
+    local VCRD_ID=$(check_rd_id ${1} )
+    local SLICE_ID=$2
+    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
+    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+
+    local RPC_TYPE="allocate"
+    local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${RPC_TYPE}-${SLICE_ID}.sh"
+    local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
+
+    
+    cat <<EOFRPC > $RPC_PATH
+
+confine.lib confine_sliver_allocate <<EOF
+config slice $SLICE_ID
+    option user_pubkey     
+    option fs_template_url 
+    option exp_data_url    
+    option if01_type       public
+    option if02_type       isolated
+    option if01_parent     eth1
+EOF
+
+EOFRPC
+}
+
+
+rpc() {
+
+    local RPC_CMD=$1
+    local VCRD_ID=$(check_rd_id $2 )
+    local SLICE_ID=$3
+
+    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	err $FUNCNAME "$VCRD_NAME not running"
+
+    local RPC_FILE=
+    RPC_FILE=$( create_rpc_$RPC_CMD $VCRD_ID $SLICE_ID ) || \
+	err $FUNCNAME "Failed calling create_rpc_$RPC_CMD"
+    
+    ssh6 $VCRD_ID "mkdir -p /tmp/rpc-files"
+    scp6 $VCRD_ID $VCT_RPC_DIR/$RPC_FILE /tmp/rpc-files/
+    ssh6 $VCRD_ID "/tmp/rpc-files/$RPC_FILE"
+}
+
+
 
 help() {
 

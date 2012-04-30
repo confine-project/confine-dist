@@ -1,0 +1,384 @@
+###!/bin/bash
+
+
+if [ ${MAIN_PID:-} ] || [ -z ${BASHPID:-} ] || \
+    [ -z ${UCI_DEFAULT_PATH:-} ] || \
+    [ -z ${ERR_LOG_TAG:-} ]; then
+    echo "Missing obligatory variable" >&2
+    exit 1
+fi
+
+
+
+MAIN_PID=$BASHPID
+
+
+exit_all() {
+#   echo "terminating due to previous error, killing PID=$MAIN_PID from $BASHPID" >&2
+    kill $MAIN_PID
+    sleep 10
+    echo "this should never be printed (PID=$MAIN_PID) !!!!!!!!!!!!!!!"
+}
+
+
+
+err() {
+    local FUNC=$1
+    local MSG=$2
+    local OPT_CMD=${3:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+
+    [ ${CMD_QUIET:-} ] || echo -e  "$ERR_LOG_TAG  ERROR ${FUNC}(): ${MSG}" >&2
+    [ ${CMD_QUIET:-} ] || logger -t $ERR_LOG_TAG "ERROR ${FUNC}(): ${MSG}"
+
+    [ ${CMD_SOFT:-} ] && return 1 || exit_all
+}
+
+
+uci_check_clean() {
+    local UCI_CONFIG=$( echo "$1" | awk -F'.' '{print $1}' )
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local OPT_PATH=$( path_opt "$OPT_CMD" )
+
+    if [ "$( uci $OPT_PATH changes $UCI_CONFIG )" != "" ] ; then
+	err $FUNCNAME "uci $UCI_CONFIG config unclean\n. Please commit or revert (eg uci revert $UCI_CONFIG or uci commit $UCI_CONFIG )!" $CMD_SOFT,$CMD_QUIET
+	return 1
+    fi
+
+}
+
+path_cmd() {
+    local OPT_CMD=${1:-}
+    
+    local PATH_NAME=$( echo "$OPT_CMD" | awk -F'path=' '{print $2}' | awk -F',' '{print $1 }' )
+    
+    if [ "$PATH_NAME" ]; then
+	echo "$PATH_NAME" | grep -e "^/" | grep -v " " >/dev/null || \
+	    err $FUNCNAME "Invalid path=\"$PATH_NAME\""
+	
+	echo "path=$PATH_NAME,"
+	    
+    else
+	echo "path=$UCI_DEFAULT_PATH,"
+    fi
+}
+
+path_opt() {
+    local OPT_CMD=${1:-}
+    
+    local PATH_NAME=$( echo "$OPT_CMD" | awk -F'path=' '{print $2}' | awk -F',' '{print $1 }' )
+    
+    if [ "$PATH_NAME" ]; then
+	echo "$PATH_NAME" | grep -e "^/" | grep -v " " >/dev/null || \
+	    err $FUNCNAME "Invalid path=\"$PATH_NAME\""
+	
+	echo "-c $PATH_NAME "
+	    
+    else
+	echo "-c $UCI_DEFAULT_PATH "
+    fi
+}
+
+uci_get() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+
+    uci_check_clean $VAR_NAME $CMD_PATH
+
+    local VAR_VALUE=; VAR_VALUE="$(uci $OPT_PATH -q get $VAR_NAME)"
+    local RET_VALUE=$?
+
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $OPT_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    echo "$VAR_VALUE"
+    return $RET_VALUE
+}
+
+
+uci_test() {
+    uci_get "$@" > /dev/null
+    local RET_VALUE=$?
+    return $RET_VALUE
+}
+
+
+uci_show() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+
+    uci_check_clean $VAR_NAME $CMD_PATH
+
+    uci -q $OPT_PATH show $VAR_NAME
+    local RET_VALUE=$?
+
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $OPT_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    return $RET_VALUE
+}
+
+uci_get_sections() {
+
+    local OPT_CONFIG=$1
+    local OPT_TYPE=$2
+    local OPT_CMD=${3:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+    local SECTIONS=
+    local SECTION=
+
+    uci_check_clean $OPT_CONFIG $CMD_PATH
+
+    uci -q $OPT_PATH show $OPT_CONFIG | grep -e "=${OPT_TYPE}$" | awk -F'=' '{print $1}' | awk -F"${OPT_CONFIG}\." '{print $2 }' | grep -v '\.' | sed ':a;N;$!ba;s/\n/ /g'
+
+    local RET_VALUE=$?
+
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "" $CMD_SOFT,$CMD_QUIET
+    return $RET_VALUE
+
+}
+
+
+uci_del() {
+    local UCI_ASSIGNEMENT="$1"
+    local OPT_CMD=${2:-}
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+    local UCI_CONFIG=$( echo $UCI_ASSIGNEMENT | awk -F'.' '{print $1}' )
+    local UCI_SEC_OPT=$( echo $UCI_ASSIGNEMENT | awk -F"${UCI_CONFIG}." '{print $2}' )
+
+    uci_check_clean $UCI_CONFIG $CMD_PATH
+
+    uci $OPT_PATH delete $UCI_CONFIG.$UCI_SEC_OPT || err $FUNCNAME "$@"
+
+    uci $OPT_PATH commit $UCI_CONFIG
+}
+
+
+uci_set() {
+    local UCI_ASSIGNEMENT="$1"
+    local OPT_CMD=${2:-}
+    local CMD_DEL=$( echo "$OPT_CMD" | grep -e "del" > /dev/null && echo "del," )
+    local CMD_ADD=$( echo "$OPT_CMD" | grep -e "add" > /dev/null && echo "add," )
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+    local UCI_VARIABLE="$( echo $UCI_ASSIGNEMENT | awk -F'=' '{print $1}' )"
+    local UCI_VALUE="$( echo $UCI_ASSIGNEMENT | awk -F'=' '{print $2}' )"
+    local UCI_CONFIG=$( echo $UCI_VARIABLE | awk -F'.' '{print $1}' )
+    local UCI_SECTION=$( echo $UCI_VARIABLE | awk -F'.' '{print $2}' )
+    local UCI_OPTION=$( echo $UCI_VARIABLE | awk -F"$UCI_CONFIG.$UCI_SECTION." '{print $2}' | awk -F'=' '{print $1}' )
+
+    # echo "assignement=$UCI_ASSIGNEMENT config=$UCI_CONFIG section=$UCI_SECTION option=$UCI_OPTION value=$UCI_VALUE"
+
+    uci_check_clean $UCI_CONFIG $CMD_PATH
+
+    
+    ( [ $UCI_CONFIG ] && [ $UCI_SECTION ] && [ "$UCI_VALUE" ] && (
+	    ( [ $UCI_OPTION ] && [ "$UCI_CONFIG.$UCI_SECTION.$UCI_OPTION=$UCI_VALUE" = "$UCI_ASSIGNEMENT" ] ) || \
+		( [ -z $UCI_OPTION ] &&  [ "$UCI_CONFIG.$UCI_SECTION=$UCI_VALUE" = "$UCI_ASSIGNEMENT" ] ) ) ) || \
+	err $FUNCNAME "illegal assignement: \"$UCI_CONFIG.$UCI_SECTION.$UCI_OPTION=$UCI_VALUE\" != \"$UCI_ASSIGNEMENT\""
+
+    if [ $CMD_ADD ] || [ $CMD_DEL ] || [ -z $UCI_OPTION ]; then
+	[ $(echo "$UCI_VALUE" | wc -w) = 1 ] || \
+	    err $FUNCNAME "illegal whitespace in value=$UCI_VALUE"
+    fi
+
+
+    if [ $UCI_OPTION ]; then
+
+	if [ $CMD_ADD ] || [ $CMD_DEL ]; then
+
+	    # check if value alread part of existing values:
+	    if uci $OPT_PATH get $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION 2>/dev/null | \
+		grep -e "^$UCI_VALUE$" -e "^$UCI_VALUE " -e " $UCI_VALUE " -e " $UCI_VALUE$" >/dev/null; then
+
+		if [ $CMD_DEL ]; then
+		    local CUR_VAL="$(uci $OPT_PATH get $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION 2>/dev/null)"
+		    local TMP_VAL=
+		    local NEW_VAL=""
+	            for TMP_VAL in $CUR_VAL ; do
+			if ! [ "$TMP_VAL" = "$UCI_VALUE" ]; then
+			    NEW_VAL="$( [ "$NEW_VAL" ] && echo $NEW_VAL $TMP_VAL || echo $TMP_VAL )"
+			fi
+		    done
+		    
+		    uci $OPT_PATH set $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION="$NEW_VAL" && uci $OPT_PATH commit $UCI_CONFIG || \
+			err $FUNCNAME "$@ soft"
+		fi
+		
+	    else
+
+		if [ $CMD_ADD ]; then 
+		    local CUR_VAL="$(uci $OPT_PATH get $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION 2>/dev/null)"
+		    local NEW_VAL="$( [ "$CUR_VAL" ] && echo $CUR_VAL $UCI_VALUE || echo $UCI_VALUE )"
+		    
+		    uci $OPT_PATH set $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION="$NEW_VAL" && uci $OPT_PATH commit $UCI_CONFIG || \
+			err $FUNCNAME "$@" soft
+		fi
+	    fi
+	    
+	else
+	    uci $OPT_PATH set $UCI_CONFIG.$UCI_SECTION.$UCI_OPTION="$UCI_VALUE" && uci $OPT_PATH commit $UCI_CONFIG || \
+		err $FUNCNAME "$@" soft
+	fi
+    else
+	uci $OPT_PATH set $UCI_CONFIG.$UCI_SECTION="$UCI_VALUE" && uci $OPT_PATH commit $UCI_CONFIG || \
+	    err $FUNCNAME "$@" soft
+    fi
+    
+    uci_check_clean $UCI_CONFIG soft,$CMD_PATH || \
+	err $FUNCNAME "Failed to cleanly commit $UCI_ASSIGNEMENT"
+
+}
+
+
+
+uci_set_default() {
+
+    local SRC_DIR=$1
+    local SRC_CFG=$2
+    local DEF_DIR=$3
+    local DEF_CFG=$4
+    local DST_DIR=$3
+    local DST_CFG=$5
+    local SET_OPT=$6
+    local ALT_VAL=${7:-}
+
+    local SRC_VAL="$( uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR )"
+    local DEF_VAL="$( uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR )"
+    local DST_VAL="${SRC_VAL:-${DEF_VAL:-${ALT_VAL}}}"
+    
+    [ "$DST_VAL" ] && uci_set $DST_CFG.$SET_OPT="$DST_VAL" path=$DST_DIR
+}
+
+
+var_get() {
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local VAR_VALUE=
+
+    if [ -z $VAR_NAME ]; then
+        err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
+    fi
+
+    set +u # temporary disable set -o nounset
+    VAR_VALUE=$( eval echo \$$VAR_NAME )
+    set -u
+
+    if [ -z "$VAR_VALUE" ]; then
+        err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
+    fi
+
+    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
+    return 0
+}
+
+
+
+
+
+install_url() {
+
+    local URL=$1
+    local URL_SITE=$2
+    local URL_NAME=$3
+    local URL_COMP=$4
+    local CACHE_DIR=$5
+    local INSTALL_PATH=$6  # /path/to/dir or "-"
+
+    local OPT_CMD=${7:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
+    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
+    local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
+
+    echo $@ >&2
+    
+    [ "$URL" = "${URL_SITE}${URL_NAME}.${URL_COMP}" ] ||\
+           { err $FUNCNAME "Invalid $URL != ${URL_SITE}${URL_NAME}.${URL_COMP}" $CMD_SOFT || return 1 ;}
+
+
+    
+    echo $CACHE_DIR | grep  -e "^/" >/dev/null ||
+             { err $FUNCNAME "Invalid CACHE_DIR=$CACHE_DIR" $CMD_SOFT || return 1 ;}
+
+    echo $URL_NAME | grep -e "/" -e "*" -e " " >/dev/null &&\
+	     { err $FUNCNAME "Illegal fs-template name $URL_NAME" $CMD_SOFT || return 1 ;}
+
+    ( [ $URL_COMP = "tgz" ] ||  [ $URL_COMP = "tar.gz" ] || [ $URL_COMP = "gz" ]  ) ||\
+	     { err $FUNCNAME "Non-supported fs template compression $URL_COMP" $CMD_SOFT || return 1 ;}
+
+    if [ $CMD_UPDATE ]; then
+	rm -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}"
+    fi
+
+    if ! [ -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}" ] ; then 
+	
+	if [ $CMD_INSTALL ]; then
+
+	    if echo $URL_SITE | grep -e "^ftp://"  -e "^http://"  -e "^https://" >/dev/null; then
+		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
+                       { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
+		
+	    elif echo $URL_SITE | grep -e "file://" ; then
+
+		cp $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/  ||\
+                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
+
+	    elif echo $URL_SITE | grep -e "^ssh:" ; then
+		local SCP_PORT=$( echo $URL_SITE | awk -F':' '{print $2}' )
+		local SCP_PORT_USAGE=$( [ $SCP_PORT ] && echo "-P $SCP_PORT" )
+		local SCP_USER_DOMAIN=$( echo $URL_SITE | awk -F':' '{print $3}' )
+		local SCP_PATH=$( echo $URL_SITE | awk -F'://' '{print $2}' )
+
+		[ $SCP_USER_DOMAIN ] && [ $SCP_PATH ] ||\
+                       { err $FUNCNAME "Invalid SCP_USER_DOMAIN=$SCP_USER_DOMAIN or SCP_PATH=$SCP_PATH" $CMD_SOFT || return 1 ;}
+
+ 		scp ${SCP_PORT_USAGE} ${SCP_USER_DOMAIN}:${SCP_PATH}/${URL_NAME}.${URL_COMP} $CACHE_DIR/ ||\
+                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
+		
+	    else
+                err $FUNCNAME "Non-supported URL=$URL" $CMD_SOFT || return 1
+	    fi
+	else
+	    err $FUNCNAME "Non-existing image $CACHE_DIR/${URL_NAME}.${URL_COMP} " $CMD_SOFT || return 1
+	fi
+    fi
+
+    if echo $INSTALL_PATH | grep -e "^/" >/dev/null &&  ! [ -f $INSTALL_PATH ]; then
+
+	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
+            ( [ -d $INSTALL_PATH ] && \
+	    tar -xzvf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    tar -xzvOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    
+	    echo "nop" > /dev/null
+	    
+	elif [ $CMD_INSTALL ] && [ "$URL_COMP" = "gz" ] && \
+            gunzip --stdout $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH"   ; then
+	    
+	    echo "nop" > /dev/null
+	    
+	else
+	    
+#	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
+#	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
+	    
+	    err $FUNCNAME "Non-existing image: $INSTALL_PATH" $CMD_SOFT || return 1
+	    
+	fi
+    fi
+}
+
+

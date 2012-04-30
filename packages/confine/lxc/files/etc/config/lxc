@@ -1,9 +1,8 @@
 
 config 'general' 'general'
 
-       option lxc_host_id     '0000'          # a hex value in the range of [0001..fffe]
-       option lxc_if_keys     '00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F'
-
+       option lxc_mac_prefix32 '52:c0:00:00' 
+       option lxc_if_keys      '00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F'
 
 
 config 'container' 'default'
@@ -15,34 +14,27 @@ config 'container' 'default'
 # lxc dropped capabilities, check:
 # http://raw.googlecode.com/svn/trunk/sys-kernel/genpnprd/files/lxc.use
 # http://arstechnica.com/civis/viewtopic.php?f=16&t=1141051
-       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time '    # audit_control audit_write net_raw sys_chroot sys_tty_config
+       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time'    # audit_control audit_write net_raw sys_chroot sys_tty_config
 
-#       option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
+       option 'mknod'         'null:666:c:1:3:rwm zero:666:c:1:5:rwm full:666:c:1:7: urandom:666:c:1:9:rwm random:666:c:1:8:rwm tty:666:c:5:0:rwm console:600:c:5:1:rwm ptmx:666:c:5:2:rwm tty0:666:c:4:0: tty1:666:c:4:1: tty2:666:c:4:2: tty3:666:c:4:3: tty4:666:c:4:4: ::c:4:*:rwm initctl:600:p::: ::c:136:*:rwm ::c:254:0:rwm'
 
-       option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www '
+       option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
+
+       option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www'
        option 'remount'       'bin lib sbin usr'
        option 'copy'          'etc !etc/init.d/lxc !etc/config/lxc'
        option 'customize'     'openwrt.sh'
 
-       option 'mknod'         'null:666:c:1:3:rwm zero:666:c:1:5:rwm full:666:c:1:7: urandom:666:c:1:9:rwm random:666:c:1:8:rwm tty:666:c:5:0:rwm console:600:c:5:1:rwm ptmx:666:c:5:2:rwm tty0:666:c:4:0: tty1:666:c:4:1: tty2:666:c:4:2: tty3:666:c:4:3: tty4:666:c:4:4: ::c:4:*:rwm initctl:600:p::: ::c:136:*:rwm ::c:254:0:rwm'
-
-
-       option 'if00_name'      'internal'
        option 'if00_type'      'veth'
-       option 'if00_interface' 'internal'
+       option 'if00_name'      'eth0'
+       option 'if00_netconf'   'lan'
        option 'if00_proto'     'static'
-#      option 'if00_hwaddr'    '52:c0:00:00:00:00'   # default: 52:c0:<sliver-id>:<if-id>:<msb-rd-id>:<lsb-rd-id>
-#      option 'if00_pair'      'sl-00-00'            # default: sl-<sliver-id>-<if-id>
+#      option 'if00_hwaddr'    '52:c0:00:00:00:00'   # default: 52:c0:<container-id>:<if-id>:<msb-host-id>:<lsb-host-id>
+#      option 'if00_pair'      'sl-00-00'            # default: sl-<container-id>-<if-id>
 
-       option 'if01_name'      'local'
-       option 'if01_type'      'veth'
-       option 'if01_interface' 'local'
-       option 'if01_proto'     'static'
+       option 'if01_type'      'vlan'
+       option 'if01_vlanphy'   'eth1'
 
-       option 'if02_name'      'eth3'
-       option 'if02_type'      'isolated'
-       option 'if02_interface' 'direct3'
-       option 'if02_proto'     'static'
 
 
 
@@ -52,25 +44,23 @@ config 'container' 'openwrt'
        option 'auto_boot'     '0'
        option 'auto_create'   '0'
 
-       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time '
-
-       option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
-       option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www '
-
-       option 'customize'     'openwrt.sh'
+       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time'
 
        option 'mknod'         'null:666:c:1:3:rwm zero:666:c:1:5:rwm full:666:c:1:7: urandom:666:c:1:9:rwm random:666:c:1:8:rwm tty:666:c:5:0:rwm console:600:c:5:1:rwm ptmx:666:c:5:2:rwm tty0:666:c:4:0: tty1:666:c:4:1: tty2:666:c:4:2: tty3:666:c:4:3: tty4:666:c:4:4: ::c:4:*:rwm initctl:600:p::: ::c:136:*:rwm ::c:254:0:rwm'
 
+       option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
+       option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www'
 
-       option 'if00_name'      'internal'
+       option 'customize'     'openwrt.sh'
+
        option 'if00_type'      'veth'
-       option 'if00_interface' 'internal'
+       option 'if00_name'      'eth0'
+       option 'if00_netconf'   'lan'
        option 'if00_proto'     'static'
 
-       option 'if01_name'      'local'
-       option 'if01_type'      'veth'
-       option 'if01_interface' 'local'
-       option 'if01_proto'     'static'
+       option 'if01_type'      'vlan'
+       option 'if01_vlanphy'   'eth1'
+
 
 
 config 'container' 'debian'
@@ -79,21 +69,18 @@ config 'container' 'debian'
        option 'auto_boot'     '0'
        option 'auto_create'   '0'
 
-       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time '
+       option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time'
+       option 'mknod'         '::c:1:3:rwm ::c:1:5:rwm ::c:1:7: ::c:1:9:rwm ::c:1:8:rwm ::c:5:0:rwm ::c:5:1:rwm ::c:5:2:rwm ::c:4:0: ::c:4:1: ::c:4:2: ::c:4:3: ::c:4:4: ::c:4:*:rwm ::p::: ::c:136:*:rwm ::c:254:0:rwm'
 
        option 'rootfs_url'    'http://distro.confine-project.eu/misc/debian32.tgz'
 
        option 'customize'     'debian.sh'
 
-       option 'mknod'         '::c:1:3:rwm ::c:1:5:rwm ::c:1:7: ::c:1:9:rwm ::c:1:8:rwm ::c:5:0:rwm ::c:5:1:rwm ::c:5:2:rwm ::c:4:0: ::c:4:1: ::c:4:2: ::c:4:3: ::c:4:4: ::c:4:*:rwm ::p::: ::c:136:*:rwm ::c:254:0:rwm'
 
-
-       option 'if00_name'      'internal'
        option 'if00_type'      'veth'
-       option 'if00_interface' 'internal'
+       option 'if00_name'      'eth0'
+       option 'if00_netconf'   'lan'
        option 'if00_proto'     'static'
 
-       option 'if01_name'      'local'
-       option 'if01_type'      'veth'
-       option 'if01_interface' 'local'
-       option 'if01_proto'     'static'
+       option 'if01_type'      'vlan'
+       option 'if01_vlanphy'   'eth1'

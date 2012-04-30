@@ -1,0 +1,164 @@
+#!/bin/bash
+
+set -u
+
+EXTRA_COMMANDS=""
+
+CONFINE_RPC_ARG_DIR=/var/run/confine/rpc-args
+
+UCI_DEFAULT_PATH=/etc/config
+ERR_LOG_TAG='CONFINE'
+
+
+. /usr/sbin/lxc.functions
+
+
+
+
+confine_system_check() {
+
+
+    uci_show confine-defaults soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-defaults"
+    uci_show confine-testbed  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-testbed"
+    uci_show confine-server   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-server"
+    uci_show confine-node     soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-node"
+    uci_show confine-slices   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slices"
+    uci_show confine-slivers  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slivers"
+
+    uci_check_clean network
+    uci_check_clean lxc
+    uci_check_clean confine-defaults
+    uci_check_clean confine-testbed
+    uci_check_clean confine-server
+    uci_check_clean confine-node
+
+    [ -d $CONFINE_RPC_ARG_DIR ] || mkdir -p $CONFINE_RPC_ARG_DIR
+
+ 
+}
+
+
+test() {
+    echo "$FUNCNAME $# $@" >&2
+}
+
+confine_set_rd_state() {
+
+    echo "$FUNCNAME $# $@" >&2
+    local STATE=$1
+
+    if [ "$STATE" = running ]; then
+	confine_system_check
+
+	uci_set confine-node.node.state=$STATE
+	
+    elif [ "$STATE" = installing ] || [ "$STATE" = maintenance ]; then
+	
+	local SLIVER=
+	for SLIVER in $( uci_get_sections confine-slivers sliver soft,quiet ); do
+
+	    confine_sliver_stop "SLIVER"
+	done
+	
+	uci_set confine-node.node.state=$STATE
+    else
+	err $FUNCNAME "invalid state"
+	
+    fi
+    
+}
+
+
+
+
+confine_sliver_allocate() {
+
+    echo "$FUNCNAME $# $@" >&2
+
+    confine_system_check
+
+    local SRC="${1:--}"
+    local SRC_CFG=allocate-$( date +%s )-$BASHPID
+    local SRC_DIR=$CONFINE_RPC_ARG_DIR
+    
+    cat $SRC > $SRC_DIR/$SRC_CFG
+
+    local SLICE=
+    
+    for SLICE in $( uci_get_sections $SRC_CFG slice soft,path=$SRC_DIR ); do
+
+	[ "$( uci_get confine-slices.$SLICE soft,quiet )" = "slice" ] && \
+	    err $FUNCNAME "slice=$SLICE already defined"
+
+
+	true && \
+	    uci_test $SRC_CFG.sliver.user_pubkey     soft,path=$SRC_DIR && \
+	    uci_test $SRC_CFG.sliver.fs_template_url soft,path=$SRC_DIR && \
+	    uci_test $SRC_CFG.sliver.exp_data_url    soft,path=$SRC_DIR || \
+	    err $FUNCNAME "Missing obligatory sliver parameter"
+
+
+	confine_sliver_stop    $SLICE
+	confine_sliver_destroy $SLICE
+
+	uci_set confine-slices.$SLICE=slice path=$UCI_DEFAULT_PATH
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE user_pubkey
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE vlan_nr
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE fs_template_url
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE exp_data_url
+
+	uci_set confine-slivers.$SLICE=sliver path=$UCI_DEFAULT_PATH
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if00_type
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_type
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_parent
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_type
+	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_parent
+
+
+	echo setting up SLICE=$SLICE
+    done
+
+}
+
+confine_sliver_deploy() {
+    echo "$FUNCNAME $# $@" >&2
+}
+
+confine_sliver_start() {
+
+    local SLICE=$1
+
+    echo "$FUNCNAME $# $@" >&2
+}
+
+
+confine_sliver_stop() {
+
+    local SLICE=$1
+
+    echo "$FUNCNAME $# $@" >&2
+}
+
+confine_sliver_destroy() {
+
+    local SLICE=$1
+
+    echo "$FUNCNAME $# $@" >&2
+}
+
+
+
+
+help() {
+       cat <<EOF
+EOF
+}
+
+
+
+
+if [ "${1:-}" ]; then
+    "$@"
+else
+    help
+fi

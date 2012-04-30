@@ -51,7 +51,6 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/lxc/images
 	$(INSTALL_DIR) $(1)/lxc/templates
 	$(INSTALL_DIR) $(1)/lxc/scripts
-	$(INSTALL_DIR) $(1)/lxc/uci-stash
 	$(INSTALL_DIR) $(1)/cgroup
 
 	$(CP) -rva ./files/* $(1)/

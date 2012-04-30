@@ -19,54 +19,38 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
-PKG_NAME:=confine-tools
+PKG_NAME:=confine-system
 PKG_RELEASE:=1
-#PKG_SOURCE_URL:=@SF/confine-tools
+#PKG_SOURCE_URL:=@SF/confine-system
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/confine-tools
+define Package/confine-system
   SECTION:=net
   CATEGORY:=Base system
-  TITLE:=Toolcollection for confine nodes
+  TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
-	+nano +less +fdisk +vim \
-	+iputils-arping +iputils-clockdiff +iputils-ping +iputils-tracepath \
-	+radvd \
-	+hostapd \
-	+wireless-tools +iw \
-	+wide-dhcpv6-client +wide-dhcpv6-control +wide-dhcpv6-server \
-	+ip \
-	+6in4 +6to4 \
-	+ip6tables \
-	+kmod-ipip \
-	+kmod-ip6-tunnel +kmod-iptunnel6 \
-	+kmod-tun \
+	@TARGET_x86 \
+	+bash \
+	+lxc \
+	+awk \
 
 endef
 
 define optional
-	+openvpn \
-	+openssl-util \
-        +tcptraceroute6 \
-	+iperf +mtr +netcat +netperf \
-	+tcpdump \
-	+nmap +lsof \
-	+wget +horst \
-	+ipv6calc \
-	+bmon +bwm +ebtables \
-
+	+ebtables \
+	+iptables \
+	+tinc \
 endef
 
-
-define Package/confine-tools/description
-	Toolcollection for confine nodes
+define Package/confine-system/description
+	minimal system requirements for confine research devices (RDs)
 endef
 
-define Package/confine-tools/conffiles
+define Package/confine-system/conffiles
 
 endef
 
@@ -80,10 +64,10 @@ endef
 define Build/Compile
 endef
 
-define Package/confine-tools/install
-	$(CP) -r  ./files/* $(1)/
+define Package/confine-system/install
+	$(CP) -rva  ./files/* $(1)/
 endef
 
 
-$(eval $(call BuildPackage,confine-tools))
+$(eval $(call BuildPackage,confine-system))
 
