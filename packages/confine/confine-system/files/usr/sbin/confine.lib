@@ -85,34 +85,32 @@ confine_sliver_allocate() {
 
     local SLICE=
     
-    for SLICE in $( uci_get_sections $SRC_CFG slice soft,path=$SRC_DIR ); do
+    for SLICE in $( uci_get_sections $SRC_CFG sliver soft,path=$SRC_DIR ); do
 
 	[ "$( uci_get confine-slices.$SLICE soft,quiet )" = "slice" ] && \
 	    err $FUNCNAME "slice=$SLICE already defined"
 
-
 	true && \
-	    uci_test $SRC_CFG.sliver.user_pubkey     soft,path=$SRC_DIR && \
-	    uci_test $SRC_CFG.sliver.fs_template_url soft,path=$SRC_DIR && \
-	    uci_test $SRC_CFG.sliver.exp_data_url    soft,path=$SRC_DIR || \
-	    err $FUNCNAME "Missing obligatory sliver parameter"
+	    uci_test $SRC_CFG.$SLICE.user_pubkey     soft,path=$SRC_DIR && \
+	    uci_test $SRC_CFG.$SLICE.fs_template_url soft,path=$SRC_DIR && \
+	    uci_test $SRC_CFG.$SLICE.exp_data_url    soft,path=$SRC_DIR || \
+	    err $FUNCNAME "Missing obligatory sliver parameter in $SRC_CFG.$SLICE..."
 
 
-	confine_sliver_stop    $SLICE
 	confine_sliver_destroy $SLICE
 
 	uci_set confine-slices.$SLICE=slice path=$UCI_DEFAULT_PATH
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE user_pubkey
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE vlan_nr
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE fs_template_url
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE exp_data_url
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE user_pubkey
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE vlan_nr
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE fs_template_url
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.slice  confine-slices.$SLICE exp_data_url
 
 	uci_set confine-slivers.$SLICE=sliver path=$UCI_DEFAULT_PATH
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if00_type
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_type
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_parent
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_type
-	uci_set_default $SRC_DIR $SRC_CFG $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_parent
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if00_type
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_type
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if01_parent
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_type
+	uci_set_default $SRC_DIR $SRC_CFG.$SLICE $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SLICE if02_parent
 
 
 	echo setting up SLICE=$SLICE
@@ -144,6 +142,9 @@ confine_sliver_destroy() {
     local SLICE=$1
 
     echo "$FUNCNAME $# $@" >&2
+
+    confine_sliver_stop    $SLICE
+
 }
 
 

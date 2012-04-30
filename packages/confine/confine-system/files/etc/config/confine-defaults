@@ -44,8 +44,8 @@ config 'container' 'debian'
 
 
        option 'if00_type'      'veth'
-       option 'if00_name'      'eth0'
-       option 'if00_netconf'   'lan'
+       option 'if00_name'      'internal'
+       option 'if00_netconf'   'internal'
        option 'if00_proto'     'static'
 
 #       option 'if01_type'      'veth'
@@ -55,3 +55,14 @@ config 'container' 'debian'
 
 #       option 'if02_type'      'vlan'
        option 'if02_vlanphy'   'eth1'
+
+
+
+config slice slice
+
+config sliver sliver
+       option 'if00_type'      'internal'
+
+
+
+

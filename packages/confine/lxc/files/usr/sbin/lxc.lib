@@ -100,14 +100,14 @@ lxc_create_uci() {
 
     system_check
 
-    [ "$SL_NAME" != "$SL_CONFIG" ] || \
+    [ "lxc.$SL_NAME" != "$SL_CONFIG" ] || \
 	err $FUNCNAME "name=$SL_NAME must be different from template=$SL_CONFIG"
 
     uci_test lxc.$SL_NAME soft,quiet && \
 	err $FUNCNAME "config=$SL_CONFIG defined but lxc.$SL_NAME already exists"
 
-    [ "$( uci_get lxc.$SL_CONFIG soft,quiet )" = "container" ] || \
-	err $FUNCNAME "Missing section lxc.$SL_CONFIG=container"
+    [ "$( uci_get $SL_CONFIG soft,quiet )" = "container" ] || \
+	err $FUNCNAME "Missing config $SL_CONFIG=container"
 
     uci_show lxc | grep -e "=container$" | awk -F'lxc.' '{print $2}' | awk -F'=' '{print $1}' | \
 	grep -e "^$SL_ID_HEX" > /dev/null && \
@@ -119,18 +119,18 @@ lxc_create_uci() {
 
 
 
-    local SL_DROP="$(    uci_get lxc.$SL_CONFIG.cap_drop   soft,quiet)"
-    local FS_URL="$(     uci_get lxc.$SL_CONFIG.rootfs_url soft,quiet)"
-    local SL_MKDIR="$(   uci_get lxc.$SL_CONFIG.mkdir      soft,quiet)"
-    local SL_REMOUNT="$( uci_get lxc.$SL_CONFIG.remount    soft,quiet)"
-    local SL_COPY="$(    uci_get lxc.$SL_CONFIG.copy       soft,quiet)"
-    local SL_CUSTOM="$(  uci_get lxc.$SL_CONFIG.customize  soft,quiet)"
-    local SL_MKNOD="$(   uci_get lxc.$SL_CONFIG.mknod      soft,quiet)"
+    local SL_DROP="$(    uci_get $SL_CONFIG.cap_drop   soft,quiet)"
+    local FS_URL="$(     uci_get $SL_CONFIG.rootfs_url soft,quiet)"
+    local SL_MKDIR="$(   uci_get $SL_CONFIG.mkdir      soft,quiet)"
+    local SL_REMOUNT="$( uci_get $SL_CONFIG.remount    soft,quiet)"
+    local SL_COPY="$(    uci_get $SL_CONFIG.copy       soft,quiet)"
+    local SL_CUSTOM="$(  uci_get $SL_CONFIG.customize  soft,quiet)"
+    local SL_MKNOD="$(   uci_get $SL_CONFIG.mknod      soft,quiet)"
 
     uci_set lxc.$SL_NAME=container
     uci_set lxc.$SL_NAME.container_id=$SL_ID_HEX
-    uci_set lxc.$SL_NAME.auto_boot="$( uci_get lxc.$SL_CONFIG.auto_boot soft || echo 0 )"
-    uci_set lxc.$SL_NAME.auto_create="$( uci_get lxc.$SL_CONFIG.auto_create soft || echo 0 )"
+    uci_set lxc.$SL_NAME.auto_boot="$( uci_get $SL_CONFIG.auto_boot soft || echo 0 )"
+    uci_set lxc.$SL_NAME.auto_create="$( uci_get $SL_CONFIG.auto_create soft || echo 0 )"
 
     [ "$SL_DROP" ]    && uci_set lxc.$SL_NAME.cap_drop="$SL_DROP"
     [ "$FS_URL" ]     && uci_set lxc.$SL_NAME.rootfs_url="$FS_URL"
@@ -146,20 +146,20 @@ lxc_create_uci() {
     local IF_KEY=
     for IF_KEY in $IF_KEYS; do
 	
-	local IF_NAME="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_name soft,quiet 2>/dev/null )"
+	local IF_TYPE="$( uci_get $SL_CONFIG.if${IF_KEY}_type soft,quiet 2>/dev/null )"
 
-	if [ $IF_NAME ]; then
+	if [ $IF_TYPE ]; then
 
-	    local IF_TYPE="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_type soft 2>/dev/null )"
-	    local IF_NETCONF="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_netconf soft,quiet 2>/dev/null )"
-	    local IF_VLANPHY="$( uci_get lxc.$SL_CONFIG.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )"
+	    local IF_NAME="$(    uci_get $SL_CONFIG.if${IF_KEY}_name    soft,quiet 2>/dev/null )"
+	    local IF_NETCONF="$( uci_get $SL_CONFIG.if${IF_KEY}_netconf soft,quiet 2>/dev/null )"
+	    local IF_VLANPHY="$( uci_get $SL_CONFIG.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )"
 
 	    local IF_MAC=${MAC_PREFIX32}:${SL_ID_HEX}:${IF_KEY}
 	    local IF_PAIR=${LXC_VNET_PREFIX}-${SL_ID_HEX}-${IF_KEY}
 	    local IF_VLANTAG=F${SL_ID_HEX}
 
-	    uci_set lxc.$SL_NAME.if${IF_KEY}_name=$IF_NAME
 	    uci_set lxc.$SL_NAME.if${IF_KEY}_type=$IF_TYPE
+	    [ ${IF_NAME:-} ]    && uci_set lxc.$SL_NAME.if${IF_KEY}_name=$IF_NAME
 	    [ ${IF_NETCONF:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_netconf=$IF_NETCONF
 	    [ ${IF_VLANPHY:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_vlanphy=$IF_VLANPHY
 	    [ ${IF_VLANPHY:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_vlantag=$IF_VLANTAG
@@ -183,17 +183,17 @@ lxc_create() {
 
     system_check
 
-    uci_test lxc.$SL_CONFIG  soft,quiet || \
-	err $FUNCNAME "uci config lxc.$SL_CONFIG does not exists"
+    uci_test $SL_CONFIG  soft,quiet || \
+	err $FUNCNAME "uci config $SL_CONFIG does not exists"
 
     [ -d $LXC_IMAGES_PATH/$SL_NAME ] && \
 	err $FUNCNAME "$LXC_IMAGES_PATH/$SL_NAME already exist"
 
     
-    echo creating sliver $SL_NAME using config section=$SL_CONFIG >&2
+    echo creating sliver $SL_NAME using config=$SL_CONFIG >&2
 
 
-    [ "$SL_NAME" != "$SL_CONFIG" ] &&  ! uci_test lxc.$SL_NAME soft,quiet \
+    [ "lxc.$SL_NAME" != "$SL_CONFIG" ] &&  ! uci_test lxc.$SL_NAME soft,quiet \
 	lxc_create_uci $SL_NAME $SL_CONFIG
 
     mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs
@@ -348,11 +348,11 @@ EOF
     local IF_KEY=
     for IF_KEY in $IF_KEYS; do
 	
-	local IF_NAME="$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quietc 2>/dev/null )"
+	local IF_TYPE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_type soft,quiet 2>/dev/null )
 
-	if [ $IF_NAME ]; then
+	if [ $IF_TYPE ]; then
 
-	    local IF_TYPE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_type soft 2>/dev/null )
+	    local IF_NAME=$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )
 	    local IF_MAC=$( uci_get lxc.$SL_NAME.if${IF_KEY}_mac soft 2>/dev/null )
 	    local IF_PAIR=$( uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft 2>/dev/null )
 	    local IF_VLANPHY=$( uci_get lxc.$SL_NAME.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )
@@ -425,16 +425,16 @@ lxc_stop() {
     local IF_KEY=
     for IF_KEY in $IF_KEYS; do
 	
-	local IF_NAME="$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )"
+	local IF_TYPE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_type soft,quiet 2>/dev/null )
 	
-	if [ $IF_NAME ]; then
+	if [ $IF_TYPE ]; then
 	    
-	    local IF_TYPE=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_type soft 2>/dev/null )
+	    local IF_NAME=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_name    soft,quiet 2>/dev/null )
 	    local IF_NETCONF=$( uci_get lxc.$SL_NAME.if${IF_KEY}_netconf soft,quiet 2>/dev/null )
-	    local IF_PAIR=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft,quiet 2>/dev/null)
+	    local IF_PAIR=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_pair    soft,quiet 2>/dev/null)
 	    
 	    if [ "$IF_TYPE" = "veth" ]; then
-		if [ ${IF_NETCONF:-} ] && [ $(uci_get network.$IF_NETCONF.type soft) = bridge ] && [ ${IF_PAIR} ]; then
+		if [ ${IF_NETCONF:-} ] && [ "$(uci_get network.$IF_NETCONF.type soft)" = "bridge" ] && [ ${IF_PAIR} ]; then
 		    uci_set network.$IF_NETCONF.ifname=$IF_PAIR del
 		fi
 	    fi
@@ -456,7 +456,7 @@ lxc_start() {
     elif [ "$( uci_get lxc.$SL_NAME soft,quiet )" = "container" ]; then
 
 	if ! [ -d $LXC_IMAGES_PATH/$SL_NAME ] && [ "$( uci_get lxc.$SL_NAME.auto_create soft,quiet )" = "1" ]; then
-	    lxc_create $SL_NAME $SL_NAME
+	    lxc_create $SL_NAME lxc.$SL_NAME
 	fi
 
 	
@@ -469,16 +469,16 @@ lxc_start() {
 
 	    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 	    local IF_KEY=
+
 	    for IF_KEY in $IF_KEYS; do
 		
-		
-		local IF_NAME="$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )"
+		local IF_TYPE=$( uci_get lxc.$SL_NAME.if${IF_KEY}_type soft,quiet 2>/dev/null )
 
-		if [ $IF_NAME ]; then
+		if [ $IF_TYPE ]; then
 
-		    local IF_TYPE=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_type soft 2>/dev/null )
+		    local IF_NAME=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_name    soft,quiet 2>/dev/null )
 		    local IF_NETCONF=$( uci_get lxc.$SL_NAME.if${IF_KEY}_netconf soft,quiet 2>/dev/null )
-		    local IF_PAIR=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft,quiet 2>/dev/null )
+		    local IF_PAIR=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_pair    soft,quiet 2>/dev/null )
 
 		    if [ "$IF_TYPE" = "veth" ]; then
 			
@@ -525,8 +525,8 @@ help() {
 
 cat <<EOF
 lxc.lib help 
-lxc.lib lxc_create <id_name> <template or id_name>   # eg:$ lxc_create 01_host_clone default
-                                                     # template can be default, openwrt, debian
+lxc.lib lxc_create <id_name> <template or id_name>   # eg:$ lxc_create 01_host_clone lxc.default
+                                                     # template can be lxc.default, lxc.openwrt, lxc.debian
 lxc.lib lxc_start  <id_name>
 lxc.lib lxc_stop   <id_name>
 lxc.lib lxc_remove <id_name>

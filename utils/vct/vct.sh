@@ -802,6 +802,8 @@ create_rpc_custom0() {
     cat <<EOF > $RPC_PATH
 #!/bin/bash
 
+set -x
+
 echo "Configuring CONFINE $RPC_TYPE "
 
 # customizing network:
@@ -868,21 +870,13 @@ EOF
 
     cat <<EOF >> $RPC_PATH
 uci commit network
-EOF
-
-
-    cat <<EOF >> $RPC_PATH
-lxc.lib lxc_stop       fd_dummy
-lxc.lib lxc_purge      fd_dummy
-lxc.lib lxc_create_uci fd_dummy default
-lxc.lib uci_set lxc.fd_dummy.auto_boot=1
-lxc.lib uci_set lxc.fd_dummy.auto_create=1
-lxc.lib lxc_start      fd_dummy
-EOF
-
-    cat <<EOF >> $RPC_PATH
 echo restarting network...
 /etc/init.d/network restart
+
+EOF
+
+
+    cat <<EOF >> $RPC_PATH
 
 uci revert system
 uci set system.@system[0].hostname="rd${VCRD_ID}"
@@ -906,11 +900,11 @@ EOF
     cat <<EOF >> $RPC_PATH
 
 #echo "" > /etc/config/confine-defaults
-#uci reset confine-defaults
+#uci revert confine-defaults
 #uci commit confine-defaults
 
 echo "" > /etc/config/confine-testbed
-uci reset confine-testbed
+uci revert confine-testbed
 uci set confine-testbed.testbed=testbed
 uci set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48
 uci set confine-testbed.testbed.priv_dflt_ipv6_prefix48=$VCT_TESTBED_PRIV_IPV6_PREFIX48
@@ -919,7 +913,7 @@ uci set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16
 uci commit confine-testbed
 
 echo "" > /etc/config/confine-server
-uci reset confine-server
+uci revert confine-server
 uci set confine-server.server=server
 uci set confine-server.server.cn_url=""
 uci set confine-server.server.mgmt_pubkey="$( cat $VCT_SERVER_MGMT_PUBKEY )"
@@ -928,7 +922,7 @@ uci set confine-server.server.tinc_port=$VCT_SERVER_TINC_PORT
 uci commit confine-server
 
 echo "" > /etc/config/confine-node
-uci reset confine-node
+uci revert confine-node
 uci set confine-node.node=node
 uci set confine-node.node.id=$VCRD_ID
 uci set confine-node.node.rd_pubkey="\$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
@@ -942,6 +936,26 @@ uci set confine-node.node.rd_public_ipv4_addrs="$( echo $( for i in $( seq 1 $VC
 uci set confine-node.node.rd_public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL
 uci set confine-node.node.state=install
 uci commit confine-node
+
+
+
+
+
+lxc.lib lxc_stop       fd_dummy
+lxc.lib lxc_purge      fd_dummy
+lxc.lib lxc_create_uci fd_dummy confine-defaults.openwrt
+lxc.lib uci_set lxc.fd_dummy.auto_boot=1
+lxc.lib uci_set lxc.fd_dummy.auto_create=1
+
+echo "Waiting 5 secs for network default route configuration to start and complete..."
+sleep 5
+#time ping -c 1 -w 100 -W 1 confine-project.eu > /dev/null | grep -e "^user"
+while ! ping -c 1 -w 100 -W 1 confine-project.eu ; do
+    sleep 1
+done
+
+lxc.lib lxc_start      fd_dummy
+/etc/init.d/network reload
 
 EOF
 
@@ -970,7 +984,7 @@ customize0() {
 
 
 
-create_rpc_allocate() {
+create_rpc_allocate_openwrt() {
 
     local VCRD_ID=$(check_rd_id ${1} )
     local SLICE_ID=$2
@@ -985,20 +999,25 @@ create_rpc_allocate() {
     cat <<EOFRPC > $RPC_PATH
 
 confine.lib confine_sliver_allocate <<EOF
-config slice $SLICE_ID
-    option user_pubkey     
-    option fs_template_url 
-    option exp_data_url    
+config sliver $SLICE_ID
+    option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
+    option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
+    option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
+#   option if01_type       internal  # autocreated
     option if01_type       public
     option if02_type       isolated
     option if01_parent     eth1
 EOF
 
 EOFRPC
+
+    chmod u+x $RPC_PATH
+
+    echo $RPC_FILE
 }
 
 
-rpc() {
+vct_rpc() {
 
     local RPC_CMD=$1
     local VCRD_ID=$(check_rd_id $2 )
@@ -1009,8 +1028,9 @@ rpc() {
     virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
 	err $FUNCNAME "$VCRD_NAME not running"
 
-    local RPC_FILE=
-    RPC_FILE=$( create_rpc_$RPC_CMD $VCRD_ID $SLICE_ID ) || \
+    local RPC_FILE=$( create_rpc_$RPC_CMD $VCRD_ID $SLICE_ID )
+    
+    [ ${RPC_FILE:-} ] || \
 	err $FUNCNAME "Failed calling create_rpc_$RPC_CMD"
     
     ssh6 $VCRD_ID "mkdir -p /tmp/rpc-files"
@@ -1041,6 +1061,8 @@ help() {
 
     customize0  <rd-id>            : configure id-specific IPv6 address in domain & more...
 
+    vct_rpc allocate_openwrt <rd-id> <sl-id>
+ 
     ssh4|ssh6 <rd-id> ["commands"] : connect (& execute commands) via ssh (IPv4 or IPv6)
     scp4|scp6 <rd-id> <local src-path> <remote dst-path> : copy data via scp (IPv4 or IPv6)
 
@@ -1100,6 +1122,7 @@ case "$1" in
 	scp4)       $1 $2 "$3" "$4";;
 	scp6)       $1 $2 "$3" "$4";;
         customize0) $1 $2;;
+        vct_rpc)    $1 $2 $3 $4 ;;
 	test)    $*;;
 	
         *) echo "unknown command!" ; exit 1 ;;

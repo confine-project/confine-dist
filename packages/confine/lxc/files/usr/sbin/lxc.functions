@@ -254,10 +254,16 @@ uci_set_default() {
     local SET_OPT=$6
     local ALT_VAL=${7:-}
 
+    echo "uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR" >&2
     local SRC_VAL="$( uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR )"
+
+    echo "uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR" >&2
     local DEF_VAL="$( uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR )"
+
     local DST_VAL="${SRC_VAL:-${DEF_VAL:-${ALT_VAL}}}"
     
+    echo "[ $DST_VAL ] && uci_set $DST_CFG.$SET_OPT=$DST_VAL path=$DST_DIR" >&2
+
     [ "$DST_VAL" ] && uci_set $DST_CFG.$SET_OPT="$DST_VAL" path=$DST_DIR
 }
 
@@ -328,6 +334,7 @@ install_url() {
 	if [ $CMD_INSTALL ]; then
 
 	    if echo $URL_SITE | grep -e "^ftp://"  -e "^http://"  -e "^https://" >/dev/null; then
+		echo "wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL " >&2
 		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
                        { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
 		
@@ -360,8 +367,8 @@ install_url() {
 
 	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
             ( [ -d $INSTALL_PATH ] && \
-	    tar -xzvf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
-	    tar -xzvOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    tar -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    tar -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
 	    
 	    echo "nop" > /dev/null
 	    
@@ -372,8 +379,8 @@ install_url() {
 	    
 	else
 	    
-#	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
-#	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
+	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
+	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
 	    
 	    err $FUNCNAME "Non-existing image: $INSTALL_PATH" $CMD_SOFT || return 1
 	    
