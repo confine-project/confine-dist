@@ -33,7 +33,6 @@ define Package/confine-system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
-	@TARGET_x86 \
 	+bash \
 	+lxc \
 	+awk \
@@ -41,9 +40,11 @@ define Package/confine-system
 endef
 
 define optional
+	@TARGET_x86 \
 	+ebtables \
 	+iptables \
 	+tinc \
+
 endef
 
 define Package/confine-system/description
@@ -65,7 +66,14 @@ define Build/Compile
 endef
 
 define Package/confine-system/install
-	$(CP) -rva  ./files/* $(1)/
+	$(INSTALL_DIR) $(1)/usr
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/config
+	$(CP) ./files/usr/sbin/confine.lib $(1)/usr/sbin/
+	$(CP) ./files/etc/config/confine-slivers  $(1)/etc/config/
+	$(CP) ./files/etc/config/confine-slices   $(1)/etc/config/
+	$(CP) ./files/etc/config/confine-defaults $(1)/etc/config/
 endef
 
 

@@ -33,6 +33,7 @@ define Package/confine-recommended
   TITLE:=Toolcollection for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	+confine-system \
 	+bash +nano +less +fdisk +vim \
 	+iputils-arping +iputils-clockdiff +iputils-ping +iputils-tracepath \
 	+radvd \
@@ -81,7 +82,6 @@ define Build/Compile
 endef
 
 define Package/confine-recommended/install
-	$(CP) -r  ./files/* $(1)/
 endef
 
 

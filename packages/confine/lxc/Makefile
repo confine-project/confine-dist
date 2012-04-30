@@ -53,13 +53,23 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/lxc/scripts
 	$(INSTALL_DIR) $(1)/cgroup
 
-	$(CP) -rva ./files/* $(1)/
-
-
 	$(INSTALL_DIR) $(1)/usr/bin	
-
+	$(INSTALL_DIR) $(1)/usr/sbin	
 	$(INSTALL_DIR) $(1)/usr/lib
+	$(INSTALL_DIR) $(1)/usr/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/etc/config
+
+	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
+	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
+	$(CP) ./files/lxc/scripts/openwrt.sh   $(1)/lxc/scripts/
+	$(CP) ./files/lxc/scripts/debian.sh    $(1)/lxc/scripts/
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-cgroup $(1)/usr/bin/lxc-cgroup
