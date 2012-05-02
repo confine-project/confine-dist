@@ -8,9 +8,6 @@ set -u
 
 
 LXC_IMAGES_LINK='/var/lib/lxc'
-LXC_IMAGES_PATH='/lxc/images'
-LXC_TEMPLATES_PATH='/lxc/templates'
-LXC_SCRIPTS_PATH='/lxc/scripts'
 
 LXC_SL_ID_MIN=1
 LXC_SL_ID_MAX=253
@@ -24,27 +21,29 @@ ERR_LOG_TAG='LXC'
 
 
 
-system_check() {
-
-    [ -d $LXC_IMAGES_PATH ]    || mkdir -p $LXC_IMAGES_PATH
-    [ -d $LXC_TEMPLATES_PATH ] || mkdir -p $LXC_TEMPLATES_PATH
-    [ -d $LXC_SCRIPTS_PATH ]   || mkdir -p $LXC_SCRIPTS_PATH
-    [ -d /usr/lib/lxc/rootfs ] || mkdir -p /usr/lib/lxc/rootfs # lxc-bug workarount: required for lxc to start container
-
-    if ! [ -d $LXC_IMAGES_LINK ]; then
-	mkdir -p $LXC_IMAGES_LINK; rmdir $LXC_IMAGES_LINK # make sure the mother dir does exist
-	ln -s $LXC_IMAGES_PATH $LXC_IMAGES_LINK
-    fi
-
-    [ -d /cgroup  ] || mkdir /cgroup
-    mount | grep -e "cgroup" > /dev/null || mount -t cgroup none /cgroup
-
+lxc_check() {
 
     uci_check_clean lxc
     uci_check_clean network
 
+    LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+    LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
+    LXC_SCRIPTS_PATH=$( uci_get lxc.general.lxc_scripts_path )
 
+    [ -d $LXC_IMAGES_PATH ]    || err $FUNCNAME ""
+    [ -d $LXC_TEMPLATES_PATH ] || err $FUNCNAME ""
+    [ -d $LXC_SCRIPTS_PATH ]   || err $FUNCNAME ""
+    [ -d /usr/lib/lxc/rootfs ] || err $FUNCNAME ""  # lxc-bug workarount: required for lxc to start container
+
+    if ! [ -d $LXC_IMAGES_LINK ]; then
+	mkdir -p $LXC_IMAGES_LINK; rmdir $LXC_IMAGES_LINK # make sure the mother dir does exist
+	ln -s $LXC_IMAGES_PATH $LXC_IMAGES_LINK || err $FUNCNAME ""
+    fi
+
+    [ -d /cgroup  ] || err $FUNCNAME ""
+    mount | grep -e "cgroup" > /dev/null || mount -t cgroup none /cgroup || err $FUNCNAME ""
 }
+
 
 lxc_name() {
     local SL_NAME="$1"
@@ -68,6 +67,8 @@ lxc_name() {
 lxc_remove() {
     local SL_NAME=$( lxc_name "$1" )
 
+    lxc_check
+
     lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null && \
 	err $FUNCNAME "Container $SL_NAME still running"
     
@@ -77,7 +78,7 @@ lxc_remove() {
 lxc_purge() {
     local SL_NAME=$( lxc_name "$1" )
 
-    system_check
+    lxc_check
 
     
 
@@ -98,7 +99,7 @@ lxc_create_uci() {
     local SL_ID_HEX=${SL_NAME:0:2}
     local SL_ID_DEC=$(( 16#${SL_ID_HEX} ))
 
-    system_check
+    lxc_check
 
     [ "lxc.$SL_NAME" != "$SL_CONFIG" ] || \
 	err $FUNCNAME "name=$SL_NAME must be different from template=$SL_CONFIG"
@@ -181,13 +182,13 @@ lxc_create() {
     local SL_ID_DEC=$(( 16#${SL_ID_HEX} ))
 
 
-    system_check
+    lxc_check
 
     uci_test $SL_CONFIG  soft,quiet || \
 	err $FUNCNAME "uci config $SL_CONFIG does not exists"
 
-    [ -d $LXC_IMAGES_PATH/$SL_NAME ] && \
-	err $FUNCNAME "$LXC_IMAGES_PATH/$SL_NAME already exist"
+    [ -f $LXC_IMAGES_PATH/$SL_NAME/config ] && \
+	err $FUNCNAME "$LXC_IMAGES_PATH/$SL_NAME/config already exist"
 
     
     echo creating container $SL_NAME using config=$SL_CONFIG >&2
@@ -417,7 +418,7 @@ loop_bridge_ifnames() {
 lxc_stop() {
     local SL_NAME=$( lxc_name "$1" )
 
-    system_check
+    lxc_check
 
     lxc-stop -n $SL_NAME
 
@@ -447,7 +448,7 @@ lxc_stop() {
 lxc_start() {
     local SL_NAME=$( lxc_name "$1" )
 
-    system_check
+    lxc_check
 
     if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ;then
 

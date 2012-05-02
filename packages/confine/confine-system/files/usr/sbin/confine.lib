@@ -7,7 +7,6 @@ CONFINE_RPC_ARG_DIR=/var/run/confine/rpc-args
 
 CONFINE_CONTAINER_NR_MIN_DEC=1
 CONFINE_CONTAINER_NR_MAX_DEC=126 # there are only 126 private IPs
-CONFINE_CONTAINER_NR_AUTO_DEC=65
 
 UCI_DEFAULT_PATH=/etc/config
 ERR_LOG_TAG='CONFINE'
@@ -79,46 +78,47 @@ confine_set_rd_state() {
 
 confine_allocate_container() {
 
-
     local SL_ID_HEX=$( slice_id $1 )
-    local CT_NR_HEX=${SL_ID_HEX:4:2}
+    local CT_NR_HEX=${SL_ID_HEX:10:2}
 
     local OPT_CMD=${2:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
 
-
-    [ $(( 16#${CT_NR_HEX} )) -ge $CONFINE_CONTAINER_NR_MIN_DEC ] && [ $(( 16#${CT_NR_HEX} )) -le $CONFINE_CONTAINER_NR_MIN_DEC ] || \
-	CT_NR_HEX=$CONFINE_CONTAINER_NR_AUTO_DEC
+    [ $(( 16#${CT_NR_HEX} )) -ge $CONFINE_CONTAINER_NR_MIN_DEC ] && [ $(( 16#${CT_NR_HEX} )) -le $CONFINE_CONTAINER_NR_MAX_DEC ] || \
+	CT_NR_HEX=$( printf "%.2x\n" $CONFINE_CONTAINER_NR_MAX_DEC )
 
     local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
+    local LXC_CTS="$( uci_get_sections lxc container soft )"
 
     local TMP_SL_ID=
-    local USED_CTS=
+    local CONFINE_CTS=
 
     for TMP_SL_ID in $SLIVERS ; do
 	local HEX=$( uci_get confine-slivers.$TMP_SL_ID.container_nr soft,quiet)
 
 	[ $HEX ] || continue
 
-	echo "$USED_CTS" | grep $HEX && \
+	echo "$CONFINE_CTS" | grep $HEX && \
 	    err $FUNCNAME "container_nr=$HEX used twice !!!"
 
-	USED_CTS="$( [ "$USED_CTS" ] && echo "$USED_CTS $HEX" || "$HEX" )"
+	CONFINE_CTS="$( [ "$CONFINE_CTS" ] && echo "$CONFINE_CTS $HEX" || echo "$HEX" )"
     done
 
+    #echo "SL_ID_HEX=$SL_ID_HEX CT_NR_HEX=$CT_NR_HEX SLIVERS=$SLIVERS CONFINE_CTS=$CONFINE_CTS" >&2
 
-    if echo "$USED_CTS" | grep $CT_NR_HEX >/dev/null ; then
+
+    if echo "$CONFINE_CTS $LXC_CTS" | grep $CT_NR_HEX >/dev/null ; then
 
 	CT_NR_HEX=
 
 	local CT_NR_DEC=$(( 16#${CT_NR_HEX} ))
 	local DEC=
 
-	for DEC in $( seq $CONFINE_CONTAINER_NR_AUTO_DEC $CONFINE_CONTAINER_NR_MAX_DEC ) ; do
+	for DEC in $( seq $CONFINE_CONTAINER_NR_MIN_DEC $CONFINE_CONTAINER_NR_MAX_DEC ) ; do
 
-	    local HEX=$( printf "%.2X\n" $DEC )
+	    local HEX=$( printf "%.2x\n" $(( ( $CONFINE_CONTAINER_NR_MAX_DEC + 1 ) - $DEC )) )
 
-	    if ! echo "$USED_CTS" | grep $HEX >/dev/null ; then
+	    if ! echo "$CONFINE_CTS $LXC_CTS" | grep $HEX >/dev/null ; then
 
 		CT_NR_HEX=$HEX
 		break
@@ -127,7 +127,7 @@ confine_allocate_container() {
     fi
 
     [ $CT_NR_HEX ] || \
-	{ err $FUNCNAME "Failed allocating from $USED_CTS" $CMD_SOFT; return 1; }
+	{ err $FUNCNAME "Failed allocating container_nr" $CMD_SOFT; return 1; }
     
     echo $CT_NR_HEX
 }
@@ -179,18 +179,8 @@ confine_allocate_public_ipv4() {
 }
 
 
-confine_calculate_private_ip() {
-    return 1
-}
-
-confine_calculate_mac() {
-    return 1
-}
-
 
 confine_sliver_allocate() {
-
-    echo "$FUNCNAME $# $@" >&2
 
     confine_system_check
 
@@ -222,7 +212,8 @@ confine_sliver_allocate() {
 	    err $FUNCNAME "Failed allocating container_nr"
 
 
-	if [ "$( uci_get $SRC_CFG.$SL_ID.if01_type soft,quiet,path=$SRC_DIR )" = "public" ] ; then
+	if [ "$( uci_get $SRC_CFG.$SL_ID.if01_type soft,quiet,path=$SRC_DIR )" = "public" ] && \
+	    [ "$( uci_get $SRC_CFG.$SL_ID.if01_proto soft,quiet,path=$SRC_DIR )" = "static" ] ; then
 	    
 	    confine_allocate_public_ipv4 $SL_ID soft >/dev/null|| \
 		err $FUNCNAME "Failed allocating public ip"
@@ -242,11 +233,23 @@ confine_sliver_allocate() {
 
 	uci_set confine-slivers.$SL_ID.state=allocating
 
+
 	local CT_NR=$( confine_allocate_container $SL_ID )
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
-	local MAC_PREFIX16="$( uci_get confine-node.node.mac_prefix16 )"
+	local MAC_PREFIX16=$( uci_get confine-node.node.mac_prefix16 )
+	local FS_URL=$( uci_get confine-slices.$SL_ID.fs_template_url )
 
 	uci_set confine-slivers.$SL_ID.container_nr=$CT_NR
+
+	
+	if echo $FS_URL | grep openwrt >/dev/null ; then
+
+	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
+
+	elif echo $FS_URL | grep debian >/dev/null ; then
+
+	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
+	fi
 
 
 	local IF_KEY=
@@ -260,29 +263,72 @@ confine_sliver_allocate() {
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_type
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_mac $IF_MAC
+
+		    uci_set lxc.$CT_NR.if${IF_KEY}_type=veth
+		    uci_set lxc.$CT_NR.if${IF_KEY}_name=internal
+		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=internal
+		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
+		    
 		    local IF_PRIV_IPV4=$( uci_get confine-node.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
 		    local IF_PRIV_IPV6=$( uci_get confine-node.node.priv_ipv6_prefix48 ):0:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:0/64
 		    
-		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_type
-		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_mac $IF_MAC
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4_proto static
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4 $IF_PRIV_IPV4
-		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4 $IF_PRIV_IPV6
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv6_proto static
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv6 $IF_PRIV_IPV6
+
+		    uci_set lxc.$CT_NR.if${IF_KEY}_proto=static
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_PRIV_IPV4
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_PRIV_IPV6
+
 
 		elif [ "$IF_TYPE" = "public" ] && [ "$IF_KEY" = "01" ]; then
 
-		    local IF_PUBL_IPV4=$( confine_allocate_public_ipv4 $SL_ID )
 		    local IF_PUBL_IPV6=$( uci_get confine-testbed.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:${IF_KEY}/64
 
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_type
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_mac $IF_MAC
-		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4 $IF_PUBL_IPV4
+		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv6_proto static
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv6 $IF_PUBL_IPV6
 
-		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ]; then
+		    uci_set lxc.$CT_NR.if${IF_KEY}_type=veth
+		    uci_set lxc.$CT_NR.if${IF_KEY}_name=local
+		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
+		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_PUBL_IPV6
+
+		    local IF_PROTO=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_ipv4_proto soft,path=$SRC_DIR )
+
+		    if [ "$IF_PROTO" = "static" ] ; then
+
+			local IF_PUBL_IPV4=$( confine_allocate_public_ipv4 $SL_ID )
+
+			uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4_proto static
+			uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_ipv4 $IF_PUBL_IPV4
+
+			uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=static
+			uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_PUBL_IPV4
+
+
+		    elif [ "$IF_PROTO" = "dhcp" ] ; then
+
+			uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=dhcp
+		    fi
+
+
+		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && \
+		    uci_test $SRC_CFG.$SL_ID.if${IF_KEY}_parent soft,path=$SRC_DIR ; then
 
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_type
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_mac $IF_MAC
 		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver confine-slivers.$SL_ID if${IF_KEY}_parent
+
+		    uci_set lxc.$CT_NR.if${IF_KEY}_type=vlan
+		    uci_set lxc.$CT_NR.if${IF_KEY}_vlanphy=$( uci_get confine-slivers.$SL_ID.if${IF_KEY}_parent )
+		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
 
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
@@ -304,6 +350,59 @@ confine_sliver_allocate() {
 
 confine_sliver_deploy() {
     echo "$FUNCNAME $# $@" >&2
+
+
+    local SRC="${1:--}"
+    local SRC_CFG=deploy-$( date +%s )-$BASHPID
+    local SRC_DIR=$CONFINE_RPC_ARG_DIR
+
+    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+    local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
+    local LXC_SCRIPTS_PATH=$( uci_get lxc.general.lxc_scripts_path )
+    
+    cat $SRC > $SRC_DIR/$SRC_CFG
+
+    local NODE_ID=$( uci_get confine-node.node.id )
+    local SL_ID=
+    
+    for SL_ID in $( uci_get_sections $SRC_CFG sliver_attributes soft,path=$SRC_DIR ); do
+
+	SL_ID=$( slice_id $SL_ID )
+
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+	local FS_URL=$( uci_get confine-slices.$SL_ID.fs_template_url soft )
+
+	if  [ "$( uci_get confine-slices.$SL_ID soft,quiet )" = "slice" ] && \
+	    [ "$( uci_get confine-slivers.$SL_ID soft,quiet )" = "sliver" ] && \
+	    [ "$( uci_get confine-slivers.$SL_ID.state soft,quiet )" = "allocated" ] && \
+	    [ CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft ) ] && \
+	    [ FS_URL=$( uci_get confine-slices.$SL_ID.fs_template_url soft ) ] ; then
+
+	    uci_set confine-slivers.$SL_ID.state=deploying
+
+
+	    local FS_COMP=$( ( echo $FS_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $FS_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo ".gz" ) )
+
+	    local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
+	    local FS_SITE=$(echo $FS_URL | awk -F ${FS_NAME}.${FS_COMP} '{print $1}')
+
+	    [ "$FS_URL" = "${FS_SITE}${FS_NAME}.${FS_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $FS_URL != ${FS_SITE}${FS_NAME}.${FS_COMP}"
+	    
+	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs
+	    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
+
+	else
+	    err $FUNCNAME "slice and sliver $SL_ID not (properly) allocated"
+	fi
+
+	uci_set confine-slivers.$SL_ID.state=deployed
+	uci_show confine-slivers.$SL_ID
+
+    done
+
 }
 
 confine_sliver_start() {
@@ -318,14 +417,14 @@ confine_sliver_stop() {
 
     local SL_ID=$( slice_id $1 )
 
-    echo "$FUNCNAME $# $@" >&2
+    #echo "$FUNCNAME $# $@" >&2
 }
 
 confine_sliver_destroy() {
 
     local SL_ID=$( slice_id $1 )
 
-    echo "$FUNCNAME $# $@" >&2
+    #echo "$FUNCNAME $# $@" >&2
 
     confine_sliver_stop    $SL_ID
 
