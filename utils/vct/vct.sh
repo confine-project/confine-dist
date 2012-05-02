@@ -1007,6 +1007,7 @@ config sliver $SLICE_ID
     option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
     option if00_type       internal
     option if01_type       public
+    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO
     option if02_type       isolated
     option if01_parent     eth1
 EOF
