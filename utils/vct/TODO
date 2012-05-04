@@ -1,0 +1,8 @@
+
+- confine_functions () return uci file format
+
+- customize function use ipv6 recovery address
+
+- add links to confine.lib and lxc.lib functions
+
+

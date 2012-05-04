@@ -249,10 +249,10 @@ uci_set_default() {
     local SRC_CFG=$2
     local DEF_DIR=$3
     local DEF_CFG=$4
-    local DST_DIR=$3
-    local DST_CFG=$5
-    local SET_OPT=$6
-    local ALT_VAL=${7:-}
+    local DST_DIR=$5
+    local DST_CFG=$6
+    local SET_OPT=$7
+    local ALT_VAL=${8:-}
 
     local SRC_VAL="$( uci_get $SRC_CFG.$SET_OPT soft,quiet,path=$SRC_DIR )"
     local DEF_VAL="$( uci_get $DEF_CFG.$SET_OPT soft,quiet,path=$DEF_DIR )"
@@ -261,6 +261,47 @@ uci_set_default() {
     [ "$DST_VAL" ] && uci_set $DST_CFG.$SET_OPT="$DST_VAL" path=$DST_DIR
 }
 
+
+uci_dot_to_file() {
+		  
+    local TMP_CFG=$1
+    local TMP_DIR=/tmp/$( date +%s )-$BASHPID-uciDot2File
+    local L=
+
+    mkdir -p $TMP_DIR
+    echo "" > $TMP_DIR/$TMP_CFG
+
+    uci_check_clean $TMP_CFG path=$TMP_DIR
+
+    uci -c $TMP_DIR batch <<EOF
+$( grep -e "^$TMP_CFG\." | while read L; do echo $L | awk -F'=' '{print "set " $1 "=\"" $2 "\""}' ; done )
+EOF
+
+    uci -c $TMP_DIR commit
+    uci -c $TMP_DIR export $TMP_CFG | grep -v package
+    rm -rf $TMP_DIR/
+}
+
+
+
+
+uci_merge() {
+
+    local TMP_CFG=$1
+    local OPT_CMD=${2:-}
+    local CMD_PATH=$( path_cmd "$OPT_CMD"  )
+    local OPT_PATH=$( path_opt "$OPT_CMD"  )
+    local L=
+
+    uci_check_clean $TMP_CFG $CMD_PATH
+
+    uci $OPT_PATH batch <<EOF
+$( grep -e "^$TMP_CFG\." | while read L; do echo $L | awk -F'=' '{print "set " $1 "=\"" $2 "\""}' ; done )
+EOF
+
+    uci $OPT_PATH commit $TMP_CFG
+
+}
 
 var_get() {
     local VAR_NAME=$1

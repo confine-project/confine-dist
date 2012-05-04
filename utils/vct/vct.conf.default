@@ -40,8 +40,10 @@ VCT_INTERFACE_MAC24="52:54:00"    # leave untuched for qemu/kvm
 
 #################################################
 
-VCT_TESTBED_MGMT_IPV6_PREFIX48="fdc0:0:0"
-VCT_TESTBED_PRIV_IPV6_PREFIX48="fdc1:0:0"
+VCT_CONFINE_PRIV_IPV6_PREFIX48="fdbd:e804:6aa9"
+VCT_CONFINE_DEBUG_IPV6_PREFIX48="fd5f:eee5:e6ad"
+
+VCT_TESTBED_MGMT_IPV6_PREFIX48="fdc2:0:0"
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
@@ -64,16 +66,22 @@ VCT_BR00_NAME="vct-local"
 VCT_BR00_MODEL=""                          # optional, default rtl8139
 VCT_BR00_MAC48=""                          # optional, mac-address or RANDOM, empy->default VCT_INTERFACE_MAC24:#br:node-id
 
-VCT_BR00_V6_IP="$VCT_TESTBED_MGMT_IPV6_PREFIX48::2"
-VCT_BR00_V6_PL="48"
 
-VCT_BR00_V4_RESCUE_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.252"   # 1st (A) static rescue ip for vct bridge (see also VCT_RD_RESCUE_V4_IP for RD)
+VCT_BR00_V6_LOCAL_IP="$VCT_TESTBED_MGMT_IPV6_PREFIX48:0000:0200::ffff"
+VCT_BR00_V6_LOCAL_PL="64"
+
+VCT_BR00_V6_RESCUE_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:ffff:0200::ffff"
+VCT_BR00_V6_RESCUE_PL="64"
+
+VCT_BR00_V6_DEBUG_IP="$VCT_CONFINE_DEBUG_IPV6_PREFIX48:0000:0200::ffff"
+VCT_BR00_V6_DEBUG_PL="48"
+
+
+VCT_BR00_V4_RESCUE_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.254"
 VCT_BR00_V4_RESCUE_PL="25"
 
-
-# local IP (and services) for RDs (see also RD section below):
-VCT_BR00_V4_IP="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.252"           # 2nd (B) static rescue ip for vct bridge 
-VCT_BR00_V4_PL="16"                                             #      (see also VCT_RD_LOCAL_V4_PREFIX16 for RD)
+VCT_BR00_V4_LOCAL_IP="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.254"
+VCT_BR00_V4_LOCAL_PL="16"                                             
 
 VCT_BR00_V4_DHCPD_IP_MIN="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.1"
 VCT_BR00_V4_DHCPD_IP_MAX="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.199"
@@ -97,24 +105,33 @@ VCT_RD_MEM="64"                                     # RD Memory in MB
 VCT_RD_LOCAL_BRIDGE="vct-local"
 
 
-VCT_RD_INTERNAL_V6_IP="$VCT_TESTBED_PRIV_IPV6_PREFIX48::2"
+VCT_RD_INTERNAL_V6_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:0000::1"
 VCT_RD_INTERNAL_V6_PL="64"
 VCT_RD_INTERNAL_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.126"
 VCT_RD_INTERNAL_V4_PL="25"
 
 
 
-VCT_RD_LOCAL_V6_PREFIX48="$VCT_TESTBED_MGMT_IPV6_PREFIX48"  # ULA testbed prefix (to be combinded with node-id to /48 RD specific IPv6)
+VCT_RD_LOCAL_V6_PREFIX48="$VCT_TESTBED_MGMT_IPV6_PREFIX48"  # testbed prefix (to be combinded with node-id to /64 RD specific IPv6)
 VCT_RD_LOCAL_V6_SUFFIX64="2"
-VCT_RD_LOCAL_V6_PL="48"
+VCT_RD_LOCAL_V6_PL="64"
 
-VCT_RD_RESCUE_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.254"   # always available static testbed rescue IPv4 (A) via local bridge
+
+VCT_RD_RESCUE_V6_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:ffff::2"
+VCT_RD_RESCUE_V6_PL="64"
+
+VCT_RD_DEBUG_V6_PREFIX48="$VCT_CONFINE_DEBUG_IPV6_PREFIX48"  # ULA confine prefix (to be combinded with node-id to /48 RD specific IPv6)
+VCT_RD_DEBUG_V6_SUFFIX64="2"
+VCT_RD_DEBUG_V6_PL="48"
+
+
+VCT_RD_RESCUE_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.130"   # always available static testbed rescue IPv4 via local bridge
 VCT_RD_RESCUE_V4_PL="25"
 
 # internet for RDs (see also Host section above):
-VCT_RD_LOCAL_V4_PROTO=dhcp                                # static, dhcp, none (disabled)
-VCT_RD_LOCAL_V4_PREFIX16="$VCT_NODE_PUBLIC_IPV4_PREFIX16" # always available static testbed rescue IPv4 (B) via local bridge 
-VCT_RD_LOCAL_V4_PL="16"                                   #                 using 8 LSB of node-id for remaining 8-bit suffix 
+VCT_RD_LOCAL_V4_PROTO=static                              # static, dhcp, none (disabled)
+VCT_RD_LOCAL_V4_PREFIX16="$VCT_NODE_PUBLIC_IPV4_PREFIX16" # for testing combined with .0. + 8 LSB of node-id
+VCT_RD_LOCAL_V4_PL="16"                                   # 
 VCT_RD_LOCAL_V4_DNS="141.1.1.1"
 
 
@@ -133,7 +150,11 @@ PATH="$PATH=:/sbin:/usr/sbin"
 VCT_DL_DIR=$VCT_VIRT_DIR/downloads
 VCT_SYS_DIR=$VCT_VIRT_DIR/images
 VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
+VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 VCT_KNOWN_HOSTS_FILE=$VCT_VIRT_DIR/known_hosts
+
+VCT_RD_RPC_DIR=/var/run/confine/rpc
+
 
 VCT_DEB_PACKAGES=" \
     bridge-utils \

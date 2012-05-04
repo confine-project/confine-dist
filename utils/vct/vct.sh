@@ -10,7 +10,11 @@ elif [ -f ./vct.conf.default ]; then
 fi
 
 
-MAIN_PID=$BASHPID
+# MAIN_PID=$BASHPID
+
+UCI_DEFAULT_PATH=$VCT_UCI_DIR
+ERR_LOG_TAG='VCT'
+. ./confine.functions
 
 
 
@@ -19,7 +23,7 @@ MAIN_PID=$BASHPID
 #######  some general tools for convinience
 ##########################################################################
 
-exit_all() {
+exit_all_DISABLED() {
     # echo "terminating due to previous error, killing PID=$MAIN_PID from $BASHPID" >&2
     kill $MAIN_PID
     sleep 10
@@ -28,7 +32,7 @@ exit_all() {
 
 
 
-err() {
+err_DISABLED() {
     local FUNC=$1
     local MSG=$2
     local OPT_CMD=${3:-}
@@ -39,70 +43,9 @@ err() {
     [ ${CMD_SOFT:-} ] && return 1 || exit_all
 }
 
-variable_check() {
-
-    local VAR_NAME=$1
-    local OPT_CMD=${2:-}
-    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local VAR_VALUE=
-
-    if [ -z $VAR_NAME ]; then
-	err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
-    fi
-
-#    eval VAR_VALUE=\$$VAR_NAME
-    
-    set +u # temporary disable set -o nounset
-    VAR_VALUE=$( eval echo \$$VAR_NAME  )
-    set -u
-
-    if [ -z "$VAR_VALUE" ]; then
-	err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
-    fi
-
-    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
-    return 0
-}
 
 
-vct_sudo() {
-
-    local QUERY=
-
-    if [ "$VCT_SUDO_ASK" != "NO" ]; then
-
-	echo "$0 wants to execute the following command and VCT_SUDO_ASK has been set to explicitly ask:" >&2
-	echo "sudo $@" >&2
-	read -p "please type y to continue or anything else to abort: " QUERY >&2
-
-	if [ "$QUERY" == "y" ] ; then
-	    sudo $@
-	    return $?
-	fi
-	
-	err $FUNCNAME "sudo execution cancelled"
-	return 1
-    fi
-
-    sudo $@
-    return $?
-}
-
-ip4_net_to_mask() {
-    local NETWORK="$1"
-
-    [ -z ${NETWORK:-} ] &&\
-        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
-
-    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
-        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
-    
-}
-
-
-
-install_url() {
+install_url_DISABLED() {
 
     local URL=$1
     local URL_SITE=$2
@@ -191,6 +134,69 @@ install_url() {
 }
 
 
+variable_check() {
+
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local VAR_VALUE=
+
+    if [ -z $VAR_NAME ]; then
+	err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
+    fi
+
+#    eval VAR_VALUE=\$$VAR_NAME
+    
+    set +u # temporary disable set -o nounset
+    VAR_VALUE=$( eval echo \$$VAR_NAME  )
+    set -u
+
+    if [ -z "$VAR_VALUE" ]; then
+	err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
+    fi
+
+    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
+    return 0
+}
+
+
+vct_sudo() {
+
+    local QUERY=
+
+    if [ "$VCT_SUDO_ASK" != "NO" ]; then
+
+	echo "$0 wants to execute the following command and VCT_SUDO_ASK has been set to explicitly ask:" >&2
+	echo "sudo $@" >&2
+	read -p "please type y to continue or anything else to abort: " QUERY >&2
+
+	if [ "$QUERY" == "y" ] ; then
+	    sudo $@
+	    return $?
+	fi
+	
+	err $FUNCNAME "sudo execution cancelled: $QUERY"
+	return 1
+    fi
+
+    sudo $@
+    return $?
+}
+
+ip4_net_to_mask() {
+    local NETWORK="$1"
+
+    [ -z ${NETWORK:-} ] &&\
+        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
+
+    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
+        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
+    
+}
+
+
+
 ##########################################################################
 #######  
 ##########################################################################
@@ -202,6 +208,7 @@ system_config_check() {
     variable_check VCT_SYS_DIR         quiet
     variable_check VCT_DL_DIR          quiet
     variable_check VCT_RPC_DIR         quiet
+    variable_check VCT_UCI_DIR         quiet
     variable_check VCT_DEB_PACKAGES    quiet
     variable_check VCT_USER            quiet
     variable_check VCT_VIRT_GROUP      quiet
@@ -308,6 +315,13 @@ system_install_check() {
 	 { err $FUNCNAME "$VCT_RPC_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
+    # check vct uci directory:
+    if ! [ -d $VCT_UCI_DIR ]; then
+	( [ $CMD_INSTALL ] && mkdir -p $VCT_UCI_DIR ) ||\
+	 { err $FUNCNAME "$VCT_UCI_DIR  not existing" $CMD_SOFT || return 1 ;}
+    fi
+
+
     if ! [ -f $VCT_KNOWN_HOSTS_FILE ]; then
 	( [ $CMD_INSTALL ] && touch $VCT_KNOWN_HOSTS_FILE ) ||\
 	 { err $FUNCNAME "$VCT_KNOWN_HOSTS_FILE not existing" $CMD_SOFT || return 1 ;}
@@ -351,8 +365,8 @@ system_init_check() {
 
 
     # check if bridges are initialized:
-    local BRIDGE
-    local BR_NAME
+    local BRIDGE=
+    local BR_NAME=
     for BRIDGE in $VCT_BRIDGE_PREFIXES; do
 	if BR_NAME=$( variable_check ${BRIDGE}_NAME soft ); then
 
@@ -374,12 +388,12 @@ system_init_check() {
 	    fi
 
             # check if local bridge has IPv4 address for local network: 
-	    local BR_V4_IP=$( variable_check ${BRIDGE}_V4_IP soft 2>/dev/null ) 
-	    local BR_V4_PL=$( variable_check ${BRIDGE}_V4_PL soft 2>/dev/null )
-	    if [ $BR_V4_IP ] && [ $BR_V4_PL ]; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4_IP/$BR_V4_PL " |grep -e " $BR_NAME" >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4_IP/$BR_V4_PL dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4_IP/$BR_V4_PL " $CMD_SOFT || return 1 ;}
+	    local BR_V4_LOCAL_IP=$( variable_check ${BRIDGE}_V4_LOCAL_IP soft 2>/dev/null ) 
+	    local BR_V4_LOCAL_PL=$( variable_check ${BRIDGE}_V4_LOCAL_PL soft 2>/dev/null )
+	    if [ $BR_V4_LOCAL_IP ] && [ $BR_V4_LOCAL_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet " |grep -e " $BR_V4_LOCAL_IP/$BR_V4_LOCAL_PL " |grep -e " $BR_NAME" >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V4_LOCAL_IP/$BR_V4_LOCAL_PL dev $BR_NAME ) ||\
+                	{ err $FUNCNAME "unconfigured ipv4 rescue net: $BR_NAME  $BR_V4_LOCAL_IP/$BR_V4_LOCAL_PL " $CMD_SOFT || return 1 ;}
 		fi
 
             # check if bridge needs routed NAT:
@@ -421,9 +435,9 @@ start           $DHCPD_IP_MIN
 end             $DHCPD_IP_MAX
 interface       $BR_NAME 
 lease_file      $UDHCPD_LEASE_FILE
-option router   $BR_V4_IP
+option router   $BR_V4_LOCAL_IP
 option dns      $DHCPD_DNS
-option serverid $BR_V4_IP
+option serverid $BR_V4_LOCAL_IP
 EOF
 
 			vct_sudo udhcpd $UDHCPD_CONF_FILE
@@ -431,20 +445,28 @@ EOF
 		    
 		    [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
 			err $FUNCNAME "NO udhcpd server running for $BR_NAME "
-
 		fi
-
-
 	    fi
 
-            # check if local bridge has rescue IPv6 for local network:
-	    local BR_V6_IP=$( variable_check ${BRIDGE}_V6_IP soft 2>/dev/null ) 
-	    local BR_V6_PL=$( variable_check ${BRIDGE}_V6_PL soft 2>/dev/null )
-	    if [ $BR_V6_IP ] && [ $BR_V6_PL ]; then
+            # check if local bridge has IPv6 for recovery network:
+	    local BR_V6_RESCUE_IP=$( variable_check ${BRIDGE}_V6_RESCUE_IP soft 2>/dev/null ) 
+	    local BR_V6_RESCUE_PL=$( variable_check ${BRIDGE}_V6_RESCUE_PL soft 2>/dev/null )
+	    if [ $BR_V6_RESCUE_IP ] && [ $BR_V6_RESCUE_PL ]; then
 		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
-		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_IP/$BR_V6_PL -O ipv6 ) " >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_IP/$BR_V6_PL dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME  $BR_V6_IP/$BR_V6_PL " $CMD_SOFT || return 1 ;}
+		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_RESCUE_IP/$BR_V6_RESCUE_PL -O ipv6 ) " >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_RESCUE_IP/$BR_V6_RESCUE_PL dev $BR_NAME ) ||\
+                	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME  $BR_V6_RESCUE_IP/$BR_V6_RESCUE_PL " $CMD_SOFT || return 1 ;}
+		fi
+	    fi
+
+            # check if local bridge has IPv6 for debug network:
+	    local BR_V6_DEBUG_IP=$( variable_check ${BRIDGE}_V6_DEBUG_IP soft 2>/dev/null ) 
+	    local BR_V6_DEBUG_PL=$( variable_check ${BRIDGE}_V6_DEBUG_PL soft 2>/dev/null )
+	    if [ $BR_V6_DEBUG_IP ] && [ $BR_V6_DEBUG_PL ]; then
+		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
+		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_DEBUG_IP/$BR_V6_DEBUG_PL -O ipv6 ) " >/dev/null; then
+		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_DEBUG_IP/$BR_V6_DEBUG_PL dev $BR_NAME ) ||\
+                	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME  $BR_V6_DEBUG_IP/$BR_V6_DEBUG_PL " $CMD_SOFT || return 1 ;}
 		fi
 	    fi
 
@@ -477,6 +499,64 @@ system_init() {
     system_init_check init
 }
 
+
+system_cleanup() {
+
+    local VCRD_ID=
+    for VCRD_ID in $( info | grep -e "$VCT_RD_NAME_PREFIX" | awk '{print $2}' | awk -F"$VCT_RD_NAME_PREFIX" '{print $2}' ); do
+	remove $VCRD_ID
+    done
+
+
+
+    local BRIDGE=
+    local BR_NAME=
+    for BRIDGE in $VCT_BRIDGE_PREFIXES; do
+	if BR_NAME=$( variable_check ${BRIDGE}_NAME soft ); then
+
+            # check if local bridge has IPv4 address for local network: 
+	    local BR_V4_LOCAL_IP=$( variable_check ${BRIDGE}_V4_LOCAL_IP soft 2>/dev/null ) 
+	    local BR_V4_LOCAL_PL=$( variable_check ${BRIDGE}_V4_LOCAL_PL soft 2>/dev/null )
+	    if [ $BR_V4_LOCAL_IP ] && [ $BR_V4_LOCAL_PL ]; then
+
+            # check if bridge had routed NAT:
+		local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
+		local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
+		
+		if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ]; then
+		    
+                    if vct_sudo iptables -t nat -L POSTROUTING -nv | \
+			grep -e "MASQUERADE" |grep -e "$BR_V4_NAT_OUT" |grep -e "$BR_V4_NAT_SRC" >/dev/null; then
+
+			vct_sudo iptables -t nat -D POSTROUTING -o $BR_V4_NAT_OUT -s $BR_V4_NAT_SRC -j MASQUERADE
+		    fi 
+		    
+		fi
+
+	    # check if bridge had udhcpd:
+		local UDHCPD_CONF_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.conf
+		local UDHCPD_LEASE_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.leases
+		local UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
+		local UDHCPD_PID=$( ps aux | grep "$UDHCPD_COMMAND" | grep -v grep | awk '{print $2}' )
+	    
+		[ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID
+		
+	    fi
+
+            # check if bridge is UP:
+	    if ip link show dev $BR_NAME | grep ",UP" >/dev/null; then
+		vct_sudo ip link set dev $BR_NAME down
+	    fi
+
+            # check if bridge exist:
+	    if brctl show | grep $BR_NAME >/dev/null; then
+		  vct_sudo brctl delbr $BR_NAME
+	    fi
+	fi
+    done
+
+
+}
 
 ##########################################################################
 #######  
@@ -681,7 +761,7 @@ console() {
 }
 
 
-ssh4prepare() {
+ssh4_prepare() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
@@ -710,39 +790,50 @@ ssh4prepare() {
     fi
 }
 
-ssh4() {
+ssh4_prepared() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
-
+    local VCRD_ID=$(check_rd_id $1 )
     local COMMAND=
+
+    echo > $VCT_KNOWN_HOSTS_FILE
 
     if ! [ -z "${2:-}" ]; then
 	COMMAND=". /etc/profile > /dev/null; $2"
     fi
+    
+    ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
+	root@$VCT_RD_RESCUE_V4_IP "$COMMAND"
+}
 
-    ssh4prepare $VCRD_ID
+ssh4() {
+
+    local VCRD_ID=$(check_rd_id $1 )
+    local COMMAND=
+
+    ssh4_prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
+    if ! [ -z "${2:-}" ]; then
+	COMMAND=". /etc/profile > /dev/null; $2"
+    fi
+    
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@$VCT_RD_RESCUE_V4_IP "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
-
-#    arp -d $VCT_LOCAL_V4_RESCUE_IP 
+	root@$VCT_RD_RESCUE_V4_IP "$COMMAND"
 }
 
 ssh6() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
-
     local COMMAND=
-
-    if ! [ -z "${2:-}" ]; then
-	COMMAND=". /etc/profile > /dev/null; $2"
-    fi
 
     echo > $VCT_KNOWN_HOSTS_FILE
 
+    if [ "${2:-}" ]; then
+	COMMAND=". /etc/profile > /dev/null; $2"
+    fi
+    
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64} "$COMMAND" # 2>&1 | grep -v "Warning: Permanently added"
+	root@${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64} "$COMMAND"
 
 }
 
@@ -757,7 +848,7 @@ scp4() {
     fi
 
     
-    ssh4prepare $VCRD_ID
+    ssh4_prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
@@ -774,16 +865,14 @@ scp6() {
 	err $FUNCNAME "requires 3 arguments <RD_ID> <local-src-path> <remote-dst-path> "
     fi
 
-    
-#    ssh4prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@\[${VCT_RD_LOCAL_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_LOCAL_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
+	"$SRC" root@\[${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
 
-create_rpc_custom0() {
+vct_rpc_customize() {
 
     local VCRD_ID=$(check_rd_id ${1:-} )
     local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
@@ -795,16 +884,18 @@ create_rpc_custom0() {
 	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
     local RPC_TYPE="basics"
-    local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${RPC_TYPE}.sh"
+    local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d-%H%M%S )-${RPC_TYPE}.sh"
     local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
 
-    
+    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	err $FUNCNAME "$VCRD_NAME not running"
+
     cat <<EOF > $RPC_PATH
 #!/bin/bash
 
-set -x
-
 echo "Configuring CONFINE $RPC_TYPE "
+
+echo "$( cat $VCT_RD_AUTHORIZED_KEY )" >> /etc/dropbear/authorized_keys 
 
 # customizing network:
 echo "Configuring network... "
@@ -818,11 +909,6 @@ uci set network.internal.ipaddr=$VCT_RD_INTERNAL_V4_IP
 uci set network.internal.netmask=$( ip4_net_to_mask $VCT_RD_INTERNAL_V4_IP/$VCT_RD_INTERNAL_V4_PL )
 uci set network.internal.ip6addr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
 
-uci set network.internal_ipv6_net=alias
-uci set network.internal_ipv6_net.interface=internal
-uci set network.internal_ipv6_net.proto=static
-uci set network.internal_ipv6_net.ip6addr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
-
 uci set network.local=interface
 uci set network.local.type=bridge
 uci set network.local.ifname=eth0
@@ -830,11 +916,17 @@ uci set network.local.macaddr=$VCRD_MAC
 uci set network.local.proto=none
 uci set network.local.ip6addr=$VCT_RD_LOCAL_V6_PREFIX48:$VCRD_ID::$VCT_RD_LOCAL_V6_SUFFIX64/$VCT_RD_LOCAL_V6_PL
 
-uci set network.rescue_ipv4_net=alias
-uci set network.rescue_ipv4_net.interface=local
-uci set network.rescue_ipv4_net.proto=static
-uci set network.rescue_ipv4_net.ipaddr=$VCT_RD_RESCUE_V4_IP
-uci set network.rescue_ipv4_net.netmask=$( ip4_net_to_mask $VCT_RD_RESCUE_V4_IP/$VCT_RD_RESCUE_V4_PL )
+uci set network.recovery=alias
+uci set network.recovery.interface=local
+uci set network.recovery.proto=static
+uci set network.recovery.ipaddr=$VCT_RD_RESCUE_V4_IP
+uci set network.recovery.netmask=$( ip4_net_to_mask $VCT_RD_RESCUE_V4_IP/$VCT_RD_RESCUE_V4_PL )
+uci set network.recovery.ip6addr=$VCT_RD_RESCUE_V6_IP/$VCT_RD_RESCUE_V6_PL
+
+uci set network.debug=alias
+uci set network.debug.interface=local
+uci set network.debug.proto=static
+uci set network.debug.ip6addr=$VCT_RD_DEBUG_V6_PREFIX48:$VCRD_ID::$VCT_RD_DEBUG_V6_SUFFIX64/$VCT_RD_DEBUG_V6_PL
 
 EOF
 
@@ -852,7 +944,7 @@ uci set network.dflt_route=route
 uci set network.dflt_route.interface=local
 uci set network.dflt_route.target=0.0.0.0
 uci set network.dflt_route.netmask=0.0.0.0
-uci set network.dflt_route.gateway=$VCT_BR00_V4_IP
+uci set network.dflt_route.gateway=$VCT_BR00_V4_LOCAL_IP
 
 EOF
 
@@ -888,8 +980,8 @@ uci set lxc.general.lxc_host_id=${VCRD_ID}
 uci commit lxc
 
 # remove useless busybox links:
-[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 [ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
+[ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 
 EOF
 
@@ -899,15 +991,16 @@ EOF
 
     cat <<EOF >> $RPC_PATH
 
-#echo "" > /etc/config/confine-defaults
 #uci revert confine-defaults
+#uci set confine-defaults.defaults=defaults
+#uci set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48
+#uci set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48
 #uci commit confine-defaults
 
 echo "" > /etc/config/confine-testbed
 uci revert confine-testbed
 uci set confine-testbed.testbed=testbed
 uci set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48
-uci set confine-testbed.testbed.priv_dflt_ipv6_prefix48=$VCT_TESTBED_PRIV_IPV6_PREFIX48
 uci set confine-testbed.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24
 uci set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16
 uci commit confine-testbed
@@ -929,7 +1022,6 @@ uci set confine-node.node.rd_pubkey="\$( dropbearkey -y -f /etc/dropbear/dropbea
 uci set confine-node.node.cn_url=""
 uci set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16
 uci set confine-node.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24
-uci set confine-node.node.priv_ipv6_prefix48=$VCT_TESTBED_PRIV_IPV6_PREFIX48
 uci set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO
 
 [ "$VCT_NODE_PUBLIC_IPV4_PROTO" = "static" ] && \
@@ -941,8 +1033,6 @@ uci commit confine-node
 
 
 
-
-
 lxc.lib lxc_stop       fd_dummy
 lxc.lib lxc_purge      fd_dummy
 lxc.lib lxc_create_uci fd_dummy confine-defaults.openwrt
@@ -951,8 +1041,7 @@ lxc.lib uci_set lxc.fd_dummy.auto_create=1
 
 echo "Waiting 5 secs for network default route configuration to start and complete..."
 sleep 5
-#time ping -c 1 -w 100 -W 1 confine-project.eu > /dev/null | grep -e "^user"
-while ! ping -c 1 -w 100 -W 1 confine-project.eu ; do
+while ! /usr/bin/ping -c 1 -w 100 -W 1 confine-project.eu ; do
     sleep 1
 done
 
@@ -961,46 +1050,41 @@ lxc.lib lxc_start      fd_dummy
 
 EOF
 
-    chmod u+x $RPC_PATH
-
-    echo $RPC_FILE
+    ssh4_prepare $VCRD_ID
+    cat $RPC_PATH | ssh4_prepared $VCRD_ID "confine.lib confine_node_customize"
 }
 
 
-customize0() {
 
-    local VCRD_ID=$(check_rd_id $1 )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+vct_rpc_allocate_openwrt() {
+
+    local VCRD_ID=$(check_rd_id ${1} )
+    local SLICE_ID=$2
+    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+
+    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
+    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
+    local SLICE_DB="slice-attributes-$SLICE_ID"
+
+
+    if ! uci_test $SLICE_DB.$SLICE_ID.state soft,quiet ; then
+
+	touch $VCT_UCI_DIR/$SLICE_DB
+	uci_set $SLICE_DB.$SLICE_ID=slice 
+	uci_set $SLICE_DB.$SLICE_ID.state=allocating
+
+    elif [ "$( uci_get $SLICE_DB.$SLICE_ID.state )" != "allocating" ] ; then
+	
+	err "$FUNCNAME SLICE_ID=$SLICE_ID not in allocating state"
+
+    fi
 
 
     virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
 	err $FUNCNAME "$VCRD_NAME not running"
-
-    scp4 $VCRD_ID "$VCT_RD_AUTHORIZED_KEY" /etc/dropbear/authorized_keys 
-
-    local RPC_BASICS=$( create_rpc_custom0 $VCRD_ID )
-    ssh4 $VCRD_ID "mkdir -p /tmp/rpc-files"
-    scp4 $VCRD_ID $VCT_RPC_DIR/$RPC_BASICS /tmp/rpc-files/
-    ssh4 $VCRD_ID "/tmp/rpc-files/$RPC_BASICS"
-}
-
-
-
-create_rpc_allocate_openwrt() {
-
-    local VCRD_ID=$(check_rd_id ${1} )
-    local SLICE_ID=$2
-    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
-
-    local RPC_TYPE="allocate"
-    local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${RPC_TYPE}-${SLICE_ID}.sh"
-    local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
-
     
-    cat <<EOFRPC > $RPC_PATH
-
-confine.lib confine_sliver_allocate <<EOF
+    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
@@ -1009,38 +1093,60 @@ config sliver $SLICE_ID
     option if01_type       public
     option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO
     option if02_type       isolated
-    option if01_parent     eth1
+    option if02_parent     eth1
 EOF
 
-EOFRPC
+    cat $VCT_RPC_DIR/$RPC_REQUEST | ssh6 $VCRD_ID "confine.lib confine_sliver_allocate" > $VCT_RPC_DIR/$RPC_REPLY
+    cat $VCT_RPC_DIR/$RPC_REPLY >&2
 
-    chmod u+x $RPC_PATH
+    if [ "$( uci_get $RPC_REPLY.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )" = "allocated" ] ; then
 
-    echo $RPC_FILE
+	touch $VCT_UCI_DIR/$SLICE_DB
+	uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
+	    sed s/$RPC_REPLY\.$SLICE_ID/$SLICE_DB.$VCRD_ID/ | \
+	    sed s/=sliver/=node_id/ | \
+	    uci_merge $SLICE_DB 
+
+	# cat $VCT_UCI_DIR/$SLICE_DB >&2
+
+    fi
+
 }
 
 
-vct_rpc() {
+vct_rpc_deploy() {
 
-    local RPC_CMD=$1
-    local VCRD_ID=$(check_rd_id $2 )
-    local SLICE_ID=$3
+    local VCRD_ID=$(check_rd_id ${1} )
+    local SLICE_ID=$2
+    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request.sh"
+    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply.sh"
+    local SLICE_DB="slice-attributes-$SLICE_ID"
+ 
+
+    local SLICE_STATE=$( uci_get $SLICE_DB.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )
+
+    if [ "$SLICE_STATE" = "allocating" ] ; then
+
+	uci_set $SLICE_DB.$SLICE_ID.state=deploying path=$VCT_RPC_DIR
+
+    elif [ "$SLICE_STATE" != "deploying" ] ; then
+	
+	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocating or deploying state"
+
+    fi
+
 
     virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
 	err $FUNCNAME "$VCRD_NAME not running"
+    
+    uci_show $SLICE_DB path=$VCT_RPC_DIR | grep -v "^$SLICE_DB.$SLICE_ID" | uci_dot_to_file $SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
-    local RPC_FILE=$( create_rpc_$RPC_CMD $VCRD_ID $SLICE_ID )
-    
-    [ ${RPC_FILE:-} ] || \
-	err $FUNCNAME "Failed calling create_rpc_$RPC_CMD"
-    
-    ssh6 $VCRD_ID "mkdir -p /tmp/rpc-files"
-    scp6 $VCRD_ID $VCT_RPC_DIR/$RPC_FILE /tmp/rpc-files/
-    ssh6 $VCRD_ID "/tmp/rpc-files/$RPC_FILE"
+    cat ${VCT_RPC_DIR}/${RPC_REQUEST}
+#    cat ${VCT_RPC_DIR}/${RPC_REQUEST} | ssh6 $VCRD_ID "confine.lib confine_sliver_deploy" > ${VCT_RPC_DIR}/${RPC_REPLY}
+#    cat ${VCT_RPC_DIR}/${RPC_REPLY} >&2
 }
-
 
 
 help() {
@@ -1054,6 +1160,7 @@ help() {
 
     system_install [update]        : install vct system requirements
     system_init                    : initialize vct system on host
+    system_cleanup                 : cleanup system state setup during init
 
     create <rd-id>                 : create domain with given rd-id
     start  <rd-id>                 : start domain with given rd-id
@@ -1062,9 +1169,9 @@ help() {
 
     console <rd-id>                : open console to running domain
 
-    customize0  <rd-id>            : configure id-specific IPv6 address in domain & more...
+    vct_rpc_customize  <rd-id>     : configure id-specific IPv6 address in domain & more...
 
-    vct_rpc allocate_openwrt <rd-id> <sl-id>
+    vct_rpc_allocate_openwrt <rd-id> <sl-id>
  
     ssh4|ssh6 <rd-id> ["commands"] : connect (& execute commands) via ssh (IPv4 or IPv6)
     scp4|scp6 <rd-id> <local src-path> <remote dst-path> : copy data via scp (IPv4 or IPv6)
@@ -1113,8 +1220,9 @@ case "$1" in
 	system_install)  $*;;
 	system_init_check)  $*;;
 	system_init)  $*;;
+	system_cleanup)  $1;;
 
-	i|info)     $*;;
+	info)       $1 ${2:-};;
 	create)     $1 $2;;
 	start)      $1 $2;;
 	stop)       $1 $2;;
@@ -1124,8 +1232,9 @@ case "$1" in
 	ssh6)       $1 $2 "${3:-}";;
 	scp4)       $1 $2 "$3" "$4";;
 	scp6)       $1 $2 "$3" "$4";;
-        customize0) $1 $2;;
-        vct_rpc)    $1 $2 $3 $4 ;;
+        vct_rpc_customize) $1 $2;;
+        vct_rpc_allocate_openwrt) $1 $2 $3 ;;
+        vct_rpc_deploy)           $1 $2 $3 ;;
 	test)    $*;;
 	
         *) echo "unknown command!" ; exit 1 ;;
