@@ -43,7 +43,7 @@ uci_check_clean() {
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
     local OPT_PATH=$( path_opt "$OPT_CMD" )
 
-    if [ "$( uci $OPT_PATH changes $UCI_CONFIG )" != "" ] ; then
+    if [ "$( uci $OPT_PATH -q changes $UCI_CONFIG )" != "" ] ; then
 	err $FUNCNAME "uci $UCI_CONFIG config unclean\n. Please commit or revert (eg uci revert $UCI_CONFIG or uci commit $UCI_CONFIG )!" $CMD_SOFT,$CMD_QUIET
 	return 1
     fi
@@ -92,7 +92,7 @@ uci_get() {
 
     uci_check_clean $VAR_NAME $CMD_PATH
 
-    local VAR_VALUE=; VAR_VALUE="$(uci $OPT_PATH -q get $VAR_NAME)"
+    local VAR_VALUE=; VAR_VALUE="$(uci $OPT_PATH -q get $VAR_NAME )"
     local RET_VALUE=$?
 
     [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $OPT_PATH get $1)" $CMD_SOFT,$CMD_QUIET
@@ -302,32 +302,6 @@ EOF
     uci $OPT_PATH commit $TMP_CFG
 
 }
-
-var_get() {
-    local VAR_NAME=$1
-    local OPT_CMD=${2:-}
-    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local VAR_VALUE=
-
-    if [ -z $VAR_NAME ]; then
-        err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
-    fi
-
-    set +u # temporary disable set -o nounset
-    VAR_VALUE=$( eval echo \$$VAR_NAME )
-    set -u
-
-    if [ -z "$VAR_VALUE" ]; then
-        err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
-    fi
-
-    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
-    return 0
-}
-
-
-
 
 
 install_url() {

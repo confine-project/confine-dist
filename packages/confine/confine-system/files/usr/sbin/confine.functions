@@ -1,0 +1,77 @@
+###!/bin/bash
+
+check_rd_id() {
+
+    local VCRD_ID=${1:-}
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local VCRD_MIN=0001
+    local VCRD_MAX=fff0
+
+    if [ -z "$VCRD_ID" ] || \
+	! echo "$VCRD_ID" | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" >/dev/null || \
+	[  "$(( 16#${VCRD_ID} ))" -lt "$(( 16#${VCRD_MIN} ))" ] || \
+	[  "$(( 16#${VCRD_ID} ))" -gt "$(( 16#${VCRD_MAX} ))" ] ; then
+	err $FUNCNAME "Invalid value=$VCRD_ID! node_id MUST be a 4-digit-hex (lower case) value within [$VCRD_MIN..$VCRD_MAX]" ${CMD_SOFT:-} ; return 1
+    fi
+    
+    if [  "$(( 16#${VCRD_ID:2:2} ))" == 0 ] ||  [ "$(( 16#${VCRD_ID:2:2} ))" -gt 253 ]; then
+	err $FUNCNAME "sorry, two least significant digits 00, FE, FF are reserved"  ${CMD_SOFT:-} ; return 1
+    fi
+
+    echo $VCRD_ID
+}
+
+check_slice_id() {
+    local SL_ID_HEX="$1"
+
+    echo $SL_ID_HEX | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" >/dev/null || \
+	err $FUNCNAME "slice_id=$SL_ID_HEX MUST be 12-digit hex (lower-case) value"
+
+    echo "$SL_ID_HEX"
+}
+
+check_vlan_nr() {
+    local VLAN_NR="$1"
+
+    echo $VLAN_NR | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f]$" >/dev/null || \
+	err $FUNCNAME "vlan_nr=$VLAN_NR MUST be 3-digit hex (lower-case) value"
+
+    echo "$VLAN_NR"
+}
+
+variable_check() {
+
+    local VAR_NAME=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local VAR_VALUE=
+
+    if [ -z $VAR_NAME ]; then
+	err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
+    fi
+
+    set +u # temporary disable set -o nounset
+    VAR_VALUE=$( eval echo \$$VAR_NAME  )
+    set -u
+
+    if [ -z "$VAR_VALUE" ]; then
+	err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
+    fi
+
+    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
+    return 0
+}
+
+ip4_net_to_mask() {
+    local NETWORK="$1"
+
+    [ -z ${NETWORK:-} ] &&\
+        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
+
+    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
+        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
+    
+}
+

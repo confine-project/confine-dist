@@ -14,6 +14,7 @@ fi
 
 UCI_DEFAULT_PATH=$VCT_UCI_DIR
 ERR_LOG_TAG='VCT'
+. ./lxc.functions
 . ./confine.functions
 
 
@@ -134,32 +135,6 @@ install_url_DISABLED() {
 }
 
 
-variable_check() {
-
-    local VAR_NAME=$1
-    local OPT_CMD=${2:-}
-    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local VAR_VALUE=
-
-    if [ -z $VAR_NAME ]; then
-	err $FUNCNAME "missing <cmd> and/or <var-name> parameters"  ${CMD_SOFT:-}; return 1
-    fi
-
-#    eval VAR_VALUE=\$$VAR_NAME
-    
-    set +u # temporary disable set -o nounset
-    VAR_VALUE=$( eval echo \$$VAR_NAME  )
-    set -u
-
-    if [ -z "$VAR_VALUE" ]; then
-	err $FUNCNAME "variable $VAR_NAME undefined"  ${CMD_SOFT:-}; return 1
-    fi
-
-    [ -z  ${CMD_QUIET:-} ] && echo "$VAR_VALUE"
-    return 0
-}
-
 
 vct_sudo() {
 
@@ -184,16 +159,6 @@ vct_sudo() {
     return $?
 }
 
-ip4_net_to_mask() {
-    local NETWORK="$1"
-
-    [ -z ${NETWORK:-} ] &&\
-        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
-
-    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
-        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
-    
-}
 
 
 
@@ -562,23 +527,6 @@ system_cleanup() {
 #######  
 ##########################################################################
 
-
-check_rd_id() {
-
-    local VCRD_ID=${1:-}
-    local OPT_CMD=${2:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-
-    if [ -z "$VCRD_ID" ] || ! echo "$VCRD_ID" | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" >/dev/null ; then
-	err $FUNCNAME "Invalid RD_ID=$VCRD_ID usage: $FUNCNAME <4-digit-hex RD ID>" ${CMD_SOFT:-} ; return 1
-    fi
-    
-    if [  "$(( 16#${VCRD_ID:2:2} ))" == 0 ] ||  [ "$(( 16#${VCRD_ID:2:2} ))" -gt 253 ]; then
-	err $FUNCNAME "sorry, two least significant digits 00, FE, FF are reserved"  ${CMD_SOFT:-} ; return 1
-    fi
-
-    echo $VCRD_ID
-}
 
 
 
@@ -991,12 +939,6 @@ EOF
 
     cat <<EOF >> $RPC_PATH
 
-#uci revert confine-defaults
-#uci set confine-defaults.defaults=defaults
-#uci set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48
-#uci set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48
-#uci commit confine-defaults
-
 echo "" > /etc/config/confine-testbed
 uci revert confine-testbed
 uci set confine-testbed.testbed=testbed
@@ -1021,14 +963,18 @@ uci set confine-node.node.id=$VCRD_ID
 uci set confine-node.node.rd_pubkey="\$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
 uci set confine-node.node.cn_url=""
 uci set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16
+
 uci set confine-node.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24
 uci set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO
 
 [ "$VCT_NODE_PUBLIC_IPV4_PROTO" = "static" ] && \
-uci set confine-node.node.rd_public_ipv4_addrs="$( echo $( for i in $( seq 1 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i; done )  )"
+uci set confine-node.node.rd_public_ipv4_addrs="$( echo $( \
+  for i in $( seq 1 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do \
+     echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i/$VCT_RD_LOCAL_V4_PL; \
+  done )  )"
 
 uci set confine-node.node.rd_public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL
-uci set confine-node.node.state=install
+uci set confine-node.node.state=installing
 uci commit confine-node
 
 
@@ -1060,13 +1006,12 @@ EOF
 vct_rpc_allocate_openwrt() {
 
     local VCRD_ID=$(check_rd_id ${1} )
-    local SLICE_ID=$2
+    local SLICE_ID=$( check_slice_id $2 )
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 
     local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
     local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
     local SLICE_DB="slice-attributes-$SLICE_ID"
-
 
     if ! uci_test $SLICE_DB.$SLICE_ID.state soft,quiet ; then
 
@@ -1076,7 +1021,7 @@ vct_rpc_allocate_openwrt() {
 
     elif [ "$( uci_get $SLICE_DB.$SLICE_ID.state )" != "allocating" ] ; then
 	
-	err "$FUNCNAME SLICE_ID=$SLICE_ID not in allocating state"
+	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocating state"
 
     fi
 
@@ -1089,14 +1034,15 @@ config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
     option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
-    option if00_type       internal
-    option if01_type       public
-    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO
-    option if02_type       isolated
-    option if02_parent     eth1
+    option vlan_nr         "f${SLICE_ID:10:2}" # mandatory for if-types isolated
+    option if00_type       internal 
+    option if01_type       public # optional
+    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO # mandatory for if-type public
+    option if02_type       isolated # optional
+    option if02_parent     eth1 # mandatory for if-types isolated
 EOF
 
-    cat $VCT_RPC_DIR/$RPC_REQUEST | ssh6 $VCRD_ID "confine.lib confine_sliver_allocate" > $VCT_RPC_DIR/$RPC_REPLY
+    cat $VCT_RPC_DIR/$RPC_REQUEST | ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
     cat $VCT_RPC_DIR/$RPC_REPLY >&2
 
     if [ "$( uci_get $RPC_REPLY.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )" = "allocated" ] ; then
@@ -1117,7 +1063,7 @@ EOF
 vct_rpc_deploy() {
 
     local VCRD_ID=$(check_rd_id ${1} )
-    local SLICE_ID=$2
+    local SLICE_ID=$( check_slice_id $2 )
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 
     local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request.sh"
@@ -1125,11 +1071,11 @@ vct_rpc_deploy() {
     local SLICE_DB="slice-attributes-$SLICE_ID"
  
 
-    local SLICE_STATE=$( uci_get $SLICE_DB.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )
+    local SLICE_STATE=$( uci_get $SLICE_DB.$SLICE_ID.state soft,quiet )
 
     if [ "$SLICE_STATE" = "allocating" ] ; then
 
-	uci_set $SLICE_DB.$SLICE_ID.state=deploying path=$VCT_RPC_DIR
+	uci_set $SLICE_DB.$SLICE_ID.state=deploying
 
     elif [ "$SLICE_STATE" != "deploying" ] ; then
 	
@@ -1141,11 +1087,11 @@ vct_rpc_deploy() {
     virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
 	err $FUNCNAME "$VCRD_NAME not running"
     
-    uci_show $SLICE_DB path=$VCT_RPC_DIR | grep -v "^$SLICE_DB.$SLICE_ID" | uci_dot_to_file $SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
+    uci_show $SLICE_DB | grep -v "^$SLICE_DB.$SLICE_ID" | uci_dot_to_file $SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
-    cat ${VCT_RPC_DIR}/${RPC_REQUEST}
-#    cat ${VCT_RPC_DIR}/${RPC_REQUEST} | ssh6 $VCRD_ID "confine.lib confine_sliver_deploy" > ${VCT_RPC_DIR}/${RPC_REPLY}
-#    cat ${VCT_RPC_DIR}/${RPC_REPLY} >&2
+#    cat ${VCT_RPC_DIR}/${RPC_REQUEST}
+    cat ${VCT_RPC_DIR}/${RPC_REQUEST} | ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+    cat ${VCT_RPC_DIR}/${RPC_REPLY} >&2
 }
 
 
