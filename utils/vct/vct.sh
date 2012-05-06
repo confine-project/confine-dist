@@ -781,7 +781,7 @@ ssh6() {
     fi
     
     ssh -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	root@${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64} "$COMMAND"
+	root@${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64} "$COMMAND" # 2> >(grep -v "Permanently added") | cat
 
 }
 
@@ -971,12 +971,21 @@ uci set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO
 uci set confine-node.node.rd_public_ipv4_addrs="$( echo $( \
   for i in $( seq 1 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do \
      echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i/$VCT_RD_LOCAL_V4_PL; \
-  done )  )"
+  done ) )"
+
+uci set confine-node.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"
 
 uci set confine-node.node.rd_public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL
 uci set confine-node.node.state=installing
 uci commit confine-node
 
+$( for dev in $VCT_NODE_ISOLATED_PARENTS; do echo "
+uci set network.$dev=interface       ;\
+uci set network.$dev.ifname=$dev     ;\
+uci set network.$dev.proto=static    ;\
+uci set network.$dev.ipaddr=0.0.0.0  ;\
+" ; done )
+uci commit network
 
 
 lxc.lib lxc_stop       fd_dummy
@@ -1034,16 +1043,21 @@ config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
     option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
-    option vlan_nr         "f${SLICE_ID:10:2}" # mandatory for if-types isolated
+    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
-    option if01_type       public # optional
-    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO # mandatory for if-type public
+    option if01_type       public   # optional
+    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO   # mandatory for if-type public
     option if02_type       isolated # optional
-    option if02_parent     eth1 # mandatory for if-types isolated
+    option if02_parent     eth1     # mandatory for if-types isolated
 EOF
-
+    
+    echo "# >>>> Input stream begin >>>>" >&1
+    cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
+    echo "# <<<< Input stream end <<<<<<" >&1
     cat $VCT_RPC_DIR/$RPC_REQUEST | ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
-    cat $VCT_RPC_DIR/$RPC_REPLY >&2
+#    echo "# >>>> Output stream begin >>>>" >&1
+    cat $VCT_RPC_DIR/$RPC_REPLY           >&1
+#    echo "# <<<< Output stream end <<<<<<" >&1
 
     if [ "$( uci_get $RPC_REPLY.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )" = "allocated" ] ; then
 
@@ -1066,8 +1080,8 @@ vct_rpc_deploy() {
     local SLICE_ID=$( check_slice_id $2 )
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 
-    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request.sh"
-    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply.sh"
+    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request"
+    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
     local SLICE_DB="slice-attributes-$SLICE_ID"
  
 
@@ -1089,9 +1103,11 @@ vct_rpc_deploy() {
     
     uci_show $SLICE_DB | grep -v "^$SLICE_DB.$SLICE_ID" | uci_dot_to_file $SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
-#    cat ${VCT_RPC_DIR}/${RPC_REQUEST}
+    echo "# >>>> Input stream begin >>>>" >&1
+    cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
+    echo "# <<<< Input stream end <<<<<<" >&1
     cat ${VCT_RPC_DIR}/${RPC_REQUEST} | ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
-    cat ${VCT_RPC_DIR}/${RPC_REPLY} >&2
+    cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
 }
 
 
@@ -1181,6 +1197,9 @@ case "$1" in
         vct_rpc_customize) $1 $2;;
         vct_rpc_allocate_openwrt) $1 $2 $3 ;;
         vct_rpc_deploy)           $1 $2 $3 ;;
+        vct_rpc_start)            $1 $2 $3 ;;
+        vct_rpc_stop)             $1 $2 $3 ;;
+        vct_rpc_destroy)          $1 $2 $3 ;;
 	test)    $*;;
 	
         *) echo "unknown command!" ; exit 1 ;;

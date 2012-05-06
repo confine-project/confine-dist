@@ -82,26 +82,26 @@ confine_allocate_container() {
 	CT_NR_HEX=$( printf "%.2x\n" $CONFINE_CONTAINER_NR_MAX_DEC )
 
     local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
-    local LXC_CTS="$( uci_get_sections lxc container soft )"
+    local CONTAINERS="$( uci_get_sections lxc container soft )"
 
+    local CONTAINER_NRS=
     local TMP_SL_ID=
-    local CONFINE_CTS=
+    local TMP_CT_NR=
 
     for TMP_SL_ID in $SLIVERS ; do
 	local HEX=$( uci_get confine-slivers.$TMP_SL_ID.container_nr soft,quiet)
-
-	[ $HEX ] || continue
-
-	echo "$CONFINE_CTS" | grep $HEX && \
-	    err $FUNCNAME "container_nr=$HEX used twice !!!"
-
-	CONFINE_CTS="$( [ "$CONFINE_CTS" ] && echo "$CONFINE_CTS $HEX" || echo "$HEX" )"
+	[ $HEX ] && CONTAINER_NRS="$( [ "$CONTAINER_NRS" ] && echo "$CONTAINER_NRS $HEX" || echo "$HEX" )"
     done
 
-    #echo "SL_ID_HEX=$SL_ID_HEX CT_NR_HEX=$CT_NR_HEX SLIVERS=$SLIVERS CONFINE_CTS=$CONFINE_CTS" >&2
+    for TMP_CT_NR in $CONTAINERS ; do
+	local HEX=$( uci_get lxc.$TMP_CT_NR.container_nr soft,quiet)
+	[ $HEX ] && CONTAINER_NRS="$( [ "$CONTAINER_NRS" ] && echo "$CONTAINER_NRS $HEX" || echo "$HEX" )"
+    done
+
+    #echo "SL_ID_HEX=$SL_ID_HEX CT_NR_HEX=$CT_NR_HEX SLIVERS=$SLIVERS CONTAINER_NRS=$CONTAINER_NRS" >&2
 
 
-    if echo "$CONFINE_CTS $LXC_CTS" | grep $CT_NR_HEX >/dev/null ; then
+    if echo "$CONTAINER_NRS" | grep $CT_NR_HEX >/dev/null ; then
 
 	CT_NR_HEX=
 
@@ -112,7 +112,7 @@ confine_allocate_container() {
 
 	    local HEX=$( printf "%.2x\n" $(( ( $CONFINE_CONTAINER_NR_MAX_DEC + 1 ) - $DEC )) )
 
-	    if ! echo "$CONFINE_CTS $LXC_CTS" | grep $HEX >/dev/null ; then
+	    if ! echo "$CONTAINER_NRS" | grep $HEX >/dev/null ; then
 
 		CT_NR_HEX=$HEX
 		break
@@ -158,8 +158,6 @@ confine_allocate_public_ipv4() {
 
 
     for TMP_IP in $AVAIL_IPS ; do
-
-	echo "grepping for $TMP_IP in $USED_IPS" >&2
 
 	if ! echo "$USED_IPS" | grep $TMP_IP > /dev/null; then
 
@@ -217,10 +215,11 @@ confine_sliver_allocate() {
     if [ "$( uci_get $SRC_CFG.$SL_ID soft,path=$SRC_DIR )" = "sliver" ] ; then
 
 
-	[ "$( uci_get confine-slices.$SL_ID soft,quiet )" = "slice" ] && \
+	uci_test confine-slices.$SL_ID soft,quiet && \
 	    err $FUNCNAME "slice=$SL_ID already defined"
 
-	confine_sliver_destroy $SL_ID
+	uci_test confine-sliver.$SL_ID soft,quiet && \
+	    confine_sliver_destroy $SL_ID
 
 	true && \
 	    uci_test $SRC_CFG.$SL_ID.user_pubkey     soft,path=$SRC_DIR && \
@@ -233,7 +232,7 @@ confine_sliver_allocate() {
 
 
 	local VLAN_NR=$( uci_get $SRC_CFG.$SL_ID.vlan_nr soft,quiet,path=$SRC_DIR )
-	if [ "$VLAN_RN" ] ; then
+	if [ "$VLAN_NR" ] ; then
 
 	    VLAN_NR=$( check_vlan_nr $VLAN_NR )
 	    
@@ -374,7 +373,7 @@ confine_sliver_allocate() {
 		local IF_IPV4=$(    uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4       soft,quiet,path=$OUT_DIR )
 		local IF_IPV6=$(    uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6       soft,quiet,path=$OUT_DIR )
 		local IF_PARENT=$(  uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_parent     soft,quiet,path=$OUT_DIR )
-		local IF_VLANTAG=$( uci_get confine-slices.$SL_ID.vlan_nr soft,quiet )
+		local IF_VLANTAG=$( uci_get $SLC_CFG.$SL_ID.vlan_nr                soft,quiet,path=$OUT_DIR )
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 		    
@@ -492,9 +491,8 @@ confine_sliver_start() {
     echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=$( check_slice_id $1 )
-
-    local NODE_ID=$( uci_get confine-node.node.id )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
 
     if  [ "$( uci_get confine-slices.$SL_ID soft )" = "slice" ] && \
 	[ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
@@ -510,6 +508,8 @@ confine_sliver_start() {
 	if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 	    uci_set confine-slivers.$SL_ID.state=started
 	else
+	    lxc.lib lxc_stop $CT_NR
+	    uci_set confine-slivers.$SL_ID.state=deployed
 	    err $FUNCNAME "Failed starting slice_id=$SL_ID" soft
 	fi
 
@@ -527,21 +527,50 @@ confine_sliver_stop() {
 
     echo "$FUNCNAME $# $@" >&2
 
-    local SL_ID=$( check_slice_id $1 )
+    local SL_ID=
+    for SL_ID in $( [ "$1" = "all" ] && ( uci_get_sections confine-slivers sliver soft,quiet || true ) || check_slice_id $1 ); do
 
-    
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
 
+	if  [ "$CT_NR" ] ; then
+	    
+	    if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+		lxc.lib lxc_stop $CT_NR
+	    fi
+	    
+	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
+		uci_set confine-slivers.$SL_ID.state=deployed
+	    fi
+	    
+	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers | grep -v container_nr
+	    
+	else
+	    err $FUNCNAME "Failed retrieving container_nr for slice_id=$SL_ID " soft
+	fi
+    done
 }
+
 
 confine_sliver_destroy() {
 
     echo "$FUNCNAME $# $@" >&2
 
-    local SL_ID=$( check_slice_id $1 )
+    local SL_ID=
+    for SL_ID in $( [ "$1" = "all" ] && ( uci_get_sections confine-slivers sliver soft,quiet || true ) || check_slice_id $1 ); do
 
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+	
+	if [ "$CT_NR" ] ; then
+	    lxc.lib lxc_stop $CT_NR
+	    lxc.lib lxc_purge $CT_NR
+	    #uci_del lxc.$CT_NR soft
+	else
+	    err $FUNCNAME "Failed retrieving container_nr for slice_id=$SL_ID " soft
+	fi
 
-    confine_sliver_stop    $SL_ID
-
+	uci_del confine-slivers.$SL_ID soft
+	uci_del confine-slices.$SL_ID soft
+    done
 }
 
 
@@ -569,7 +598,7 @@ else
 
     case "$CMD" in
 	confine_node_customize) $CMD ;;
-	confine_sliver_allocate|confine_sliver_deploy) $CMD ${1:-};;
+	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_destroy) $CMD $1;;
 	*) help;;
     esac

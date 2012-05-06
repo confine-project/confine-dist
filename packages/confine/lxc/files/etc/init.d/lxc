@@ -9,11 +9,11 @@ START=80
 
 start() {
 
-    lxc.lib system_init
+    lxc.lib lxc_check
 
     local SL_NAME=
 
-    for SL_NAME in $( uci_get_sections lxc container ); do
+    for SL_NAME in $( lxc.lib uci_get_sections lxc container ); do
 
 	if [ "$( uci -q get lxc.$SL_NAME.container_id || true )" = "${SL_NAME:0:2}" ] && [ "$( uci -q get lxc.$SL_NAME.auto_boot || true )" = "1" ]; then
 	    lxc.lib lxc_start $SL_NAME
@@ -25,7 +25,7 @@ start() {
 
 stop() {
 
-    lxc.lib system_init
+    lxc.lib lxc_check
 
     local SL_NAME=
 

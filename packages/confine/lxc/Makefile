@@ -62,14 +62,19 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
 
-	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
-	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
-	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
 	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
 	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
 	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
 	$(CP) ./files/lxc/scripts/openwrt.sh   $(1)/lxc/scripts/
 	$(CP) ./files/lxc/scripts/debian.sh    $(1)/lxc/scripts/
+	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_create
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_start
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_stop
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_remove
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_prune
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-cgroup $(1)/usr/bin/lxc-cgroup

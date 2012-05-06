@@ -53,7 +53,8 @@ VCT_SERVER_TINC_PORT=655
 
 VCT_NODE_PUBLIC_IPV4_PROTO="static"     # dhcp or static and following addresses
 VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"  # completes to prefix16.node-id-lsb.X
-VCT_NODE_PUBLIC_IPV4_AVAIL="4"
+VCT_NODE_PUBLIC_IPV4_AVAIL="8"
+VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
 
 VCT_SLIVER_PUBLIC_IPV4_PROTO="static"   # dhcp or static
 
