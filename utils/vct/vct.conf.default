@@ -35,7 +35,7 @@ VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel "
 VCT_VIRT_GROUP="libvirt"
 
 VCT_INTERFACE_MODEL="rtl8139"
-VCT_INTERFACE_MAC24="52:54:00"    # leave untuched for qemu/kvm 
+VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
 
 
 #################################################
@@ -161,8 +161,8 @@ VCT_DEB_PACKAGES=" \
     bridge-utils \
     ebtables \
     ipcalc \
+    iproute \
     iptables \
-    iputils-arping \
     iputils-ping \
     ipv6calc \
     kvm \
@@ -176,7 +176,6 @@ VCT_DEB_PACKAGES=" \
 "
 
 VCT_TOOL_TESTS=( \
-    'arping -V' \
     'awk --version' \
     'brctl --version' \
     'ebtables --version' \
@@ -196,6 +195,12 @@ VCT_TOOL_TESTS=( \
     )
 
 
-VCT_OPT_PACKAGES="uml-utilities"
+VCT_OPT_PACKAGES=" \
+   iputils-arping \
+   uml-utilities \
+"
 
 
+VCT_OPT_TOOL_TESTS=( \
+    'arping -V' \
+    )

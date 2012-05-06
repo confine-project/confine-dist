@@ -728,9 +728,13 @@ ssh4_prepare() {
 
     # echo "connecting to $VCT_RD_RESCUE_V4_IP via $LOCAL_MAC"
 
-    if ! arp -n | grep -e "^$VCT_RD_RESCUE_V4_IP" | grep -e "$LOCAL_MAC" > /dev/null; then
-	vct_sudo arp -s $VCT_RD_RESCUE_V4_IP  $LOCAL_MAC
+    if ! ip neigh | grep -e "^$VCT_RD_RESCUE_V4_IP" | grep -e "lladdr $LOCAL_MAC" > /dev/null; then
+	vct_sudo ip neigh replace $VCT_RD_RESCUE_V4_IP lladdr $LOCAL_MAC nud permanent dev $VCT_BR00_NAME
     fi
+
+#    if ! arp -n | grep -e "^$VCT_RD_RESCUE_V4_IP" | grep -e "$LOCAL_MAC" > /dev/null; then
+#	vct_sudo arp -s $VCT_RD_RESCUE_V4_IP  $LOCAL_MAC
+#    fi
 
     if ! ping -c 1 -w 2 -W 2 $VCT_RD_RESCUE_V4_IP > /dev/null; then
 	echo "Waiting for $VCRD_ID to listen on $VCT_RD_RESCUE_V4_IP... (after boot this may take upto 40 secs)"
@@ -1135,10 +1139,10 @@ help() {
 
     vct_rpc_allocate_openwrt <rd-id> <sl-id>
  
-    ssh4|ssh6 <rd-id> ["commands"] : connect (& execute commands) via ssh (IPv4 or IPv6)
-    scp4|scp6 <rd-id> <local src-path> <remote dst-path> : copy data via scp (IPv4 or IPv6)
-
-
+    ssh4 <rd-id> ["commands"] : connect (& execute commands) via IPv4 recovery net
+    scp4 <rd-id> <local src-path> <remote dst-path> : copy data via IPv4 recovery net
+    ssh6 <rd-id> ["commands"] : connect (& execute commands) via IPv6 debug net
+    scp6 <rd-id> <local src-path> <remote dst-path> : copy data via IPv6 debug net
 
     Future requests (commands not yet implemnted):
 
