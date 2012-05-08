@@ -29,8 +29,10 @@ err() {
     local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
 
-    [ ${CMD_QUIET:-} ] || echo -e  "$ERR_LOG_TAG  ERROR ${FUNC}(): ${MSG}" >&2
-    [ ${CMD_QUIET:-} ] || logger -t $ERR_LOG_TAG "ERROR ${FUNC}(): ${MSG}"
+    local WARN_LEVEL=$( [ $CMD_SOFT ] && echo WARNING || echo ERROR )
+
+    [ ${CMD_QUIET:-} ] || echo -e  "$ERR_LOG_TAG  $WARN_LEVEL ${FUNC}(): ${MSG}" >&2
+    [ ${CMD_QUIET:-} ] || logger -t $ERR_LOG_TAG "$WARN_LEVEL ${FUNC}(): ${MSG}"
 
     [ ${CMD_SOFT:-} ] && return 1 || exit_all
 }
@@ -95,7 +97,7 @@ uci_get() {
     local VAR_VALUE=; VAR_VALUE="$(uci $OPT_PATH -q get $VAR_NAME )"
     local RET_VALUE=$?
 
-    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $OPT_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "$@" $CMD_SOFT,$CMD_QUIET
     echo "$VAR_VALUE"
     return $RET_VALUE
 }
@@ -121,7 +123,7 @@ uci_show() {
     uci -q $OPT_PATH show $VAR_NAME
     local RET_VALUE=$?
 
-    [ $RET_VALUE = 0 ] || err $FUNCNAME "UCI returned an error (uci $OPT_PATH get $1)" $CMD_SOFT,$CMD_QUIET
+    [ $RET_VALUE = 0 ] || err $FUNCNAME "$@" $CMD_SOFT,$CMD_QUIET
     return $RET_VALUE
 }
 
