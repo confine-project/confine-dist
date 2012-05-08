@@ -532,7 +532,7 @@ lxc_create <id_name> <template or config.id_name>  # eg:$ lxc_create 01_hello lx
 lxc_start  <id_name>
 lxc_stop   <id_name>
 lxc_remove <id_name>
-lxc_prune  <id_name>
+lxc_purge  <id_name>
 EOF
 
 }
@@ -556,7 +556,7 @@ else
     case "$CMD" in
 	help) $CMD;;
 	lxc_create) $CMD $1 $2;;
-	lxc_start|lxc_stop|lxc_remove|lxc_prune) $CMD $1;;
+	lxc_start|lxc_stop|lxc_remove|lxc_purge) $CMD $1;;
 	*) help;;
     esac
 

@@ -139,7 +139,7 @@ uci_get_sections() {
 
     uci_check_clean $OPT_CONFIG $CMD_PATH
 
-    uci -q $OPT_PATH show $OPT_CONFIG | grep -e "=${OPT_TYPE}$" | awk -F'=' '{print $1}' | awk -F"${OPT_CONFIG}\." '{print $2 }' | grep -v '\.' | sed ':a;N;$!ba;s/\n/ /g'
+    uci -q $OPT_PATH show $OPT_CONFIG | grep -e "=${OPT_TYPE}$" | awk -F'=' '{print $1}' | awk -F"${OPT_CONFIG}." '{print $2 }' | grep -v "\." | sed ':a;N;$!ba;s/\n/ /g'
 
     local RET_VALUE=$?
 
@@ -159,7 +159,7 @@ uci_del() {
 
     uci_check_clean $UCI_CONFIG $CMD_PATH
 
-    uci $OPT_PATH delete $UCI_CONFIG.$UCI_SEC_OPT || err $FUNCNAME "$@"
+    uci $OPT_PATH -q delete $UCI_CONFIG.$UCI_SEC_OPT || err $FUNCNAME "$@"
 
     uci $OPT_PATH commit $UCI_CONFIG
 }
@@ -278,7 +278,7 @@ $( grep -e "^$TMP_CFG\." | while read L; do echo $L | awk -F'=' '{print "set " $
 EOF
 
     uci -c $TMP_DIR commit
-    uci -c $TMP_DIR export $TMP_CFG | grep -v package
+    uci -c $TMP_DIR export $TMP_CFG | grep -v package | grep -v "^$"
     rm -rf $TMP_DIR/
 }
 
@@ -318,7 +318,7 @@ install_url() {
     local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
     local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
 
-    echo $@ >&2
+    # echo $@ >&2
     
     [ "$URL" = "${URL_SITE}${URL_NAME}.${URL_COMP}" ] ||\
            { err $FUNCNAME "Invalid $URL != ${URL_SITE}${URL_NAME}.${URL_COMP}" $CMD_SOFT || return 1 ;}
@@ -347,9 +347,9 @@ install_url() {
 		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
                        { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
 		
-	    elif echo $URL_SITE | grep -e "file://" ; then
+	    elif echo $URL_SITE | grep -e "file://" >/dev/null ; then
 
-		cp $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/  ||\
+		cp -v $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/   >&2 ||\
                        { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
 
 	    elif echo $URL_SITE | grep -e "^ssh:" ; then

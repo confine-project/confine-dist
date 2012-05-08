@@ -70,11 +70,12 @@ define Package/lxc/install
 	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
 	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
 	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_help
 	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_create
 	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_start
 	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_stop
 	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_remove
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_prune
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_purge
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-cgroup $(1)/usr/bin/lxc-cgroup
