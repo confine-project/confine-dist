@@ -195,7 +195,7 @@ confine_node_customize() {
 
 confine_sliver_allocate() {
 
-    echo "$FUNCNAME $# $@" >&2
+    # echo "$FUNCNAME $# $@" >&2
 
     confine_system_check
 
@@ -208,21 +208,17 @@ confine_sliver_allocate() {
     local OUT_DIR=$CONFINE_RPC_DIR
     
     cat $SRC > $SRC_DIR/$SRC_CFG
-#    cat $SRC_DIR/$SRC_CFG >&2
 
     local NODE_ID=$( uci_get confine-node.node.id )
 
-#    local SL_ID=
-#    for SL_ID in $( uci_get_sections $SRC_CFG sliver soft,path=$SRC_DIR ); do
-#	SL_ID=$( check_slice_id $SL_ID )
     if [ "$( uci_get $SRC_CFG.$SL_ID soft,path=$SRC_DIR )" = "sliver" ] ; then
 
 
 	uci_test confine-slices.$SL_ID soft,quiet && \
 	    err $FUNCNAME "slice=$SL_ID already defined"
 
-	uci_test confine-sliver.$SL_ID soft,quiet && \
-	    confine_sliver_remove $SL_ID
+	## uci_test confine-sliver.$SL_ID soft,quiet && \
+	    confine_sliver_remove $SL_ID quiet
 
 	true && \
 	    uci_test $SRC_CFG.$SL_ID.user_pubkey     soft,path=$SRC_DIR && \
@@ -249,7 +245,6 @@ confine_sliver_allocate() {
 	    done
 
 	    
-
 	    confine_allocate_public_ipv4 $SL_ID soft >/dev/null|| \
 		err $FUNCNAME "Failed allocating public ip"
 	fi
@@ -429,13 +424,12 @@ confine_sliver_allocate() {
 
 	uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
     fi
-#   done
 
 }
 
 confine_sliver_deploy() {
 
-    echo "$FUNCNAME $# $@" >&2
+    # echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=$( check_slice_id $1 )
     local SRC="${2:--}"
@@ -494,7 +488,7 @@ confine_sliver_deploy() {
 
 confine_sliver_start() {
 
-    echo "$FUNCNAME $# $@" >&2
+    # echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=$( check_slice_id $1 )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
@@ -520,7 +514,6 @@ confine_sliver_start() {
 	    err $FUNCNAME "Failed starting slice_id=$SL_ID" soft
 	fi
 
-
     else
 	err $FUNCNAME "slice_id=$SL_ID not properly deployed"
     fi
@@ -530,10 +523,12 @@ confine_sliver_start() {
 
 confine_sliver_stop() {
 
-    echo "$FUNCNAME $# $@" >&2
+    # echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=
-    for SL_ID in $( [ "$1" = "all" ] && ( uci_get_sections confine-slivers sliver soft,quiet || true ) || check_slice_id $1 ); do
+    for SL_ID in $( [ "$1" = "all" ] && \
+	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
+	check_slice_id $1 ); do
 
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
 
@@ -547,7 +542,7 @@ confine_sliver_stop() {
 		uci_set confine-slivers.$SL_ID.state=deployed
 	    fi
 	    
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers | grep -v container_nr
+	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	    
 	else
 	    err $FUNCNAME "Failed retrieving container_nr for slice_id=$SL_ID " soft
@@ -558,27 +553,34 @@ confine_sliver_stop() {
 
 confine_sliver_remove() {
 
-    echo "$FUNCNAME $# $@" >&2
+    local SLIVER_ARG=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+
+#    echo "$FUNCNAME $# $@" >&2
 
     local SLICE_ID=
-    for SLICE_ID in $( [ "$1" = "all" ] && ( uci_get_sections confine-slivers sliver soft,quiet || true ) || check_slice_id $1 ); do
+    for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
+	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
+	check_slice_id $SLIVER_ARG ); do
 
-	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.container_nr soft )
+	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.container_nr soft,$CMD_QUIET )
 	
 	if [ "$CT_NR" ] ; then
 	    lxc.lib lxc_stop $CT_NR
 	    lxc.lib lxc_purge $CT_NR
-	    #uci_del lxc.$CT_NR soft
-	else
-	    err $FUNCNAME "Failed retrieving container_nr for slice_id=$SLICE_ID " soft
 	fi
 
 	local SLIVER_ID=
 	local SLIVERS="$( for SLIVER_ID in $( uci_get_sections confine-slice-attributes sliver ); \
 	    do echo $SLIVER_ID | grep -e "${SLICE_ID}_"; done )"
 
-	uci_del confine-slivers.$SLICE_ID soft
-	uci_del confine-slices.$SLICE_ID soft
+	for SLIVER_ID in $SLIVERS ; do
+	    uci_del confine-slice-attributes.$SLIVER_ID
+	done
+
+	uci_del confine-slivers.$SLICE_ID soft,$CMD_QUIET
+	uci_del confine-slices.$SLICE_ID soft,$CMD_QUIET
 
     done
 }
@@ -609,7 +611,7 @@ else
     case "$CMD" in
 	confine_node_customize) $CMD ;;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
-	confine_sliver_start|confine_sliver_stop|confine_sliver_remove) $CMD $1;;
+	confine_sliver_start|confine_sliver_stop|confine_sliver_remove) $CMD $1 ${2:-};;
 	*) help;;
     esac
 

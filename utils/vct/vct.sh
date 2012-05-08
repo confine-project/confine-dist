@@ -1065,7 +1065,7 @@ vct_slice_attributes() {
 	elif [ "$CMD" = "flush" ] ; then
 
 	    for SLIVER_ID in $SLIVERS ; do
-		uci_del $VCT_SLICE_DB.$SLIVER_ID
+		uci_del $VCT_SLICE_DB.$SLIVER_ID soft
 	    done
 
 	    vct_slice_attributes update $SLICE_ID
@@ -1187,7 +1187,8 @@ EOF
 	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
 	echo "# <<<< Input stream end <<<<<<" >&1
 
-	cat $VCT_RPC_DIR/$RPC_REQUEST | vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
+	cat $VCT_RPC_DIR/$RPC_REQUEST | \
+	    vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
 
 	cat $VCT_RPC_DIR/$RPC_REPLY           >&1
 
@@ -1197,8 +1198,6 @@ EOF
 	    uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
 		sed s/$RPC_REPLY\.${SLICE_ID}/${VCT_SLICE_DB}.${SLICE_ID}_${VCRD_ID}/ | \
 		uci_merge $VCT_SLICE_DB 
-
-	# cat $VCT_UCI_DIR/$VCT_SLICE_DB >&2
 
 	fi
     done
@@ -1216,16 +1215,9 @@ vct_sliver_deploy() {
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
 
-    if [ "$SLICE_STATE" = "allocated" ] ; then
-
-	uci_set $VCT_SLICE_DB.$SLICE_ID.state=deploying
-
-    elif [ "$SLICE_STATE" != "deploying" ] ; then
-	    
-	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocating or deploying state"
-
-    fi
-
+    [ "$SLICE_STATE" = "allocated" ] ||
+	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocated state"
+    
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
@@ -1233,17 +1225,36 @@ vct_sliver_deploy() {
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request"
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
 
-	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-	    err $FUNCNAME "$VCRD_NAME not running"
-	
-	uci_show $VCT_SLICE_DB | grep $VCT_SLICE_DB.${SLICE_ID}_ | uci_dot_to_file $VCT_SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+	    err $FUNCNAME "$VCRD_NAME not running" soft
+	    continue
+	fi
+
+	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "allocated" ] ; then
+	    err $FUNCNAME "sliver=${SLICE_ID}_${VCRD_ID} not in allocated state" soft
+	    continue
+	fi
+
+
+	uci_show $VCT_SLICE_DB | \
+	    grep $VCT_SLICE_DB.${SLICE_ID}_ | \
+	    uci_dot_to_file $VCT_SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
 	echo "# >>>> Input stream begin >>>>" >&1
 	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
 	echo "# <<<< Input stream end <<<<<<" >&1
-	cat ${VCT_RPC_DIR}/${RPC_REQUEST} | vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+
+	cat ${VCT_RPC_DIR}/${RPC_REQUEST} | \
+	    vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+
 	cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
 
+	if [ "$( uci_get $RPC_REPLY.$SLICE_ID soft,quiet,path=$VCT_RPC_DIR )" = "sliver" ] ; then
+
+	    uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
+		sed s/$RPC_REPLY\.${SLICE_ID}/${VCT_SLICE_DB}.${SLICE_ID}_${VCRD_ID}/ | \
+		uci_merge $VCT_SLICE_DB 
+	fi
     done
 }
 
@@ -1258,16 +1269,12 @@ vct_sliver_start() {
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
 
-    vct_slice_attributes $SLICE_ID update
+    vct_slice_attributes update $SLICE_ID
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
 
-    if [ "$SLICE_STATE" = "deployed" ] ; then
-	uci_set $VCT_SLICE_DB.$SLICE_ID.state=starting
-    elif [ "$SLICE_STATE" != "starting" ] ; then
-	err $FUNCNAME "SLICE_ID=$SLICE_ID not in deployed or starting state"
-    fi
-    
+    [ "$SLICE_STATE" = "deployed" ] || \
+	err $FUNCNAME "slice=$SLICE_ID not in deployed state"
 
     local VCRD_ID=
 
@@ -1276,18 +1283,83 @@ vct_sliver_start() {
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
 
-	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-	    err $FUNCNAME "$VCRD_NAME not running"
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+	    err $FUNCNAME "$VCRD_NAME not running" soft
+	    continue
+	fi
+
+	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "deployed" ] ; then
+	    err $FUNCNAME "sliver=${SLICE_ID}_${VCRD_ID} not in deployed state" soft
+	    continue
+	fi
 	
 	vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_start $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+
 	cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
+
+	if [ "$( uci_get $RPC_REPLY.$SLICE_ID soft,quiet,path=$VCT_RPC_DIR )" = "sliver" ] ; then
+
+	    uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
+		sed s/$RPC_REPLY\.${SLICE_ID}/${VCT_SLICE_DB}.${SLICE_ID}_${VCRD_ID}/ | \
+		uci_merge $VCT_SLICE_DB 
+	fi
 
     done
 }
 
 
+vct_sliver_stop() {
+
+    local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
+    local VCRD_ID_RANGE=$2
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
+
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+	    err $FUNCNAME "$VCRD_NAME not running" soft
+	    continue
+	fi
+
+	vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_stop $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+
+	cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
+
+	if [ "$( uci_get $RPC_REPLY.$SLICE_ID soft,quiet,path=$VCT_RPC_DIR )" = "sliver" ] ; then
+
+	    uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
+		sed s/$RPC_REPLY\.${SLICE_ID}/${VCT_SLICE_DB}.${SLICE_ID}_${VCRD_ID}/ | \
+		uci_merge $VCT_SLICE_DB
+	fi
+
+    done
+}
 
 
+vct_sliver_remove() {
+
+    local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
+    local VCRD_ID_RANGE=$2
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+	    err $FUNCNAME "$VCRD_NAME not running" soft
+	    continue
+	fi
+
+	vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_remove $SLICE_ID"
+
+	vct_slice_attributes flush $SLICE_ID $VCRD_ID
+
+    done
+}
 
 
 
@@ -1303,33 +1375,38 @@ vct_help() {
     vct_system_init                : initialize vct system on host
     vct_system_cleanup             : revert vct_system_init
 
-    vct_node_info   [<node-id>]    : summary of existing domain(s)
-    vct_node_create  <node-id>     : create domain with given node-id
-    vct_node_start   <node-id>     : start domain with given node-id
-    vct_node_stop    <node-id>     : stop domain with given node-id
-    vct_node_remove  <node-id>     : remove domain with given node-id
-    vct_node_console <node-id>     : open console to running domain
+    vct_node_info    [NODE_ID]     : summary of existing domain(s)
+    vct_node_create  <NODE_ID>     : create domain with given NODE_ID
+    vct_node_start   <NODE_ID>     : start domain with given NODE_ID
+    vct_node_stop    <NODE_ID>     : stop domain with given NODE_ID
+    vct_node_remove  <NODE_ID>     : remove domain with given NODE_ID
+    vct_node_console <NODE_ID>     : open console to running domain
 
-    vct_node_ssh4    <node-id> ["commands"]  : connect (& execute commands) via IPv4 recovery net
-    vct_node_ssh6    <node-id> ["commands"]  : connect (& execute commands) via IPv6 debug net
-    vct_node_scp4    <node-id> <local src-path> <remote dst-path>  : copy data via IPv4 recovery net
-    vct_node_scp6    <node-id> <local src-path> <remote dst-path>  : copy data via IPv6 debug net
+    vct_node_ssh4    <NODE_ID> ["COMMANDS"]  : connect (& execute COMMANDS) via IPv4 recovery net
+    vct_node_ssh6    <NODE_ID> ["COMMANDS"]  : connect (& execute COMMANDS) via IPv6 debug net
+    vct_node_scp4    <NODE_ID> <LOCAL_SRC_PATH> <REMOTE_DST_PATH>  : copy data via IPv4 recovery net
+    vct_node_scp6    <NODE_ID> <LOCAL_SRC_PATH> <REMOTE_DST_PATH>  : copy data via IPv6 debug net
 
-    vct_node_customize   <node-id>  : setup node-id specific attributes (confine configs, addresses...)
+    vct_node_customize   <NODE_ID>  : setup NODE_ID specific attributes (confine configs, addresses...)
 
-    vct_sliver_allocate  <sl-id> <node-id> [os-type:openwrt,debian] 
-    vct_sliver_deploy    <sl-id> <node-id> 
+    vct_sliver_allocate  <SL_ID> <NODE_ID|node-range|all> [OS_TYPE:openwrt,debian] 
+    vct_sliver_deploy    <SL_ID> <NODE_ID|node-range|all> 
+    vct_sliver_start     <SL_ID> <NODE_ID|node-range|all> 
+    vct_sliver_stop      <SL_ID> <NODE_ID|node-range|all> 
+    vct_sliver_remove    <SL_ID> <NODE_ID|node-range|all> 
 
-    vct_slice_attributes  <show|flush|update|state=<alloc|...>> <sl-id|all> [node-id]
+    vct_slice_attributes  <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
+
+
+    NODE_ID:=  node id given by a 4-digit lower-case hex value 
+    SL_ID:=    slice id given by a 12-digit lower-case hex value
+    OS_TYPE:=  openwrt|debian
 
 -------------------------------------------------------------------------------------------
 
     Future requests (commands not yet implemented):
     -----------------------------------------------
 
-    vct_sliver_start     <sl-id> <node-id> 
-    vct_sliver_stop      <sl-id> <node-id> 
-    vct_sliver_remove    <sl-id> <node-id> 
     
 
 
