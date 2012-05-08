@@ -70,17 +70,19 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/etc
 	$(INSTALL_DIR) $(1)/etc/config
-	$(CP)  ./files/etc/config/confine-slivers  $(1)/etc/config/
-	$(CP)  ./files/etc/config/confine-slices   $(1)/etc/config/
-	$(CP)  ./files/etc/config/confine-defaults $(1)/etc/config/
-	$(CP)  ./files/usr/sbin/confine.lib        $(1)/usr/sbin/
-	$(CP)  ./files/usr/sbin/confine.functions  $(1)/usr/sbin/
+	$(CP)  ./files/etc/config/confine-defaults  $(1)/etc/config/
+	$(CP)  ./files/etc/config/confine-slivers   $(1)/etc/config/
+	$(CP)  ./files/etc/config/confine-slices    $(1)/etc/config/
+	$(CP)  ./files/etc/config/confine-slice-attributes  $(1)/etc/config/
+	$(CP)  ./files/usr/sbin/confine.lib         $(1)/usr/sbin/
+	$(CP)  ./files/usr/sbin/confine.functions   $(1)/usr/sbin/
+	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_customize
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
-	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_destroy
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove
 endef
 
 

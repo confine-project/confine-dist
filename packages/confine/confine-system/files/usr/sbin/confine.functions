@@ -1,10 +1,14 @@
 ###!/bin/bash
 
+CONFINE_SLICE_AND_SLIVER_STATES="error allocating allocated deploying deployed starting started"
+
+
 check_rd_id() {
 
     local VCRD_ID=${1:-}
     local OPT_CMD=${2:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
     local VCRD_MIN=0001
     local VCRD_MAX=fff0
 
@@ -19,17 +23,58 @@ check_rd_id() {
 	err $FUNCNAME "sorry, two least significant digits 00, FE, FF are reserved"  ${CMD_SOFT:-} ; return 1
     fi
 
-    echo $VCRD_ID
+    [ "$CMD_QUIET" ] || echo $VCRD_ID
 }
 
 check_slice_id() {
     local SL_ID_HEX="$1"
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
 
     echo $SL_ID_HEX | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" >/dev/null || \
-	err $FUNCNAME "slice_id=$SL_ID_HEX MUST be 12-digit hex (lower-case) value"
+	err $FUNCNAME "slice_id=$SL_ID_HEX MUST be 12-digit hex (lower-case) value" $CMD_SOFT
 
-    echo "$SL_ID_HEX"
+    [ $CMD_QUIET ] || echo "$SL_ID_HEX"
 }
+
+
+
+check_node_state() {
+    local STATE=$1
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+
+    case "$STATE" in
+	installing|maintenance|running|error) [ $CMD_QUIET ] || echo $STATE ;;
+         
+
+	*) err $FUNCNAME "Illegal slice_state=$STATE" $CMD_SOFT ;;
+    esac
+}
+
+
+check_slice_or_sliver_state() {
+    local STATE="$1"
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+
+    local VALID_STATE=
+    for VALID_STATE in $CONFINE_SLICE_AND_SLIVER_STATES ; do
+    	if [ "$STATE" = "$VALID_STATE" ] ; then
+	   [ $CMD_QUIET ] || echo $STATE
+	   return 0
+	fi
+    done
+
+    err $FUNCNAME "Illegal state=$STATE" $CMD_SOFT
+}
+
+
+
+
 
 check_vlan_nr() {
     local VLAN_NR="$1"
