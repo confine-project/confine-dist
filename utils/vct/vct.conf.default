@@ -18,7 +18,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-11.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-21.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -27,7 +27,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # and old domains must be removed:      $ .vct.sh remove <rd-id> 
 # and re-installed:                     $ .vct.sh create <rd-id> 
 # VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
- VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
 
 VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel "
@@ -53,7 +53,7 @@ VCT_SERVER_TINC_PORT=655
 
 VCT_NODE_PUBLIC_IPV4_PROTO="static"     # dhcp or static and following addresses
 VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"  # completes to prefix16.node-id-lsb.X
-VCT_NODE_PUBLIC_IPV4_AVAIL="8"
+VCT_NODE_PUBLIC_IPV4_AVAIL="6"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
 
 VCT_SLIVER_PUBLIC_IPV4_PROTO="static"   # dhcp or static
@@ -150,12 +150,13 @@ PATH="$PATH=:/sbin:/usr/sbin"
 
 VCT_DL_DIR=$VCT_VIRT_DIR/downloads
 VCT_SYS_DIR=$VCT_VIRT_DIR/images
+VCT_MNT_DIR=$VCT_VIRT_DIR/mnt
 VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
 VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 VCT_KNOWN_HOSTS_FILE=$VCT_VIRT_DIR/known_hosts
 
 VCT_RD_RPC_DIR=/var/run/confine/rpc
-
+VCT_SLICE_DB="slice-attributes"
 
 VCT_DEB_PACKAGES=" \
     bridge-utils \
@@ -179,6 +180,7 @@ VCT_TOOL_TESTS=( \
     'awk --version' \
     'brctl --version' \
     'ebtables --version' \
+    'fdisk -v' \
     'ip -V' \
     'ipcalc --version' \
     'iptables --version' \
@@ -198,6 +200,7 @@ VCT_TOOL_TESTS=( \
 VCT_OPT_PACKAGES=" \
    iputils-arping \
    uml-utilities \
+   util-linux \
 "
 
 

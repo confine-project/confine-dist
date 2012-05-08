@@ -24,116 +24,6 @@ ERR_LOG_TAG='VCT'
 #######  some general tools for convinience
 ##########################################################################
 
-exit_all_DISABLED() {
-    # echo "terminating due to previous error, killing PID=$MAIN_PID from $BASHPID" >&2
-    kill $MAIN_PID
-    sleep 10
-    echo "this should never be printed !!!!!!!!!!!!!!!"
-}
-
-
-
-err_DISABLED() {
-    local FUNC=$1
-    local MSG=$2
-    local OPT_CMD=${3:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-
-    echo -e "ERROR ${FUNC}(): ${MSG}" >&2
-
-    [ ${CMD_SOFT:-} ] && return 1 || exit_all
-}
-
-
-
-install_url_DISABLED() {
-
-    local URL=$1
-    local URL_SITE=$2
-    local URL_NAME=$3
-    local URL_COMP=$4
-    local CACHE_DIR=$5
-    local INSTALL_PATH=$6  # /path/to/dir or "-"
-
-    local OPT_CMD=${7:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
-    local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
-
-    [ "$URL" = "${URL_SITE}${URL_NAME}.${URL_COMP}" ] ||\
-           { err $FUNCNAME "Invalid $URL != ${URL_SITE}${URL_NAME}.${URL_COMP}" $CMD_SOFT || return 1 ;}
-
-
-    
-    echo $CACHE_DIR | grep  -e "^/" >/dev/null ||
-             { err $FUNCNAME "Invalid CACHE_DIR=$CACHE_DIR" $CMD_SOFT || return 1 ;}
-
-    echo $URL_NAME | grep -e "/" -e "*" -e " " >/dev/null &&\
-	     { err $FUNCNAME "Illegal fs-template name $URL_NAME" $CMD_SOFT || return 1 ;}
-
-    ( [ $URL_COMP = "tgz" ] ||  [ $URL_COMP = "tar.gz" ] || [ $URL_COMP = "gz" ]  ) ||\
-	     { err $FUNCNAME "Non-supported fs template compression $URL_COMP" $CMD_SOFT || return 1 ;}
-
-    if [ $CMD_UPDATE ]; then
-	rm -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}"
-    fi
-
-    if ! [ -f "$CACHE_DIR/${URL_NAME}.${URL_COMP}" ] ; then 
-	
-	if [ $CMD_INSTALL ]; then
-
-	    if echo $URL_SITE | grep -e "^ftp://"  -e "^http://"  -e "^https://" >/dev/null; then
-		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
-                       { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
-		
-	    elif echo $URL_SITE | grep -e "file://" >/dev/null; then
-
-		cp $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/  ||\
-                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
-
-	    elif echo $URL_SITE | grep -e "^ssh:" >/dev/null ; then
-		local SCP_PORT=$( echo $URL_SITE | awk -F':' '{print $2}' )
-		local SCP_PORT_USAGE=$( [ $SCP_PORT ] && echo "-P $SCP_PORT" )
-		local SCP_USER_DOMAIN=$( echo $URL_SITE | awk -F':' '{print $3}' )
-		local SCP_PATH=$( echo $URL_SITE | awk -F'://' '{print $2}' )
-
-		[ $SCP_USER_DOMAIN ] && [ $SCP_PATH ] ||\
-                       { err $FUNCNAME "Invalid SCP_USER_DOMAIN=$SCP_USER_DOMAIN or SCP_PATH=$SCP_PATH" $CMD_SOFT || return 1 ;}
-
- 		scp ${SCP_PORT_USAGE} ${SCP_USER_DOMAIN}:${SCP_PATH}/${URL_NAME}.${URL_COMP} $CACHE_DIR/ ||\
-                       { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}
-		
-	    else
-                err $FUNCNAME "Non-supported URL=$URL" $CMD_SOFT || return 1
-	    fi
-	else
-	    err $FUNCNAME "Non-existing image $CACHE_DIR/${URL_NAME}.${URL_COMP} " $CMD_SOFT || return 1
-	fi
-    fi
-
-    if echo $INSTALL_PATH | grep -e "^/" >/dev/null &&  ! [ -f $INSTALL_PATH ]; then
-
-	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) &&\
-                  tar -xzvOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ; then
-	    
-	    echo "nop" > /dev/null
-	    
-	elif [ $CMD_INSTALL ] && [ "$URL_COMP" = "gz" ] &&\
-                  gunzip --stdout $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH"   ; then
-	    
-	    echo "nop" > /dev/null
-	    
-	else
-	    
-	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
-	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
-	    
-	    err $FUNCNAME "Non-existing image: $INSTALL_PATH" $CMD_SOFT || return 1
-	    
-	fi
-    fi
-}
-
 
 
 vct_sudo() {
@@ -142,8 +32,8 @@ vct_sudo() {
 
     if [ "$VCT_SUDO_ASK" != "NO" ]; then
 
-	echo "$0 wants to execute the following command and VCT_SUDO_ASK has been set to explicitly ask:" >&2
-	echo "sudo $@" >&2
+	echo "$0 wants to execute (VCT_SUDO_ASK=$VCT_SUDO_ASK set to ask):" >&2
+	echo ">>>>   sudo $@   <<<<" >&2
 	read -p "please type y to continue or anything else to abort: " QUERY >&2
 
 	if [ "$QUERY" == "y" ] ; then
@@ -166,13 +56,14 @@ vct_sudo() {
 #######  
 ##########################################################################
 
-system_config_check() {
+vct_system_config_check() {
 
     variable_check VCT_SUDO_ASK        quiet
     variable_check VCT_VIRT_DIR        quiet
     variable_check VCT_SYS_DIR         quiet
     variable_check VCT_DL_DIR          quiet
     variable_check VCT_RPC_DIR         quiet
+    variable_check VCT_MNT_DIR         quiet
     variable_check VCT_UCI_DIR         quiet
     variable_check VCT_DEB_PACKAGES    quiet
     variable_check VCT_USER            quiet
@@ -211,7 +102,7 @@ system_config_check() {
 }
 
 
-system_install_check() {
+vct_system_install_check() {
 
     local OPT_CMD=${1:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
@@ -280,6 +171,12 @@ system_install_check() {
 	 { err $FUNCNAME "$VCT_RPC_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
+    # check node mount directory:
+    if ! [ -d $VCT_MNT_DIR ]; then
+	( [ $CMD_INSTALL ] && mkdir -p $VCT_MNT_DIR ) ||\
+	 { err $FUNCNAME "$VCT_MNT_DIR  not existing" $CMD_SOFT || return 1 ;}
+    fi
+
     # check vct uci directory:
     if ! [ -d $VCT_UCI_DIR ]; then
 	( [ $CMD_INSTALL ] && mkdir -p $VCT_UCI_DIR ) ||\
@@ -299,19 +196,19 @@ system_install_check() {
 	
 }
 
-system_install() {
-    system_install_check "install,$@"
+vct_system_install() {
+    vct_system_install_check "install,$@"
 }
 
 
-system_init_check() {
+vct_system_init_check(){
 
     local OPT_CMD=${1:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
     local CMD_QUICK=$( echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," || echo "" )
     local CMD_INIT=$( echo "$OPT_CMD" | grep -e "init" > /dev/null && echo "init," || echo "" )
 
-    system_install_check $( [ $CMD_SOFT ] && echo "soft," )$( [ $CMD_QUICK ] && echo "quick," )
+    vct_system_install_check $( [ $CMD_SOFT ] && echo "soft," )$( [ $CMD_QUICK ] && echo "quick," )
 
     # check if  kernel modules are loaded:
     local KMOD=
@@ -460,16 +357,16 @@ EOF
 }
 
 
-system_init() {
-    system_init_check init
+vct_system_init() {
+    vct_system_init_check init
 }
 
 
-system_cleanup() {
+vct_system_cleanup() {
 
     local VCRD_ID=
-    for VCRD_ID in $( info | grep -e "$VCT_RD_NAME_PREFIX" | awk '{print $2}' | awk -F"$VCT_RD_NAME_PREFIX" '{print $2}' ); do
-	remove $VCRD_ID
+    for VCRD_ID in $( vct_node_info | grep -e "$VCT_RD_NAME_PREFIX" | awk '{print $2}' | awk -F"$VCT_RD_NAME_PREFIX" '{print $2}' ); do
+	vct_node_remove $VCRD_ID
     done
 
 
@@ -529,112 +426,155 @@ system_cleanup() {
 
 
 
+vcrd_ids_get() {
 
-info() {
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID_STATE=${2:-}
+    local VCRD_ID=
 
-    local VCRD_ID=${1:-}
+    if [ "$VCRD_ID_RANGE" = "all" ] ; then
+	
+	vct_node_info | grep -e "$VCT_RD_NAME_PREFIX" | grep -e "$VCRD_ID_STATE$" | \
+	    awk -F" $VCT_RD_NAME_PREFIX" '{print $2}' | awk '{print $1}'
 
-    if [ -z "$VCRD_ID" ]; then
+    elif echo $VCRD_ID_RANGE | grep -e "-" >/dev/null; then
+	local VCRD_ID_MIN=$( echo $VCRD_ID_RANGE | awk -F'-' '{print $1}' )
+	local VCRD_ID_MAX=$( echo $VCRD_ID_RANGE | awk -F'-' '{print $2}' )
+	check_rd_id $VCRD_ID_MIN >/dev/null || err $FUNCNAME ""
+	check_rd_id $VCRD_ID_MAX >/dev/null || err $FUNCNAME ""
+
+	local DEC
+	for DEC in $( seq $(( 16#${VCRD_ID_MIN} ))  $(( 16#${VCRD_ID_MAX} )) ); do 
+	    check_rd_id $( printf "%.4x " $DEC )
+	done
+    else
+	check_rd_id $VCRD_ID_RANGE
+    fi
+}
+
+
+vct_node_info() {
+
+    local VCRD_ID_RANGE=${1:-}
+
+    if [ -z "$VCRD_ID_RANGE" ]; then
 
 	virsh -c qemu:///system list --all
 
     else
 
+	local VCRD_ID=
+	for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	    virsh -c qemu:///system dominfo $VCRD_NAME
+	done
+    fi
+}
 
-	VCRD_ID=$(check_rd_id $VCRD_ID)
+vct_node_stop() {
+
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-
-	virsh -c qemu:///system dominfo $VCRD_NAME
-    fi
-}
-
-stop() {
-
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-
-    if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "running" >/dev/null ; then
-	virsh -c qemu:///system destroy $VCRD_NAME ||\
-	    err $FUNCNAME "Failed stopping domain $VCRD_NAME"
-    fi
-}
-
-remove() {
-
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_NAME=$( virsh -c qemu:///system list --all 2>/dev/null  | grep ${VCRD_ID} | awk '{print $2}' )
-
-    if [ $VCRD_NAME ]; then
-
-	local VCRD_PATH=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	    xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
-	    grep -e "^${VCT_SYS_DIR}" || \
-		err $FUNCNAME "Failed resolving disk path for $VCRD_NAME" )
 
 	if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "running" >/dev/null ; then
 	    virsh -c qemu:///system destroy $VCRD_NAME ||\
 	    err $FUNCNAME "Failed stopping domain $VCRD_NAME"
 	fi
-
-	if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "off" >/dev/null ; then
-	    virsh -c qemu:///system undefine $VCRD_NAME ||\
-	    err $FUNCNAME "Failed undefining domain $VCRD_NAME"
-	fi
 	
-	[ -f $VCRD_PATH ] && rm -f $VCRD_PATH
-
-    else
-	err $FUNCNAME "No system with rd-id=$VCRD_ID $VCRD_NAME found"
-
-    fi
+    done
 }
 
 
-create() {
-
-    system_init_check quick
-
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-    local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
-
-    virsh -c qemu:///system dominfo $VCRD_NAME 2>/dev/null && \
-	err $FUNCNAME "Domain name=$VCRD_NAME already exists"
-
-    [ -f $VCRD_PATH ] && \
-	echo "Removing existing rootfs=$VCRD_PATH" >&2 && rm -f $VCRD_PATH
 
 
-    if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
-	err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
-    fi    
+vct_node_remove() {
 
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
 
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
+	local VCRD_NAME=$( virsh -c qemu:///system list --all 2>/dev/null  | grep ${VCRD_ID} | awk '{print $2}' )
 
-    local VCRD_NETW=""
-    local BRIDGE=
-    for BRIDGE in $VCT_BRIDGE_PREFIXES; do
+	if [ $VCRD_NAME ]; then
 
-	local BR_NAME=
+	    local VCRD_PATH=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+		xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
+		grep -e "^${VCT_SYS_DIR}" || \
+		    err $FUNCNAME "Failed resolving disk path for $VCRD_NAME" )
 
-	echo $BRIDGE | grep -e "^VCT_BR[0-f][0-f]$" || \
-	    err $FUNCNAME "Invalid VCT_BRIDGE_PREFIXES naming convention: $BRIDGE"
+	    if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "running" >/dev/null ; then
+		virsh -c qemu:///system destroy $VCRD_NAME ||\
+	    err $FUNCNAME "Failed stopping domain $VCRD_NAME"
+	    fi
 
-	if BR_NAME=$( variable_check ${BRIDGE}_NAME soft ); then
+	    if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "off" >/dev/null ; then
+		virsh -c qemu:///system undefine $VCRD_NAME ||\
+	    err $FUNCNAME "Failed undefining domain $VCRD_NAME"
+	    fi
+	    
+	    [ -f $VCRD_PATH ] && rm -f $VCRD_PATH
 
-	    local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null ) 
-	    local BR_MAC48=$( variable_check ${BRIDGE}_MAC48 soft 2>/dev/null || \
-		echo "${VCT_INTERFACE_MAC24}:$( echo ${BRIDGE:6:7} ):${VCRD_ID:0:2}:${VCRD_ID:2:3}" ) 
-	    local BR_VNET="vct-rd${VCRD_ID}-br$( echo ${BRIDGE:6:7} )"
+	else
+	    err $FUNCNAME "No system with rd-id=$VCRD_ID $VCRD_NAME found"
+
 	fi
+    done
+}
 
-	VCRD_NETW="${VCRD_NETW}  --network bridge=${BR_NAME}"
-	[ "$BR_MODEL" ] && VCRD_NETW="${VCRD_NETW},model=${BR_MODEL}"
-	[ "$BR_MAC48" != "RANDOM" ] && VCRD_NETW="${VCRD_NETW},mac=${BR_MAC48}"
+
+vct_node_create() {
+
+    vct_system_init_check quick
+
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+
+	virsh -c qemu:///system dominfo $VCRD_NAME 2>/dev/null && \
+	    err $FUNCNAME "Domain name=$VCRD_NAME already exists"
+
+	[ -f $VCRD_PATH ] && \
+	    echo "Removing existing rootfs=$VCRD_PATH" >&2 && rm -f $VCRD_PATH
+
+
+	if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
+	    err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
+	fi    
+
+
+
+
+	local VCRD_NETW=""
+	local BRIDGE=
+	for BRIDGE in $VCT_BRIDGE_PREFIXES; do
+
+	    local BR_NAME=
+
+	    echo $BRIDGE | grep -e "^VCT_BR[0-f][0-f]$" >/dev/null || \
+		err $FUNCNAME "Invalid VCT_BRIDGE_PREFIXES naming convention: $BRIDGE"
+
+	    if BR_NAME=$( variable_check ${BRIDGE}_NAME soft ); then
+
+		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null ) 
+		local BR_MAC48=$( variable_check ${BRIDGE}_MAC48 soft 2>/dev/null || \
+		    echo "${VCT_INTERFACE_MAC24}:$( echo ${BRIDGE:6:7} ):${VCRD_ID:0:2}:${VCRD_ID:2:3}" ) 
+		local BR_VNET="vct-rd${VCRD_ID}-br$( echo ${BRIDGE:6:7} )"
+	    fi
+
+	    VCRD_NETW="${VCRD_NETW}  --network bridge=${BR_NAME}"
+	    [ "$BR_MODEL" ] && VCRD_NETW="${VCRD_NETW},model=${BR_MODEL}"
+	    [ "$BR_MAC48" != "RANDOM" ] && VCRD_NETW="${VCRD_NETW},mac=${BR_MAC48}"
         # ,target=${BR_VNET}"
-	
+	    
 	# this requires virsh --version 0.9.9
 	# local VCRD_IFACE="bridge ${BR_NAME} --persistent --target ${BR_VNET}"
 	# [ "$BR_MODEL" ] && VCRD_IFACE="$VCRD_IFACE --model ${BR_MODEL} "
@@ -643,14 +583,14 @@ create() {
 	# echo "attach-interface $VCRD_IFACE"
 
 	# if ! virsh -c qemu:///system attach-interface $VCRD_NAME $VCRD_IFACE ; then
-	#     remove $VCRD_ID
+	#     vct_node_remove $VCRD_ID
 	#     err $FUNCNAME "Failed attaching-interface $VCRD_IFACE to $VCRD_NAME"
 	# fi
-    done
+	done
 
 
-    local TEMPLATE_TYPE=$( [ "$VCT_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_TEMPLATE_TYPE" )
-    local VIRT_CMD="\
+	local TEMPLATE_TYPE=$( [ "$VCT_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_TEMPLATE_TYPE" )
+	local VIRT_CMD="\
     virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --os-type linux \
 	--import --disk path=$VCRD_PATH,format=$TEMPLATE_TYPE \
 	--vcpus=1 --noautoconsole --virt-type kvm --hvm --accelerate --noacpi --noapic  --noreboot \
@@ -660,34 +600,42 @@ create() {
 
 # --graphics none  --cpu 486
 
-    echo $VIRT_CMD
+	echo $VIRT_CMD
 
-    if ! $VIRT_CMD; then
-	remove $VCRD_ID
-	err $FUNCNAME "Failed creating domain name=$VCRD_NAME"
-    fi
-
-
+	if ! $VIRT_CMD; then
+	    vct_node_remove $VCRD_ID
+	    err $FUNCNAME "Failed creating domain name=$VCRD_NAME"
+	fi
+    done
 }
 
 
-start() {
+vct_node_start() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-    local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
 
-    ( [ -f $VCRD_PATH ] &&\
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+	local VCRD_MNTP=$VCT_MNT_DIR/$VCRD_NAME
+
+	    mount | grep "$VCRD_MNTP" >/dev/null && \
+		err $FUNCNAME "node-id=$VCRD_ID already mounted offline, use vct_node_unmount"
+
+
+	( [ -f $VCRD_PATH ] &&\
 	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "off" >/dev/null &&\
 	virsh -c qemu:///system start $VCRD_NAME ) ||\
 	    err $FUNCNAME "Failed starting domain $VCRD_NAME"
-
+    done
 }
 
 
-console() {
+vct_node_console() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
     if virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
@@ -709,9 +657,9 @@ console() {
 }
 
 
-ssh4_prepare() {
+vct_node_ssh4_prepare() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
 
@@ -742,9 +690,9 @@ ssh4_prepare() {
     fi
 }
 
-ssh4_prepared() {
+vct_node_ssh4_prepared() {
 
-    local VCRD_ID=$(check_rd_id $1 )
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local COMMAND=
 
     echo > $VCT_KNOWN_HOSTS_FILE
@@ -757,12 +705,12 @@ ssh4_prepared() {
 	root@$VCT_RD_RESCUE_V4_IP "$COMMAND"
 }
 
-ssh4() {
+vct_node_ssh4() {
 
-    local VCRD_ID=$(check_rd_id $1 )
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local COMMAND=
 
-    ssh4_prepare $VCRD_ID
+    vct_node_ssh4_prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
     if ! [ -z "${2:-}" ]; then
@@ -773,9 +721,9 @@ ssh4() {
 	root@$VCT_RD_RESCUE_V4_IP "$COMMAND"
 }
 
-ssh6() {
+vct_node_ssh6() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local COMMAND=
 
     echo > $VCT_KNOWN_HOSTS_FILE
@@ -789,10 +737,10 @@ ssh6() {
 
 }
 
-scp4() {
+vct_node_scp4() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local SRC=${2:-}
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+    local SRC="$2"
     local DST=${3:-}
 
     if [ -z ${SRC} ] || [ -z ${DST} ]; then
@@ -800,17 +748,17 @@ scp4() {
     fi
 
     
-    ssh4_prepare $VCRD_ID
+    vct_node_ssh4_prepare $VCRD_ID
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@$VCT_RD_RESCUE_V4_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
+	$SRC root@$VCT_RD_RESCUE_V4_IP:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
-scp6() {
+vct_node_scp6() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local SRC=${2:-}
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+    local SRC="$2"
     local DST=${3:-}
 
     if [ -z ${SRC} ] || [ -z ${DST} ]; then
@@ -820,29 +768,92 @@ scp6() {
     echo > $VCT_KNOWN_HOSTS_FILE
 
     scp -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KNOWN_HOSTS_FILE -o ConnectTimeout=1 \
-	"$SRC" root@\[${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
+	$SRC root@\[${VCT_RD_DEBUG_V6_PREFIX48}:${VCRD_ID}::${VCT_RD_DEBUG_V6_SUFFIX64}\]:$DST 2>&1 | grep -v "Warning: Permanently added"
 }
 
 
-vct_rpc_customize() {
 
-    local VCRD_ID=$(check_rd_id ${1:-} )
-    local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
-    local VCRD_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+vct_node_mount() {
 
-    local RPC_TYPE="basics"
-    local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d-%H%M%S )-${RPC_TYPE}.sh"
-    local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
 
-    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-	err $FUNCNAME "$VCRD_NAME not running"
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-    cat <<EOF > $RPC_PATH
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+	local VCRD_MNTP=$VCT_MNT_DIR/$VCRD_NAME
+
+	if [ -f $VCRD_PATH ] && \
+	    ! mount | grep "$VCRD_MNTP" >/dev/null && \
+	    vct_node_info | grep $VCRD_NAME  | grep "shut off" >/dev/null; then
+
+	    local IMG_UNIT_SIZE=$( fdisk -lu $VCRD_PATH 2>/dev/null | \
+		grep "^Units = " | awk -F'=' '{print $(NF) }' | awk '{print $1 }' )
+
+	    local IMG_ROOTFS_START=$( fdisk -lu $VCRD_PATH 2>/dev/null | \
+		grep "${VCRD_PATH}2" | awk '{print $(NF-4) }' )
+
+	    [ $IMG_UNIT_SIZE ] && [ $IMG_ROOTFS_START ] || \
+		err $FUNCNAME "Failed resolving rootfs usize=$IMG_UNIT_SIZE start=$IMG_ROOTFS_START"
+
+	    mkdir -p $VCRD_MNTP
+	    
+	    vct_sudo mount -o loop,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
+		err $FUNCNAME "Failed mounting $VCRD_PATH"
+
+	else
+	    err $FUNCNAME "Failed offline mounting node-id=$VCRD_ID"
+	fi
+    done
+}
+
+
+vct_node_unmount() {
+
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+	local VCRD_MNTP=$VCT_MNT_DIR/$VCRD_NAME
+
+	if  mount | grep "$VCRD_MNTP" >/dev/null ; then
+
+	    vct_sudo umount $VCRD_MNTP || \
+		err $FUNCNAME "Failed unmounting $VCRD_PATH"
+
+	    rmdir $VCRD_MNTP
+	fi
+    done
+}
+
+
+vct_node_customize() {
+
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local VCRD_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
+	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+
+	local RPC_TYPE="basics"
+	local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d-%H%M%S )-${RPC_TYPE}.sh"
+	local RPC_PATH="${VCT_RPC_DIR}/${RPC_FILE}"
+
+	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	    err $FUNCNAME "$VCRD_NAME not running"
+
+	cat <<EOF > $RPC_PATH
 #!/bin/bash
 
 echo "Configuring CONFINE $RPC_TYPE "
@@ -882,10 +893,10 @@ uci set network.debug.ip6addr=$VCT_RD_DEBUG_V6_PREFIX48:$VCRD_ID::$VCT_RD_DEBUG_
 
 EOF
 
-    
-    if [ "${VCT_RD_LOCAL_V4_PROTO}" = "static" ] && [ ${VCT_RD_LOCAL_V4_PREFIX16:-} ]; then
+	
+	if [ "${VCT_RD_LOCAL_V4_PROTO}" = "static" ] && [ ${VCT_RD_LOCAL_V4_PREFIX16:-} ]; then
 
-	cat <<EOF >> $RPC_PATH
+	    cat <<EOF >> $RPC_PATH
 
 uci set network.local.proto=static
 uci set network.local.ipaddr=$VCT_RD_LOCAL_V4_PREFIX16.0.$VCRD_ID_LSB8BIT_DEC
@@ -900,27 +911,27 @@ uci set network.dflt_route.gateway=$VCT_BR00_V4_LOCAL_IP
 
 EOF
 
-    elif [ "${VCT_RD_LOCAL_V4_PROTO}" = "dhcp" ] ; then
+	elif [ "${VCT_RD_LOCAL_V4_PROTO}" = "dhcp" ] ; then
 
-	cat <<EOF >> $RPC_PATH
+	    cat <<EOF >> $RPC_PATH
 uci set network.local.proto=dhcp
 uci -q delete network.local.ipaddr
 uci -q delete network.local.netmask
 uci -q delete network.local.dns
 uci -q delete network.dflt_route
 EOF
-    fi
+	fi
 
 
-    cat <<EOF >> $RPC_PATH
+	cat <<EOF >> $RPC_PATH
 uci commit network
-echo restarting network...
+echo Restarting network...
 /etc/init.d/network restart
 
 EOF
 
 
-    cat <<EOF >> $RPC_PATH
+	cat <<EOF >> $RPC_PATH
 
 uci revert system
 uci set system.@system[0].hostname="rd${VCRD_ID}"
@@ -941,7 +952,7 @@ EOF
 
 
 
-    cat <<EOF >> $RPC_PATH
+	cat <<EOF >> $RPC_PATH
 
 echo "" > /etc/config/confine-testbed
 uci revert confine-testbed
@@ -1009,44 +1020,147 @@ lxc.lib lxc_start      fd_dummy
 
 EOF
 
-    ssh4_prepare $VCRD_ID
-    cat $RPC_PATH | ssh4_prepared $VCRD_ID "confine.lib confine_node_customize"
+	vct_node_ssh4_prepare $VCRD_ID
+	cat $RPC_PATH | vct_node_ssh4_prepared $VCRD_ID "confine.lib confine_node_customize"
+
+    done
+}
+
+
+vct_slice_attributes() {
+
+    local CMD=$1
+    local SLICE_ARG=$2
+    local NODE_ARG="${3:-}"
+    local SLICES=
+    local SLICE_ID=
+
+    uci -c $VCT_UCI_DIR changes | grep -e "^$VCT_SLICE_DB" && \
+	err $FUNCTION "dirty uci $VCT_SLICE_DB"
+
+    [ "$NODE_ARG" ] && check_rd_id "$NODE_ARG" quiet
+
+    if [ "$SLICE_ARG" = "all" ] ; then
+	SLICES="$( uci_get_sections $VCT_SLICE_DB slice )"
+    else
+	SLICES=$( check_slice_id $SLICE_ARG )
+    fi
+
+    for SLICE_ID in $SLICES; do
+
+	local SLIVER_ID=
+	local SLIVERS="$( [ $NODE_ARG ] && \
+	    echo ${SLICE_ID}_${NODE_ARG} || \
+	    for SLIVER_ID in $( uci_get_sections $VCT_SLICE_DB sliver ); do echo $SLIVER_ID | grep -e "${SLICE_ID}_"; done )"
+
+	if [ "$CMD" = "show" ] ; then
+
+	    uci_show $VCT_SLICE_DB.$SLICE_ID soft,quiet | uci_dot_to_file $VCT_SLICE_DB
+	    echo
+	    for SLIVER_ID in $SLIVERS ; do
+		uci_show $VCT_SLICE_DB.$SLIVER_ID | uci_dot_to_file $VCT_SLICE_DB
+		echo
+	    done
+
+	elif [ "$CMD" = "flush" ] ; then
+
+	    for SLIVER_ID in $SLIVERS ; do
+		uci_del $VCT_SLICE_DB.$SLIVER_ID
+	    done
+
+	    vct_slice_attributes update $SLICE_ID
+
+	elif [ "${CMD:0:6}" = "state=" ] ; then
+
+	    local NEW_STATE=$( echo $CMD | awk -F'state=' '{print $2}' )
+
+	    check_slice_or_sliver_state $NEW_STATE quiet
+	    
+	    for SLIVER_ID in $SLIVERS ; do
+		uci_set $VCT_SLICE_DB.$SLIVER_ID.state=$NEW_STATE
+	    done
+
+	    vct_slice_attributes update $SLICE_ID
+
+	elif [ "$CMD" = "update" ] ; then
+
+	    local VALID_STATE=
+	    local NEW_STATE=
+
+	    for VALID_STATE in $CONFINE_SLICE_AND_SLIVER_STATES ; do
+
+		for SLIVER_ID in $SLIVERS ; do
+		    if [ $VALID_STATE = $( uci_get $VCT_SLICE_DB.$SLIVER_ID.state ) ] ; then
+			NEW_STATE=$VALID_STATE
+			break
+		    fi
+		done
+		[ $NEW_STATE ] && break
+	    done
+
+	    if [ $NEW_STATE ] ; then
+
+		uci_set $VCT_SLICE_DB.$SLICE_ID.state=$( check_slice_or_sliver_state $NEW_STATE )
+		
+	    else
+
+		uci_show $VCT_SLICE_DB soft,quiet | grep -e "^${VCT_SLICE_DB}.${SLICE_ID}_" && \
+		    err $FUNCNAME "Unrecoverable $VCT_SLICE_DB"
+
+		uci_del $VCT_SLICE_DB.$SLICE_ID soft,quiet
+
+	    fi
+	    
+	else
+	    err $FUNCNAME "Illegal command"
+	fi
+
+    done
 }
 
 
 
+vct_sliver_allocate() {
 
-vct_rpc_allocate_openwrt() {
+    local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
+    local VCRD_ID_RANGE=$2
+    local OS_TYPE=${3:-openwrt}
+    local VCRD_ID=
 
-    local VCRD_ID=$(check_rd_id ${1} )
-    local SLICE_ID=$( check_slice_id $2 )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+    [ "$OS_TYPE" = "openwrt" ] || [ "$OS_TYPE" = "debian" ] || \
+	err $FUNCNAME "OS_TYPE=$OS_TYPE NOT supported"
 
-    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
-    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
-    local SLICE_DB="slice-attributes-$SLICE_ID"
+    vct_slice_attributes update $SLICE_ID
 
-    if ! uci_test $SLICE_DB.$SLICE_ID.state soft,quiet ; then
+    if ! uci_test $VCT_SLICE_DB.$SLICE_ID.state soft,quiet ; then
 
-	touch $VCT_UCI_DIR/$SLICE_DB
-	uci_set $SLICE_DB.$SLICE_ID=slice 
-	uci_set $SLICE_DB.$SLICE_ID.state=allocating
+	touch $VCT_UCI_DIR/$VCT_SLICE_DB
+	uci_set $VCT_SLICE_DB.$SLICE_ID=slice 
+	uci_set $VCT_SLICE_DB.$SLICE_ID.state=allocating
 
-    elif [ "$( uci_get $SLICE_DB.$SLICE_ID.state )" != "allocating" ] ; then
+    elif [ "$( uci_get $VCT_SLICE_DB.$SLICE_ID.state )" != "allocating" ] ; then
 	
 	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocating state"
 
     fi
 
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-	err $FUNCNAME "$VCRD_NAME not running"
-    
-    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
+	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
+
+
+	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	    err $FUNCNAME "$VCRD_NAME not running"
+
+	if [ "$OS_TYPE" = "debian" ]; then
+            cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
-    option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option exp_data_url    'http://distro.confine-project.eu/misc/openwrt-exp-data.tgz'
+    option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
+    option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz'
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
     option if01_type       public   # optional
@@ -1054,118 +1168,185 @@ config sliver $SLICE_ID
     option if02_type       isolated # optional
     option if02_parent     eth1     # mandatory for if-types isolated
 EOF
-    
-    echo "# >>>> Input stream begin >>>>" >&1
-    cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
-    echo "# <<<< Input stream end <<<<<<" >&1
-    cat $VCT_RPC_DIR/$RPC_REQUEST | ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
-#    echo "# >>>> Output stream begin >>>>" >&1
-    cat $VCT_RPC_DIR/$RPC_REPLY           >&1
-#    echo "# <<<< Output stream end <<<<<<" >&1
+	else
+	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
+config sliver $SLICE_ID
+    option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
+    option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
+    option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz'
+    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
+    option if00_type       internal 
+    option if01_type       public   # optional
+    option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO   # mandatory for if-type public
+    option if02_type       isolated # optional
+    option if02_parent     eth1     # mandatory for if-types isolated
+EOF
+	fi
 
-    if [ "$( uci_get $RPC_REPLY.$SLICE_ID.state soft,quiet,path=$VCT_RPC_DIR )" = "allocated" ] ; then
+	echo "# >>>> Input stream begin >>>>" >&1
+	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
+	echo "# <<<< Input stream end <<<<<<" >&1
 
-	touch $VCT_UCI_DIR/$SLICE_DB
-	uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
-	    sed s/$RPC_REPLY\.$SLICE_ID/$SLICE_DB.$VCRD_ID/ | \
-	    sed s/=sliver/=node_id/ | \
-	    uci_merge $SLICE_DB 
+	cat $VCT_RPC_DIR/$RPC_REQUEST | vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
 
-	# cat $VCT_UCI_DIR/$SLICE_DB >&2
+	cat $VCT_RPC_DIR/$RPC_REPLY           >&1
 
-    fi
 
+	if [ "$( uci_get $RPC_REPLY.$SLICE_ID soft,quiet,path=$VCT_RPC_DIR )" = "sliver" ] ; then
+
+	    uci_show $RPC_REPLY.$SLICE_ID path=$VCT_RPC_DIR | \
+		sed s/$RPC_REPLY\.${SLICE_ID}/${VCT_SLICE_DB}.${SLICE_ID}_${VCRD_ID}/ | \
+		uci_merge $VCT_SLICE_DB 
+
+	# cat $VCT_UCI_DIR/$VCT_SLICE_DB >&2
+
+	fi
+    done
 }
 
 
-vct_rpc_deploy() {
+vct_sliver_deploy() {
 
-    local VCRD_ID=$(check_rd_id ${1} )
-    local SLICE_ID=$( check_slice_id $2 )
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+    local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
+    local VCRD_ID_RANGE=$2
+    local VCRD_ID=
 
-    local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request"
-    local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
-    local SLICE_DB="slice-attributes-$SLICE_ID"
- 
 
-    local SLICE_STATE=$( uci_get $SLICE_DB.$SLICE_ID.state soft,quiet )
+    vct_slice_attributes update $SLICE_ID
 
-    if [ "$SLICE_STATE" = "allocating" ] ; then
+    local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
 
-	uci_set $SLICE_DB.$SLICE_ID.state=deploying
+    if [ "$SLICE_STATE" = "allocated" ] ; then
+
+	uci_set $VCT_SLICE_DB.$SLICE_ID.state=deploying
 
     elif [ "$SLICE_STATE" != "deploying" ] ; then
-	
+	    
 	err $FUNCNAME "SLICE_ID=$SLICE_ID not in allocating or deploying state"
 
     fi
 
 
-    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-	err $FUNCNAME "$VCRD_NAME not running"
-    
-    uci_show $SLICE_DB | grep -v "^$SLICE_DB.$SLICE_ID" | uci_dot_to_file $SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-    echo "# >>>> Input stream begin >>>>" >&1
-    cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
-    echo "# <<<< Input stream end <<<<<<" >&1
-    cat ${VCT_RPC_DIR}/${RPC_REQUEST} | ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
-    cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request"
+	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
+
+	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	    err $FUNCNAME "$VCRD_NAME not running"
+	
+	uci_show $VCT_SLICE_DB | grep $VCT_SLICE_DB.${SLICE_ID}_ | uci_dot_to_file $VCT_SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
+
+	echo "# >>>> Input stream begin >>>>" >&1
+	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
+	echo "# <<<< Input stream end <<<<<<" >&1
+	cat ${VCT_RPC_DIR}/${RPC_REQUEST} | vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_deploy $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+	cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
+
+    done
 }
 
 
-help() {
+
+
+
+
+
+vct_sliver_start() {
+
+    local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
+    local VCRD_ID_RANGE=$2
+
+    vct_slice_attributes $SLICE_ID update
+
+    local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
+
+    if [ "$SLICE_STATE" = "deployed" ] ; then
+	uci_set $VCT_SLICE_DB.$SLICE_ID.state=starting
+    elif [ "$SLICE_STATE" != "starting" ] ; then
+	err $FUNCNAME "SLICE_ID=$SLICE_ID not in deployed or starting state"
+    fi
+    
+
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
+
+	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	    err $FUNCNAME "$VCRD_NAME not running"
+	
+	vct_node_ssh6 $VCRD_ID "confine.lib confine_sliver_start $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
+	cat ${VCT_RPC_DIR}/${RPC_REPLY}       >&1
+
+    done
+}
+
+
+
+
+
+
+
+
+vct_help() {
 
     echo "usage..."
     cat <<EOF
 
-    help
+    vct_help
 
-    info  [<rd-id>]                : summary of existing domain(s)
+    vct_system_install [update]    : install vct system requirements
+    vct_system_init                : initialize vct system on host
+    vct_system_cleanup             : revert vct_system_init
 
-    system_install [update]        : install vct system requirements
-    system_init                    : initialize vct system on host
-    system_cleanup                 : cleanup system state setup during init
+    vct_node_info   [<node-id>]    : summary of existing domain(s)
+    vct_node_create  <node-id>     : create domain with given node-id
+    vct_node_start   <node-id>     : start domain with given node-id
+    vct_node_stop    <node-id>     : stop domain with given node-id
+    vct_node_remove  <node-id>     : remove domain with given node-id
+    vct_node_console <node-id>     : open console to running domain
 
-    create <rd-id>                 : create domain with given rd-id
-    start  <rd-id>                 : start domain with given rd-id
-    stop   <rd-id>                 : stop domain with given rd-id
-    remove <rd-id>                 : remove domain with given rd-id
+    vct_node_ssh4    <node-id> ["commands"]  : connect (& execute commands) via IPv4 recovery net
+    vct_node_ssh6    <node-id> ["commands"]  : connect (& execute commands) via IPv6 debug net
+    vct_node_scp4    <node-id> <local src-path> <remote dst-path>  : copy data via IPv4 recovery net
+    vct_node_scp6    <node-id> <local src-path> <remote dst-path>  : copy data via IPv6 debug net
 
-    console <rd-id>                : open console to running domain
+    vct_node_customize   <node-id>  : setup node-id specific attributes (confine configs, addresses...)
 
-    vct_rpc_customize  <rd-id>     : configure id-specific IPv6 address in domain & more...
+    vct_sliver_allocate  <sl-id> <node-id> [os-type:openwrt,debian] 
+    vct_sliver_deploy    <sl-id> <node-id> 
 
-    vct_rpc_allocate_openwrt <rd-id> <sl-id>
- 
-    ssh4 <rd-id> ["commands"] : connect (& execute commands) via IPv4 recovery net
-    scp4 <rd-id> <local src-path> <remote dst-path> : copy data via IPv4 recovery net
-    ssh6 <rd-id> ["commands"] : connect (& execute commands) via IPv6 debug net
-    scp6 <rd-id> <local src-path> <remote dst-path> : copy data via IPv6 debug net
+    vct_slice_attributes  <show|flush|update|state=<alloc|...>> <sl-id|all> [node-id]
 
-    Future requests (commands not yet implemnted):
+-------------------------------------------------------------------------------------------
 
-    link-get [rd-id]               : show configured links
-    link-add <rd-id-A:direct-if-A> <rd-id-B:direct-if-B> <[packet-loss]> 
-                                     virtually link rd-id a via direct if a with rd b
+    Future requests (commands not yet implemented):
+    -----------------------------------------------
+
+    vct_sliver_start     <sl-id> <node-id> 
+    vct_sliver_stop      <sl-id> <node-id> 
+    vct_sliver_remove    <sl-id> <node-id> 
+    
+
+
+    vct_link_get [node-id]             : show configured links
+    vct_link_del [<node-id-A[:direct-if-A]>] [<node-id-B[:direct-if-B>]] : del configured link(s)
+    vct_link_add  <node-id-A:direct-if-A>     <node-id-B:direct-if-B> [packet-loss] 
+                                     virtually link node-id a via direct if a with rd b
                                      example $ ./vct.sh link-add 0003:1 0005:1 10
                                      to setup a link between given RDs with 10% packet loss
-    link-del [<rd-id-A[:direct-if-A]>] [<rd-id-B[:direct-if-B>]] : del configured link(s)
 
 
 EOF
 
 }
 
-test() {
 
-    vct_sudo $@ || err $FUNCNAME "failed"
-
-}
-
-
-system_config_check
+vct_system_config_check
 
 # check if correct user:
 if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -1173,41 +1354,54 @@ if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
 fi
 
 
-if [ -z ${1:-} ]; then
-    help
-    exit 1
+
+CMD=$( echo $0 | awk -F'/' '{print $(NF)}' )
+
+if [ "$CMD" = "vct.sh" ]; then
+
+    if [ "${1:-}" ]; then
+	"$@"
+    else
+	help
+    fi
+
+else
+
+    case "$CMD" in
+	vct_help) $CMD;;
+
+	vct_system_install_check) $CMD "$@";;
+	vct_system_install)       $CMD "$@";;
+	vct_system_init_check)    $CMD "$@";;
+	vct_system_init)          $CMD "$@";;
+	vct_system_cleanup)       $CMD "$@";;
+
+	vct_node_info)            $CMD "$@";;
+	vct_node_create)          $CMD "$@";;
+	vct_node_start)           $CMD "$@";;
+	vct_node_stop)            $CMD "$@";;
+	vct_node_remove)          $CMD "$@";;
+	vct_node_console)         $CMD "$@";;
+	vct_node_ssh4)            $CMD "$@";;
+	vct_node_ssh6)            $CMD "$@";;
+	vct_node_scp4)            $CMD "$@";;
+	vct_node_scp6)            $CMD "$@";;
+
+        vct_node_customize)       $CMD "$@";;
+        vct_node_mount)           $CMD "$@";;
+        vct_node_unmount)         $CMD "$@";;
+
+        vct_sliver_allocate)      $CMD "$@";;
+        vct_sliver_deploy)        $CMD "$@";;
+        vct_sliver_start)         $CMD "$@";;
+        vct_sliver_stop)          $CMD "$@";;
+        vct_sliver_remove)        $CMD "$@";;
+
+	vct_slice_attributes)     $CMD "$@";;
+
+	*) vct_help;;
+    esac
+
 fi
 
-case "$1" in
-    
-        h|help)  help;;
-
-	system_install_check)  $*;;
-	system_install)  $*;;
-	system_init_check)  $*;;
-	system_init)  $*;;
-	system_cleanup)  $1;;
-
-	info)       $1 ${2:-};;
-	create)     $1 $2;;
-	start)      $1 $2;;
-	stop)       $1 $2;;
-	remove)     $1 $2;;
-	console)    $1 $2;;
-	ssh4)       $1 $2 "${3:-}";;
-	ssh6)       $1 $2 "${3:-}";;
-	scp4)       $1 $2 "$3" "$4";;
-	scp6)       $1 $2 "$3" "$4";;
-        vct_rpc_customize) $1 $2;;
-        vct_rpc_allocate_openwrt) $1 $2 $3 ;;
-        vct_rpc_deploy)           $1 $2 $3 ;;
-        vct_rpc_start)            $1 $2 $3 ;;
-        vct_rpc_stop)             $1 $2 $3 ;;
-        vct_rpc_destroy)          $1 $2 $3 ;;
-	test)    $*;;
-	
-        *) echo "unknown command!" ; exit 1 ;;
-esac
-
 #echo "successfully finished $0 $*" >&2
-echo
