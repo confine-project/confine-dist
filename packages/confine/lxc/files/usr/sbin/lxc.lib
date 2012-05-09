@@ -353,11 +353,13 @@ EOF
 
 	if [ $IF_TYPE ]; then
 
-	    local IF_NAME=$( uci_get lxc.$SL_NAME.if${IF_KEY}_name soft,quiet 2>/dev/null )
-	    local IF_MAC=$( uci_get lxc.$SL_NAME.if${IF_KEY}_mac soft 2>/dev/null )
-	    local IF_PAIR=$( uci_get lxc.$SL_NAME.if${IF_KEY}_pair soft 2>/dev/null )
+	    local IF_NAME=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_name    soft,quiet 2>/dev/null )
+	    local IF_MAC=$(     uci_get lxc.$SL_NAME.if${IF_KEY}_mac     soft 2>/dev/null )
+	    local IF_PAIR=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_pair    soft 2>/dev/null )
 	    local IF_VLANPHY=$( uci_get lxc.$SL_NAME.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )
 	    local IF_VLANTAG=$( uci_get lxc.$SL_NAME.if${IF_KEY}_vlantag soft,quiet 2>/dev/null )
+	    local IF_IPV4=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_ipv4    soft,quiet 2>/dev/null )
+	    local IF_IPV6=$(    uci_get lxc.$SL_NAME.if${IF_KEY}_ipv6    soft,quiet 2>/dev/null )
 
 	    if [ "$IF_TYPE" = "veth" ]; then
 		cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
@@ -367,6 +369,9 @@ lxc.network.flags     = up
 lxc.network.name      = $IF_NAME
 lxc.network.hwaddr    = $IF_MAC
 lxc.network.veth.pair = $IF_PAIR
+$( [ "$IF_IPV4" ] && echo "lxc.network.ipv4      = $IF_IPV4" )
+$( [ "$IF_IPV6" ] && echo "lxc.network.ipv6      = $IF_IPV6" )
+
 EOF
 	    fi
 
@@ -377,7 +382,9 @@ lxc.network.type      = vlan
 lxc.network.flags     = up
 lxc.network.link      = $IF_VLANPHY
 lxc.network.vlan.id   = $(( 16#${IF_VLANTAG} ))
-$( [ "$IF_NAME"] && echo "lxc.network.name      = $IF_NAME" )
+$( [ "$IF_NAME" ] && echo "lxc.network.name      = $IF_NAME" )
+$( [ "$IF_IPV4" ] && echo "lxc.network.ipv4      = $IF_IPV4" )
+$( [ "$IF_IPV6" ] && echo "lxc.network.ipv6      = $IF_IPV6" )
 EOF
 	    fi
 	fi
