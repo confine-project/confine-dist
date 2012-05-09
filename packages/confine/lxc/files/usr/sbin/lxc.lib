@@ -484,7 +484,7 @@ lxc_start() {
 
 		    if [ "$IF_TYPE" = "veth" ]; then
 			
-			if [ ${IF_NETCONF:-} ] && [ $(uci_get network.$IF_NETCONF.type soft) = bridge ] && [ ${IF_PAIR} ]; then
+			if [ "${IF_NETCONF:-}" ] && [ "$(uci_get network.$IF_NETCONF.type soft)" = "bridge" ] && [ "${IF_PAIR}" ]; then
 			
 			    uci_set network.$IF_NETCONF.ifname=$IF_PAIR del
 
