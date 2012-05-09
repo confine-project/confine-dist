@@ -1289,9 +1289,12 @@ config sliver $SLICE_ID
     option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz'
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
+    option if00_name       priv 
     option if01_type       public   # optional
+    option if01_name       pub0
     option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO   # mandatory for if-type public
     option if02_type       isolated # optional
+    option if02_name       iso0
     option if02_parent     eth1     # mandatory for if-types isolated
 EOF
 	else
@@ -1302,9 +1305,12 @@ config sliver $SLICE_ID
     option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz'
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
+    option if00_name       priv 
     option if01_type       public   # optional
+    option if01_name       pub0
     option if01_ipv4_proto $VCT_SLIVER_PUBLIC_IPV4_PROTO   # mandatory for if-type public
     option if02_type       isolated # optional
+    option if02_name       iso0
     option if02_parent     eth1     # mandatory for if-types isolated
 EOF
 	fi
