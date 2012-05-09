@@ -32,6 +32,7 @@ vct_sudo() {
 
     if [ "$VCT_SUDO_ASK" != "NO" ]; then
 
+	echo "" >&2
 	echo "$0 wants to execute (VCT_SUDO_ASK=$VCT_SUDO_ASK set to ask):" >&2
 	echo ">>>>   sudo $@   <<<<" >&2
 	read -p "please type y to continue or anything else to abort: " QUERY >&2
@@ -547,6 +548,8 @@ vct_node_remove() {
 
 	if [ $VCRD_NAME ]; then
 
+	    vct_node_unmount $VCRD_ID
+
 	    local VCRD_PATH=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
 		xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
 		grep -e "^${VCT_SYS_DIR}" || \
@@ -874,6 +877,69 @@ vct_node_unmount() {
     done
 }
 
+vct_node_customize_offline() {
+
+    echo "$FUNCNAME $# $@" >&2
+
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
+    vct_system_check_uci
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
+	local VCRD_PREP=$VCT_VIRT_DIR/node_prepare/$VCRD_NAME-$( date +%Y%m%d-%H%M%S )-$BASHPID
+	local VCRD_PUCI=$VCRD_PREP/etc/config
+	local VCRD_MNTP=$VCT_MNT_DIR/$VCRD_NAME
+	local VCRD_MUCI=$VCRD_MNTP/etc/config
+
+	rm -rf $VCRD_PREP
+	mkdir -p $VCRD_PUCI
+
+	mount | grep $VCRD_MNTP >/dev/null || \
+	    vct_node_mount $VCRD_ID
+
+	cp $VCRD_MUCI/* $VCRD_PUCI/
+
+	uci changes -c $VCRD_PUCI | grep -e "^confine" > /dev/null && \
+	    err $FUNCNAME "$VCRD_UCI/confine configs dirty! Please commit or revert"
+
+	touch $VCRD_PUCI/confine-testbed
+	uci_set confine-testbed.testbed=testbed                                                 path=$VCRD_PUCI
+	uci_set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48      path=$VCRD_PUCI
+	uci_set confine-testbed.testbed.dbg_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48      path=$VCRD_PUCI
+	uci_set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16             path=$VCRD_PUCI
+	uci_set confine-testbed.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24 path=$VCRD_PUCI
+
+	touch $VCRD_PUCI/confine-server
+	uci_set confine-server.server=server                                         path=$VCRD_PUCI
+	uci_set confine-server.server.mgmt_pubkey="$( cat $VCT_RD_AUTHORIZED_KEY )"  path=$VCRD_PUCI
+	uci_set confine-server.server.tinc_ip=$VCT_SERVER_TINC_IP                    path=$VCRD_PUCI
+	uci_set confine-server.server.tinc_port=$VCT_SERVER_TINC_PORT                path=$VCRD_PUCI
+
+	touch $VCRD_PUCI/confine-node
+	uci_set confine-node.node=node                                               path=$VCRD_PUCI
+	uci_set confine-node.node.id=$VCRD_ID                                        path=$VCRD_PUCI
+#       uci_set confine-node.node.rd_pubkey=""                                       path=$VCRD_PUCI
+	uci_set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16             path=$VCRD_PUCI
+	uci_set confine-node.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24 path=$VCRD_PUCI
+	uci_set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_PUBLIC_IPV4_PROTO   path=$VCRD_PUCI
+	if [ "$VCT_NODE_PUBLIC_IPV4_PROTO" = "static" ] ; then
+	    uci_set confine-node.node.rd_public_ipv4_addrs="$( echo $( \
+	    for i in $( seq 1 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do \
+	    echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i/$VCT_RD_LOCAL_V4_PL; \
+	    done ) )"                                                                path=$VCRD_PUCI
+	fi
+	uci_set confine-node.node.rd_public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL   path=$VCRD_PUCI
+	uci_set confine-node.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"     path=$VCRD_PUCI
+	uci_set confine-node.node.state=prepared                                     path=$VCRD_PUCI
+
+	vct_sudo "cp -r $VCRD_PREP/* $VCRD_MNTP/"
+
+	vct_node_unmount $VCRD_ID
+    done
+}
 
 
 vct_node_customize() {
@@ -1497,35 +1563,36 @@ else
     case "$CMD" in
 	vct_help) $CMD;;
 
-	vct_system_install_check) $CMD "$@";;
-	vct_system_install)       $CMD "$@";;
-	vct_system_check_uci)     $CMD "$@";;
-	vct_system_init_check)    $CMD "$@";;
-	vct_system_init)          $CMD "$@";;
-	vct_system_cleanup)       $CMD "$@";;
+	vct_system_install_check)   $CMD "$@";;
+	vct_system_install)         $CMD "$@";;
+	vct_system_check_uci)       $CMD "$@";;
+	vct_system_init_check)      $CMD "$@";;
+	vct_system_init)            $CMD "$@";;
+	vct_system_cleanup)         $CMD "$@";;
 
-	vct_node_info)            $CMD "$@";;
-	vct_node_create)          $CMD "$@";;
-	vct_node_start)           $CMD "$@";;
-	vct_node_stop)            $CMD "$@";;
-	vct_node_remove)          $CMD "$@";;
-	vct_node_console)         $CMD "$@";;
-	vct_node_ssh4)            $CMD "$@";;
-	vct_node_ssh6)            $CMD "$@";;
-	vct_node_scp4)            $CMD "$@";;
-	vct_node_scp6)            $CMD "$@";;
+	vct_node_info)              $CMD "$@";;
+	vct_node_create)            $CMD "$@";;
+	vct_node_start)             $CMD "$@";;
+	vct_node_stop)              $CMD "$@";;
+	vct_node_remove)            $CMD "$@";;
+	vct_node_console)           $CMD "$@";;
+	vct_node_ssh4)              $CMD "$@";;
+	vct_node_ssh6)              $CMD "$@";;
+	vct_node_scp4)              $CMD "$@";;
+	vct_node_scp6)              $CMD "$@";;
 
-        vct_node_customize)       $CMD "$@";;
-        vct_node_mount)           $CMD "$@";;
-        vct_node_unmount)         $CMD "$@";;
+        vct_node_customize)         $CMD "$@";;
+        vct_node_customize_offline) $CMD "$@";;
+        vct_node_mount)             $CMD "$@";;
+        vct_node_unmount)           $CMD "$@";;
 
-        vct_sliver_allocate)      $CMD "$@";;
-        vct_sliver_deploy)        $CMD "$@";;
-        vct_sliver_start)         $CMD "$@";;
-        vct_sliver_stop)          $CMD "$@";;
-        vct_sliver_remove)        $CMD "$@";;
+        vct_sliver_allocate)        $CMD "$@";;
+        vct_sliver_deploy)          $CMD "$@";;
+        vct_sliver_start)           $CMD "$@";;
+        vct_sliver_stop)            $CMD "$@";;
+        vct_sliver_remove)          $CMD "$@";;
 
-	vct_slice_attributes)     $CMD "$@";;
+	vct_slice_attributes)       $CMD "$@";;
 
 	*) vct_help;;
     esac
