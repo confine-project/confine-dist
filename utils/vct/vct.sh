@@ -425,7 +425,7 @@ vct_system_cleanup() {
 	vct_node_remove $VCRD_ID
     done
 
-
+    vct_slice_attributes flush all
 
     local BRIDGE=
     local BR_NAME=
@@ -1365,6 +1365,7 @@ vct_sliver_deploy() {
 
 	uci_show $VCT_SLICE_DB | \
 	    grep $VCT_SLICE_DB.${SLICE_ID}_ | \
+	    grep -v '.state=' | \
 	    uci_dot_to_file $VCT_SLICE_DB > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
 	echo "# >>>> Input stream begin >>>>" >&1
