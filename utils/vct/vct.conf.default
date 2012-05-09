@@ -88,8 +88,8 @@ VCT_BR00_V4_DHCPD_IP_MIN="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.1"
 VCT_BR00_V4_DHCPD_IP_MAX="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.199"
 VCT_BR00_V4_DHCPD_DNS="141.1.1.1"
 
-VCT_BR00_V4_NAT_OUT_DEV="eth0"                                   # or undefine (="") to disable NAT/SNAT
-VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"  # or undefine (="") to disable NAT/SNAT
+VCT_BR00_V4_NAT_OUT_DEV="auto"   # auto (dev of default route), eth0, ... or undefine (="") to disable NAT/SNAT
+VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
 
 VCT_BR01_NAME="vct-direct-01"
 VCT_BR02_NAME="vct-direct-02"
@@ -130,7 +130,7 @@ VCT_RD_RESCUE_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.130"   # always available s
 VCT_RD_RESCUE_V4_PL="25"
 
 # internet for RDs (see also Host section above):
-VCT_RD_LOCAL_V4_PROTO=static                              # static, dhcp, none (disabled)
+VCT_RD_LOCAL_V4_PROTO=dhcp                                # static, dhcp, none (disabled)
 VCT_RD_LOCAL_V4_PREFIX16="$VCT_NODE_PUBLIC_IPV4_PREFIX16" # for testing combined with .0. + 8 LSB of node-id
 VCT_RD_LOCAL_V4_PL="16"                                   # 
 VCT_RD_LOCAL_V4_DNS="141.1.1.1"

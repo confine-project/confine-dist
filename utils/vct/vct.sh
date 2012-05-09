@@ -3,6 +3,9 @@
 set -u # set -o nounset
 #set -o errexit
 
+LANG=C
+
+
 if [ -f ./vct.conf ]; then
     . ./vct.conf
 elif [ -f ./vct.conf.default ]; then
@@ -308,6 +311,13 @@ vct_system_init_check(){
 		local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
 		local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
 		
+		if [ "$BR_V4_NAT_OUT" = "auto" ] ; then
+		    BR_V4_NAT_OUT=$( ip -4 r |grep -e "^default" |awk -F'dev ' '{print $2}' |awk '{print $1}' ) && \
+			ip link show dev $BR_V4_NAT_OUT >/dev/null || \
+			err $FUNCNAME "default route dev can not be resolved"
+		fi
+
+
 		if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ] && [ -z $CMD_QUICK ]; then
 		    
                     if ! vct_sudo iptables -t nat -L POSTROUTING -nv | \
@@ -431,7 +441,14 @@ vct_system_cleanup() {
 		local BR_V4_NAT_OUT=$( variable_check ${BRIDGE}_V4_NAT_OUT_DEV soft 2>/dev/null )
 		local BR_V4_NAT_SRC=$( variable_check ${BRIDGE}_V4_NAT_OUT_SRC soft 2>/dev/null )
 		
+		if [ "$BR_V4_NAT_OUT" = "auto" ] ; then
+		    BR_V4_NAT_OUT=$( ip -4 r |grep -e "^default" |awk -F'dev ' '{print $2}' |awk '{print $1}' ) && \
+			ip link show dev $BR_V4_NAT_OUT >/dev/null || \
+			err $FUNCNAME "default route dev can not be resolved"
+		fi
+		
 		if [ $BR_V4_NAT_SRC ] && [ $BR_V4_NAT_OUT ]; then
+
 		    
                     if vct_sudo iptables -t nat -L POSTROUTING -nv | \
 			grep -e "MASQUERADE" |grep -e "$BR_V4_NAT_OUT" |grep -e "$BR_V4_NAT_SRC" >/dev/null; then
