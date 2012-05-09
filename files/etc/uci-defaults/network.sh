@@ -9,7 +9,7 @@ uci set network.local=interface
 uci set network.local.type=bridge
 uci set network.local.proto=none
 uci set network.local.ifname=eth0
-uci set network.local.macaddr=$( ip link show dev eth0 | grep "link/ether" | awk '{print $2}' )
+#uci set network.local.macaddr=$( ip link show dev eth0 | grep "link/ether" | awk '{print $2}' )
 
 uci set network.recovery=alias
 uci set network.recovery.interface=local

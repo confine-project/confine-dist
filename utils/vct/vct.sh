@@ -840,11 +840,6 @@ vct_node_customize() {
 
 	local VCRD_ID_LSB8BIT_DEC=$(( 16#${VCRD_ID:2:2} ))
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
-	local VCRD_MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
 	local RPC_TYPE="basics"
 	local RPC_FILE="${VCRD_ID}-$( date +%Y%m%d-%H%M%S )-${RPC_TYPE}.sh"
@@ -875,7 +870,6 @@ uci set network.internal.ip6addr=$VCT_RD_INTERNAL_V6_IP/$VCT_RD_INTERNAL_V6_PL
 uci set network.local=interface
 uci set network.local.type=bridge
 uci set network.local.ifname=eth0
-uci set network.local.macaddr=$VCRD_MAC
 uci set network.local.proto=none
 uci set network.local.ip6addr=$VCT_RD_LOCAL_V6_PREFIX48:$VCRD_ID::$VCT_RD_LOCAL_V6_SUFFIX64/$VCT_RD_LOCAL_V6_PL
 
