@@ -32,8 +32,6 @@ VCT_VIRT_DIR=/var/lib/vct
 
 VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel "
 
-VCT_VIRT_GROUP="libvirt"
-
 VCT_INTERFACE_MODEL="rtl8139"
 VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
 

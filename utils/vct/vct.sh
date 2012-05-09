@@ -71,7 +71,6 @@ vct_system_config_check() {
     variable_check VCT_UCI_DIR         quiet
     variable_check VCT_DEB_PACKAGES    quiet
     variable_check VCT_USER            quiet
-    variable_check VCT_VIRT_GROUP      quiet
     variable_check VCT_BRIDGE_PREFIXES quiet
     variable_check VCT_TOOL_TESTS      quiet
     variable_check VCT_INTERFACE_MODEL quiet
@@ -191,9 +190,15 @@ vct_system_install_check() {
 
     fi
 
-    # check if user is in required groups:
-    groups | grep "$VCT_VIRT_GROUP" > /dev/null ||\
-	{ err $FUNCNAME "user=$VCT_USER MUST be in groups: $VCT_VIRT_GROUP \n do: sudo adduser $VCT_USER $VCT_VIRT_GROUP and ReLogin!" $CMD_SOFT || return 1 ;}
+
+    # check if user is in libvirt groups:
+    local VCT_VIRT_GROUP=$( cat /etc/group | grep libvirt | awk -F':' '{print $1}' )
+    if [ "$VCT_VIRT_GROUP" ]; then
+	groups | grep "$VCT_VIRT_GROUP" > /dev/null || { \
+	    err $FUNCNAME "user=$VCT_USER MUST be in groups: $VCT_VIRT_GROUP \n do: sudo adduser $VCT_USER $VCT_VIRT_GROUP and ReLogin!" $CMD_SOFT || return 1 ;}
+    else
+	err $FUNCNAME "Failed detecting libvirt group" $CMD_SOFT || return 1
+    fi
 
 
 
