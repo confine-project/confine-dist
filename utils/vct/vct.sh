@@ -995,6 +995,7 @@ uci revert network
 
 uci set network.internal=interface
 uci set network.internal.type=bridge
+uci set network.internal.ifname=dummy0
 uci set network.internal.proto=static
 uci set network.internal.ipaddr=$VCT_RD_INTERNAL_V4_IP
 uci set network.internal.netmask=$( ip4_net_to_mask $VCT_RD_INTERNAL_V4_IP/$VCT_RD_INTERNAL_V4_PL )
@@ -1130,19 +1131,20 @@ uci set network.$dev.ipaddr=0.0.0.0  ;\
 uci commit network
 
 
-lxc.lib lxc_stop       fd_dummy
-lxc.lib lxc_purge      fd_dummy
-lxc.lib lxc_create_uci fd_dummy confine-defaults.openwrt
-lxc.lib uci_set lxc.fd_dummy.auto_boot=1
-lxc.lib uci_set lxc.fd_dummy.auto_create=1
+#lxc.lib lxc_stop       fd_dummy
+#lxc.lib lxc_purge      fd_dummy
+#lxc.lib lxc_create_uci fd_dummy confine-defaults.openwrt
+#lxc.lib uci_set lxc.fd_dummy.auto_boot=1
+#lxc.lib uci_set lxc.fd_dummy.auto_create=1
+#
+#echo "Waiting 5 secs for network default route configuration to start and complete..."
+#sleep 5
+#while ! /usr/bin/ping -c 1 -w 100 -W 1 confine-project.eu ; do
+#    sleep 1
+#done
+#
+#lxc.lib lxc_start      fd_dummy
 
-echo "Waiting 5 secs for network default route configuration to start and complete..."
-sleep 5
-while ! /usr/bin/ping -c 1 -w 100 -W 1 confine-project.eu ; do
-    sleep 1
-done
-
-lxc.lib lxc_start      fd_dummy
 /etc/init.d/network reload
 
 EOF
