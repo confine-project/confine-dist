@@ -27,7 +27,8 @@ define Package/lxc
 
   DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
             +ip +coreutils +coreutils-rm \
-            +perl +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys 
+            +perl +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys \
+            +kmod-veth +kmod-macvlan +kmod-bridge
 
 
 # TODO:

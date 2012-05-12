@@ -174,11 +174,12 @@ uci_set() {
     local CMD_ADD=$( echo "$OPT_CMD" | grep -e "add" > /dev/null && echo "add," )
     local CMD_PATH=$( path_cmd "$OPT_CMD"  )
     local OPT_PATH=$( path_opt "$OPT_CMD"  )
-    local UCI_VARIABLE="$( echo $UCI_ASSIGNEMENT | awk -F'=' '{print $1}' )"
-    local UCI_VALUE="$( echo $UCI_ASSIGNEMENT | awk -F'=' '{print $2}' )"
-    local UCI_CONFIG=$( echo $UCI_VARIABLE | awk -F'.' '{print $1}' )
+    local UCI_VARIABLE="$( echo "$UCI_ASSIGNEMENT" | awk -F'=' '{print $1}' )"
+    local UCI_VALUE="$(  echo "$UCI_ASSIGNEMENT" | cut -d= -f2- )"
+    local UCI_CONFIG=$(  echo $UCI_VARIABLE | awk -F'.' '{print $1}' )
     local UCI_SECTION=$( echo $UCI_VARIABLE | awk -F'.' '{print $2}' )
-    local UCI_OPTION=$( echo $UCI_VARIABLE | awk -F"$UCI_CONFIG.$UCI_SECTION." '{print $2}' | awk -F'=' '{print $1}' )
+    local UCI_OPTION=$(  echo $UCI_VARIABLE | awk -F'.' '{print $3}' )
+#    local UCI_OPTION=$( echo $UCI_VARIABLE | awk -F"$UCI_CONFIG.$UCI_SECTION." '{print $2}' | awk -F'=' '{print $1}' )
 
     # echo "assignement=$UCI_ASSIGNEMENT config=$UCI_CONFIG section=$UCI_SECTION option=$UCI_OPTION value=$UCI_VALUE"
 
