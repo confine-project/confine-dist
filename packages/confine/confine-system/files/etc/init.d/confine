@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+
+START=81
+
+
+start() {
+
+    if [ "$( uci -q get confine-node.node.state )" = "started" ] ; then
+	confine.lib uci_set confine-node.node.state=applied
+    fi
+
+    rmmod dummy
+    insmod dummy numdummies=3
+
+
+    confine_node_setup
+
+}
+
+
+stop() {
+
+    confine_sliver_stop all
+
+    if [ "$( uci -q get confine-node.node.state )" = "started" ] ; then
+	confine.lib uci_set confine-node.node.state=applied
+    fi
+    
+}

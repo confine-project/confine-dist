@@ -3,7 +3,6 @@
 set -u
 
 
-# confine states (MUST be in order from worst to best"
 
 
 CONFINE_RPC_DIR=/var/run/confine/rpc
@@ -24,7 +23,6 @@ ERR_LOG_TAG='CONFINE'
 
 confine_system_check() {
 
-
     uci_show confine-defaults soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-defaults"
     uci_show confine-testbed  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-testbed"
     uci_show confine-server   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-server"
@@ -33,44 +31,17 @@ confine_system_check() {
     uci_show confine-slivers  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slivers"
     uci_show confine-slice-attributes  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slice-attributes"
 
-    uci_check_clean network
-    uci_check_clean lxc
+    if uci changes -c $UCI_DEFAULT_PATH | \
+	grep -e "^confine-" -e "^system\." -e "^network\." -e "^lxc\." > /dev/null ; then
 
-    uci changes -c $UCI_DEFAULT_PATH | grep -e "^confine-" > /dev/null && \
 	err $FUNCNAME "confine confing dirty! Please commit or revert"
+    fi
 
     [ -d $CONFINE_RPC_DIR ] || mkdir -p $CONFINE_RPC_DIR
 
 }
 
 
-
-
-confine_set_rd_state() {
-
-    echo "$FUNCNAME $# $@" >&2
-    local STATE=$1
-
-    if [ "$STATE" = running ]; then
-	confine_system_check
-
-	uci_set confine-node.node.state=$STATE
-	
-    elif [ "$STATE" = installing ] || [ "$STATE" = maintenance ]; then
-	
-	local SLIVER=
-	for SLIVER in $( uci_get_sections confine-slivers sliver soft,quiet ); do
-
-	    confine_sliver_stop "SLIVER"
-	done
-	
-	uci_set confine-node.node.state=$STATE
-    else
-	err $FUNCNAME "invalid state"
-	
-    fi
-    
-}
 
 
 confine_allocate_container() {
@@ -138,8 +109,8 @@ confine_allocate_public_ipv4() {
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
 
     local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
-    local PROTO_IPS="$( uci_get confine-node.node.rd_public_ipv4_proto soft)"
-    local AVAIL_IPS="$( uci_get confine-node.node.rd_public_ipv4_addrs soft)"
+    local PROTO_IPS="$( uci_get confine-node.node.sl_public_ipv4_proto soft)"
+    local AVAIL_IPS="$( uci_get confine-node.node.sl_public_ipv4_addrs soft)"
     local TMP_SL_ID=
     local TMP_IP=
     local USED_IPS=
@@ -177,35 +148,152 @@ confine_allocate_public_ipv4() {
 
 
 
-confine_node_customize() {
-
-    #echo "$FUNCNAME $# $@" >&2
-
-    mkdir -p $CONFINE_RPC_DIR
-
-    local SRC="${1:--}"
-    local SRC_CFG=$( date +%s )-$BASHPID-customize
-    local SRC_DIR=$CONFINE_RPC_DIR
-    
-    cat $SRC > $SRC_DIR/$SRC_CFG
-    chmod u+x $SRC_DIR/$SRC_CFG
-    
-    $SRC_DIR/$SRC_CFG || \
-	err $FUNCNAME "Failed executing rpc $SRC_DIR/$SRC_CFG"
-}
-
-confine_node_install() {
+confine_node_setup() {
 
    echo "$FUNCNAME $# $@" >&2
 
     confine_system_check
+    local NODE_STATE=$( uci_get confine-node.node.state soft )
+    local VCRD_ID=$(    uci_get confine-node.node.id    soft )
+
+    if ! check_node_state $NODE_STATE quiet,soft ; then
+	
+	confine_sliver_remove all
+
+    elif [ "$NODE_STATE" = "started" ]; then
+
+    	echo "node-id=$VCRD_ID started"
+
+    elif [ "$NODE_STATE" = "applied" ] ; then
    
+	confine_sliver_remove all
 
-    uci_get confine-server.server.mgmt_pubkey soft,quiet >> /etc/dropbear/authorized_keys 
+	uci_set confine-node.node.state=started
 
-    echo "Configuring network... "
 
-    uci_set network
+    elif [ "$NODE_STATE" = "prepared" ] ; then
+   
+	confine_sliver_remove all
+
+	local SERVER_MGMT_PUBKEY="$(       uci_get confine-server.server.mgmt_pubkey             soft )"
+	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine-testbed.testbed.mgmt_ipv6_prefix48    soft )
+
+	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname          soft )
+	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine-node.node.priv_ipv4_prefix24          soft )
+	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48   soft )
+	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48  soft )
+	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine-node.node.rd_public_ipv4_proto        soft )
+	local NODE_RD_PUBL_IPV4=$(         uci_get confine-node.node.rd_public_ipv4              soft,quiet )
+	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine-node.node.rd_public_ipv4_gw           soft,quiet )
+	local NODE_RD_PUBL_IPV4_DNS=$(     uci_get confine-node.node.rd_public_ipv4_dns          soft,quiet )
+	local NODE_RD_ISOLATED_PARENTS=$(  uci_get confine-node.node.rd_if_iso_parents           soft,quiet )
+
+	if true && \
+	    [ "$VCRD_ID" ] && \
+	    [ "$SERVER_MGMT_PUBKEY" ] && \
+	    [ "$SERVER_MGMT_IPV6_PREFIX48" ] && \
+	    [ "$NODE_LOCAL_IFNAME" ] && \
+	    [ "$NODE_PRIV_IPV4_PREFIX24" ] && \
+	    [ "$NODE_PRIV_IPV6_PREFIX48" ] && \
+	    [ "$NODE_DBG_IPV6_PREFIX48" ] && \
+	    [ "$NODE_RD_PUBL_IPV4_PROTO" ] && \
+	    true ; then
+
+	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
+
+	    uci_set confine-node.node.rd_pubkey="$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
+
+	    echo "Configuring network... "
+
+
+#	    uci_del network.lan soft,quiet
+#	    uci_del network.wan soft,quiet
+
+	    uci_set network.internal=interface
+	    uci_set network.internal.type=bridge
+	    uci_set network.internal.ifname=dummy1
+	    uci_set network.internal.proto=static
+	    uci_set network.internal.ipaddr=$NODE_PRIV_IPV4_PREFIX24.126
+	    uci_set network.internal.netmask=$( ip4_net_to_mask /25 )
+	    uci_set network.internal.ip6addr=$NODE_PRIV_IPV6_PREFIX48::1/64
+
+	    uci_set network.local=interface
+	    uci_set network.local.type=bridge
+	    uci_set network.local.ifname="dummy2 $NODE_LOCAL_IFNAME"
+	    uci_set network.local.proto=$NODE_RD_PUBL_IPV4_PROTO
+	    uci_set network.local.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
+
+
+	    if [ "$NODE_RD_PUBL_IPV4_PROTO" = "static" ] && [ "$NODE_RD_PUBL_IPV4" ]; then
+
+		uci_set network.local.proto=static
+		uci_set network.local.ipaddr=$( echo $NODE_RD_PUBL_IPV4 | awk -F'/' '{print $1}' )
+		uci_set network.local.netmask=$( ip4_net_to_mask $NODE_RD_PUBL_IPV4 )
+		uci_set network.local.dns=$NODE_RD_PUBL_IPV4_DNS
+
+		uci_set network.dflt_route=route
+		uci_set network.dflt_route.interface=local
+		uci_set network.dflt_route.target=0.0.0.0
+		uci_set network.dflt_route.netmask=0.0.0.0
+		uci_set network.dflt_route.gateway=$NODE_RD_PUBL_IPV4_GW
+
+	    elif [ "$NODE_RD_PUBL_IPV4_PROTO" = "dhcp" ] ; then
+
+		uci_set network.local.proto=dhcp
+		uci_del network.local.ipaddr  soft,quiet
+		uci_del network.local.netmask soft,quiet
+		uci_del network.local.dns     soft,quiet
+		uci_del network.dflt_route    soft,quiet
+	    fi
+
+	    uci_set network.recovery1=alias
+	    uci_set network.recovery1.interface=local
+	    uci_set network.recovery1.proto=static
+	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
+	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
+	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
+
+	    uci_set network.recovery2=alias
+	    uci_set network.recovery2.interface=local
+	    uci_set network.recovery2.proto=static
+	    uci_set network.recovery2.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0002:$( eui64_from_link $NODE_LOCAL_IFNAME )/64
+
+
+	    uci_set network.debug=alias
+	    uci_set network.debug.interface=local
+	    uci_set network.debug.proto=static
+	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
+
+	    local ISO_DEV=
+	    for ISO_DEV in $NODE_RD_ISOLATED_PARENTS; do
+		uci_set network.$ISO_DEV=interface
+		uci_set network.$ISO_DEV.ifname=$ISO_DEV
+		uci_set network.$ISO_DEV.proto=static
+		uci_set network.$ISO_DEV.ipaddr=0.0.0.0
+	    done
+
+
+	    /etc/init.d/network restart
+
+	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
+
+	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
+
+            # remove useless busybox links:
+	    [ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
+	    [ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
+
+	    uci_set confine-node.node.state=started
+
+	else
+	    uci_set confine-node.node.state=unprepared
+	    err $FUNCNAME "Failed due to inproper confine-node config"
+	fi
+
+    else
+	confine_sliver_remove all
+    fi
+
 }
 
 confine_sliver_allocate() {
@@ -307,7 +395,7 @@ confine_sliver_allocate() {
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
 		    local IF_PRIV_IPV4=$( uci_get confine-node.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
-		    local IF_PRIV_IPV6=$( uci_get confine-defaults.defaults.priv_ipv6_prefix48 ):0:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:0/64
+		    local IF_PRIV_IPV6=$( uci_get confine-defaults.confine.priv_ipv6_prefix48 ):0:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:0/64
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=internal       path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
@@ -318,12 +406,6 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_PRIV_IPV6  path=$OUT_DIR
 
 
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_type
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_mac $IF_MAC
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv4_proto static
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv4 $IF_PRIV_IPV4
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv6_proto static
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv6 $IF_PRIV_IPV6
 
 		elif [ "$IF_TYPE" = "public" ] && [ "$IF_KEY" = "01" ]; then
 
@@ -335,10 +417,6 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6_proto=static   path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_PUBL_IPV6  path=$OUT_DIR
 
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_type
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_mac $IF_MAC
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv6_proto static
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv6 $IF_PUBL_IPV6
 
 		    local IF_PROTO=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_ipv4_proto soft,path=$SRC_DIR )
 
@@ -349,14 +427,11 @@ confine_sliver_allocate() {
 			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4_proto=static   path=$OUT_DIR
 			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$IF_PUBL_IPV4  path=$OUT_DIR
 
-#			uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv4_proto static
-#			uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv4 $IF_PUBL_IPV4
 
 		    elif [ "$IF_PROTO" = "dhcp" ] ; then
 
 			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4_proto=dhcp     path=$OUT_DIR
 
-#			uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_ipv4_proto dhcp
 		    fi
 
 
@@ -367,10 +442,6 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
-
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_type
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_mac $IF_MAC
-#		    uci_set_default $SRC_DIR $SRC_CFG.$SL_ID $UCI_DEFAULT_PATH confine-defaults.sliver $OUT_DIR $SLV_CFG.$SL_ID if${IF_KEY}_parent
 
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
@@ -633,7 +704,12 @@ confine_sliver_remove() {
 
 help() {
        cat <<EOF
-help is on the way...
+confine_node_setup
+confine_sliver_allocate <SLICE_ID> [BATCH FILE]
+confine_sliver_deploy   <SLICE_ID> [BATCH FILE]
+confine_sliver_start    <SLICE_ID> [all]
+confine_sliver_stop     <SLICE_ID> [all]
+confine_sliver_remove   <SLICE_ID> [all]
 EOF
 }
 
@@ -652,7 +728,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_customize) $CMD ;;
+	confine_node_setup) $CMD ;;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_remove) $CMD $1 ${2:-};;
 	*) help;;

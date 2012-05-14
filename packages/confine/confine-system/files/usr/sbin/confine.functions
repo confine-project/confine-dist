@@ -1,7 +1,7 @@
 ###!/bin/bash
 
+# confine states (MUST be in order from worst to best"
 CONFINE_SLICE_AND_SLIVER_STATES="error allocating allocated deploying deployed starting started"
-
 
 check_rd_id() {
 
@@ -47,10 +47,9 @@ check_node_state() {
     local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
 
     case "$STATE" in
-	installing|maintenance|running|error) [ $CMD_QUIET ] || echo $STATE ;;
+	unprepared|prepared|applied|started|disabled|error) [ $CMD_QUIET ] || echo $STATE ;;
          
-
-	*) err $FUNCNAME "Illegal slice_state=$STATE" $CMD_SOFT ;;
+	*) err $FUNCNAME "Illegal node_state=$STATE" $CMD_SOFT ;;
     esac
 }
 
@@ -112,11 +111,56 @@ variable_check() {
 ip4_net_to_mask() {
     local NETWORK="$1"
 
-    [ -z ${NETWORK:-} ] &&\
-        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
+    local PL=$( echo $NETWORK | awk -F'/' '{print $2}' )
 
-    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
-        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
+    [ "$PL" ] && [ $PL -le 32 ] || \
+         err $FUNCNAME "Invalid IPv4 network (eg 1.2.3.4/30)  argument"
+
+    local I=$(( 256**4 - 1 - (( 2**( 32 - $PL )  ) -1 ) ))
+
+    echo $(( ($I/(256**3)) % 256 )).$(( ($I/(256**2)) % 256 )).$(( ($I/(256**1)) % 256 )).$(( $I % 256  ))
+
+#    [ -z ${NETWORK:-} ] &&\
+#        err $FUNCNAME "Missing network (eg 1.2.3.4/30)  argument"
+#
+#    ipcalc "$NETWORK" | grep -e "^Netmask:" | awk '{print $2}' ||\
+#        err $FUNCNAME "Invalidnetwork (eg 1.2.3.4/30)  argument"
     
 }
 
+
+
+
+eui64_from_mac() {
+
+    local MAC=$1
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+
+    if echo "$MAC" | grep -e "[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]" >/dev/null ; then
+
+	echo ${MAC:0:2}${MAC:3:2}:${MAC:6:2}ff:fe${MAC:9:2}:${MAC:12:2}${MAC:15:2}
+    else
+	err $FUNCNAME "Failure" $CMD_SOFT,$CMD_QUIET
+    fi
+}
+
+
+eui64_from_link() {
+
+    local DEVICE=$1
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+
+    local MAC=$( ip link show dev $DEVICE | grep "link/ether" | awk '{print $2}' )
+
+    if [ "$MAC" ] && echo "$MAC" | grep -e "[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]" >/dev/null ; then
+	
+	eui64_from_mac $MAC $CMD_SOFT,$CMD_QUIET
+
+    else
+	err $FUNCNAME "Failure" $CMD_SOFT,$CMD_QUIET
+    fi
+}

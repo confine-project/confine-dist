@@ -40,7 +40,6 @@ define Package/confine-recommended
 	+hostapd \
 	+wireless-tools +iw \
 	+wide-dhcpv6-client +wide-dhcpv6-control +wide-dhcpv6-server \
-	+ip \
 	+6in4 +6to4 \
 	+ip6tables \
 	+kmod-ipip \

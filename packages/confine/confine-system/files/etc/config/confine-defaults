@@ -4,10 +4,15 @@ config sliver sliver
         option 'if00_type'      'internal'
 
 
-config defaults 'defaults'
+config defaults 'confine'
         option priv_ipv6_prefix48 'fdbd:e804:6aa9'
         option debug_ipv6_prefix48 'fd5f:eee5:e6ad'
 
+
+config defaults system
+        option local_ifname eth0
+
+       
 
 
 config 'container' 'openwrt'
@@ -30,14 +35,6 @@ config 'container' 'openwrt'
        option 'if00_netconf'   'internal'
        option 'if00_proto'     'static'
 
-#       option 'if01_type'      'veth'
-#       option 'if01_name'      'local'
-#       option 'if01_netconf'   'local'
-#       option 'if01_proto'     'static'
-
-#       option 'if02_type'      'vlan'
-#       option 'if02_vlanphy'   'eth1'
-
 
 config 'container' 'debian'
 
@@ -57,14 +54,4 @@ config 'container' 'debian'
        option 'if00_name'      'internal'
        option 'if00_netconf'   'internal'
        option 'if00_proto'     'static'
-
-#       option 'if01_type'      'veth'
-#       option 'if01_name'      'local'
-#       option 'if01_netconf'   'local'
-#       option 'if01_proto'     'static'
-
-#       option 'if02_type'      'vlan'
-#       option 'if02_vlanphy'   'eth1'
-
-
 
