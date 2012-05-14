@@ -18,22 +18,70 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-22.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-25.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
 # the latest compiled image from a given build path.
-# Note that: templates must be updated: $ .vct.sh system_install update
-# and old domains must be removed:      $ .vct.sh remove <rd-id> 
-# and re-installed:                     $ .vct.sh create <rd-id> 
+# Note that: templates must be updated: $ ./vct_system_install update
+# and old domains must be removed:      $ ./vct_node_remove <rd-id> 
+# and re-installed:                     $ ./vct_node_create <rd-id> 
 # VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
 
-VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel "
 
-VCT_INTERFACE_MODEL="rtl8139"
-VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
+PATH="$PATH=:/sbin:/usr/sbin"
+
+VCT_DL_DIR=$VCT_VIRT_DIR/downloads
+VCT_SYS_DIR=$VCT_VIRT_DIR/images
+VCT_MNT_DIR=$VCT_VIRT_DIR/mnt
+VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
+VCT_UCI_DIR=$VCT_VIRT_DIR/uci
+
+VCT_SSH_DIR=$VCT_VIRT_DIR/ssh
+
+VCT_SSH_OPTIONS="-i /home/$VCT_USER/.ssh/id_rsa -i $VCT_SSH_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_SSH_DIR/known_hosts -o ConnectTimeout=1 "
+
+VCT_SLICE_DB="slice-attributes"
+VCT_RD_RPC_DIR=/var/run/confine/rpc
+
+
+# If changed: system must be updated: $ ./vct_system_install update
+
+VCT_PUB_KEY="\
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp root@confine
+"
+
+VCT_PRIV_KEY="\
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEA11nFtgupDBEKeTvdXgYrBHcYeIrEtcnbIzOvwUyND3n8o0U/
+nZo7VWkA8tKlqHk80N+gzctLOSHDMLU5TU8fwjoZ+ZfUHjfDlcLYO+bJUy4rAl0K
+G+gU/wjwRmJ6DciEjZidL6XjM3RV31wdqKJS3yyG0PPubZK0mhZYCZjqOM1Wanvf
+ICHy7iTNxABacNxiSMNTYvdldk/8+Z8nPEiCoMXIfMDKrQmivDGinEL9bsX3ahi2
+zKSVbqgnKgMNKdIWnvOC4Gul3jRIAZsMnqTNARuil4EM7V3P/cJhMPr8Nf7mzO45
++GvlJsq4dMeZs7Njxjw8y86qUQDe2DD4cnpQ6QIDAQABAoIBAQDWAo/6J0JbDIBV
+FMocS5LqgBSgjn+IjU6qgA4U0ieJDtijxQjAbeqzKYPYzL/2Wm22wdaDTZm28DeT
+KzYD/zL3iVgQ8/LICPDk3tqXRPYkJMh3M9D9BLoA7Xgi6nCTTAd21Ai5tmjA1McW
+DuwmjxI+WXitJQ14dQfn7XaWKxHxWUOUJVSm8v+DmLLlGT1ZywCzoh8aShjezAnA
+YckPPVr7fRm+J4KST5crJ45p5LsnB++YqNvv1tQJkfbEgwBUZXrszYEdnFu9769Z
+icW3rvN02onX/MWXsG9oBOPmT2ODfLjPDs5xqGUvy+jqXt0OUgn+ejLuP9u44OLg
+D73p9uIRAoGBAPQlFIKHv7mZ/mOwJBBBmEXlYP4qnk4pqHcP3umZwhXqT8yDPomN
+vUpdas9idP78gFn7ic9wX8YZTv2sXAZK5jkoTKKi6FaY4UIZUBGWjlkjCQpPNpGZ
+C/8/Q5WNdSPThIAqmaldAbZQoEkh5V7Bf26BPoEtcMmI1ZIYpcDRhN3NAoGBAOHO
+wdKdvRZS5zgdobCSAr75O78jVHnNXT5FbnYtZMoD9BpAY7DOCPzNdA8SgFz6zZb7
+tduyBmI1dXYlC2KVVQ9ivMknsiZjB9MRPfYTwVVm1QazUAOLa2NODLpe3mhcgKpM
+H+VetdVDkUUaescLwXz3NeF6G3EwA8ouAzpzvcONAoGBAIS9ZFlT1TnkMBujOPhd
+sZzPCd0m7sswexfA2UHJB21C6AAZm3bOSYyVHe2Danj4cBB8YoEWZ/wc5oWloKML
+NgD9mC0UxZ3PoSl++bmWUe7EzbV9O/4NaChvDR/SuU2xQuksQD+FAdlOHNemRj8u
+lUpPmtxBCIGKlBPKstQTFlpBAoGABgh3J0Btp+YJJXetNUGBb0bLcNzpyeNRxXMn
+c2LdGYSnhfgIcdXfaZm3qxtscI+G5KzO/BKylvckr0ZoGncw8ZtKvfkgimQE9n+0
+bxmyBa0crfQmhCG6ecnBD02vlYw7J9Gm3IL+Srdmbzk45I6M2eDlAKQ5jXmh8Enw
+biRfgpUCgYEAoC2Yay20TweP/oOLP1zOXVFLvGSjz+BP726FWvIPgsh6UbmSvuFY
+BMpjIkNUb9fO+Lfmg/WNNUDMN4E4sRujGz+PsGtKwMcIs/b0wGzop2ulQLAnMbLM
+xgEWppdBKkp8APYnfEld5jSX85tUCHsp3WeQBN1eZwYgBphWyeKzIVw=
+-----END RSA PRIVATE KEY-----
+"
 
 
 #################################################
@@ -45,116 +93,86 @@ VCT_TESTBED_MGMT_IPV6_PREFIX48="fdc2:0:0"
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
-VCT_SERVER_MGMT_PUBKEY="/home/$VCT_USER/.ssh/id_rsa.pub"
-VCT_SERVER_TINC_IP=10.241.0.252
+VCT_SERVER_CN_URL="server.confine.community.net"
+VCT_SERVER_MGMT_PUBKEY="$VCT_SSH_DIR/id_rsa.pub"
+VCT_SERVER_TINC_IP=10.241.0.254
 VCT_SERVER_TINC_PORT=655
 
-VCT_NODE_PUBLIC_IPV4_PROTO="static"     # dhcp or static and following addresses
-VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"  # completes to prefix16.node-id-lsb.X
-VCT_NODE_PUBLIC_IPV4_AVAIL="6"
+
+VCT_NODE_CN_URL="NODE_ID.confine.community.net"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
 
-VCT_SLIVER_PUBLIC_IPV4_PROTO="static"   # dhcp or static
+VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 
+VCT_NODE_SL_PUBLIC_IPV4_PROTO=static     # dhcp or static and following addresses
+VCT_NODE_PUBLIC_IPV4_AVAIL="8"
+
+VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"   # completes to prefix16.node-id-lsb.X/24
+VCT_NODE_PUBLIC_IPV4_PL=16
+VCT_NODE_PUBLIC_IPV4_DNS=141.1.1.1
+VCT_NODE_PUBLIC_IPV4_GW=10.241.0.254
+
+
 
 #################################################
+
+
+
 # Host network configuration:
 
 
-VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01"    # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
+VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01 VCT_BR02 VCT_BR03 VCT_BR04"  # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
 VCT_BR00_NAME="vct-local"
+VCT_BR00_DUMMY_DEV="dummy0"
 VCT_BR00_MODEL=""                          # optional, default rtl8139
-VCT_BR00_MAC48=""                          # optional, mac-address or RANDOM, empy->default VCT_INTERFACE_MAC24:#br:node-id
+VCT_BR00_MAC48=""                          # optional, mac-address or RANDOM, empty (confine defaults)
 
+VCT_BR00_V6_RESCUE2_PREFIX64="$VCT_CONFINE_PRIV_IPV6_PREFIX48:0002"
 
-VCT_BR00_V6_LOCAL_IP="$VCT_TESTBED_MGMT_IPV6_PREFIX48:0000:0200::ffff"
-VCT_BR00_V6_LOCAL_PL="64"
+VCT_BR00_V6_DEBUG_IP="$VCT_CONFINE_DEBUG_IPV6_PREFIX48:0000:0200::ffff/48"
 
-VCT_BR00_V6_RESCUE_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:ffff:0200::ffff"
-VCT_BR00_V6_RESCUE_PL="64"
+VCT_BR00_V4_RESCUE_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.254/25"
 
-VCT_BR00_V6_DEBUG_IP="$VCT_CONFINE_DEBUG_IPV6_PREFIX48:0000:0200::ffff"
-VCT_BR00_V6_DEBUG_PL="48"
-
-
-VCT_BR00_V4_RESCUE_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.254"
-VCT_BR00_V4_RESCUE_PL="25"
-
-VCT_BR00_V4_LOCAL_IP="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.254"
-VCT_BR00_V4_LOCAL_PL="16"                                             
+VCT_BR00_V4_LOCAL_IP="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.254/16"
 
 VCT_BR00_V4_DHCPD_IP_MIN="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.1"
 VCT_BR00_V4_DHCPD_IP_MAX="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.199"
-VCT_BR00_V4_DHCPD_DNS="141.1.1.1"
+VCT_BR00_V4_DHCPD_DNS="$VCT_NODE_PUBLIC_IPV4_DNS"
 
 VCT_BR00_V4_NAT_OUT_DEV="auto"   # auto (dev of default route), eth0, ... or undefine (="") to disable NAT/SNAT
 VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
 
+
+
+
 VCT_BR01_NAME="vct-direct-01"
+
 VCT_BR02_NAME="vct-direct-02"
+
+VCT_BR03_NAME="vct-direct-03"
 
 
 
 #################################################
-# Research Device (RD) configuration:
+# Research Device (RD) values:
 
-VCT_RD_AUTHORIZED_KEY="/home/$VCT_USER/.ssh/id_rsa.pub"
 
 VCT_RD_NAME_PREFIX="vcrd-"
 VCT_RD_MEM="64"                                     # RD Memory in MB
 VCT_RD_LOCAL_BRIDGE="vct-local"
 
 
-VCT_RD_INTERNAL_V6_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:0000::1"
-VCT_RD_INTERNAL_V6_PL="64"
-VCT_RD_INTERNAL_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.126"
-VCT_RD_INTERNAL_V4_PL="25"
-
-
-
-VCT_RD_LOCAL_V6_PREFIX48="$VCT_TESTBED_MGMT_IPV6_PREFIX48"  # testbed prefix (to be combinded with node-id to /64 RD specific IPv6)
-VCT_RD_LOCAL_V6_SUFFIX64="2"
-VCT_RD_LOCAL_V6_PL="64"
-
-
-VCT_RD_RESCUE_V6_IP="$VCT_CONFINE_PRIV_IPV6_PREFIX48:ffff::2"
-VCT_RD_RESCUE_V6_PL="64"
-
-VCT_RD_DEBUG_V6_PREFIX48="$VCT_CONFINE_DEBUG_IPV6_PREFIX48"  # ULA confine prefix (to be combinded with node-id to /48 RD specific IPv6)
-VCT_RD_DEBUG_V6_SUFFIX64="2"
-VCT_RD_DEBUG_V6_PL="48"
-
-
-VCT_RD_RESCUE_V4_IP="$VCT_TESTBED_PRIV_IPV4_PREFIX24.130"   # always available static testbed rescue IPv4 via local bridge
-VCT_RD_RESCUE_V4_PL="25"
-
-# internet for RDs (see also Host section above):
-VCT_RD_LOCAL_V4_PROTO=dhcp                                # static, dhcp, none (disabled)
-VCT_RD_LOCAL_V4_PREFIX16="$VCT_NODE_PUBLIC_IPV4_PREFIX16" # for testing combined with .0. + 8 LSB of node-id
-VCT_RD_LOCAL_V4_PL="16"                                   # 
-VCT_RD_LOCAL_V4_DNS="141.1.1.1"
-
-
-
-#################################################
-
-
-
-
 #################################################
 #################################################
 # expected parameters:
 
-PATH="$PATH=:/sbin:/usr/sbin"
 
-VCT_DL_DIR=$VCT_VIRT_DIR/downloads
-VCT_SYS_DIR=$VCT_VIRT_DIR/images
-VCT_MNT_DIR=$VCT_VIRT_DIR/mnt
-VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
-VCT_UCI_DIR=$VCT_VIRT_DIR/uci
-VCT_KNOWN_HOSTS_FILE=$VCT_VIRT_DIR/known_hosts
 
-VCT_RD_RPC_DIR=/var/run/confine/rpc
-VCT_SLICE_DB="slice-attributes"
+
+VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel dummy"
+
+VCT_INTERFACE_MODEL="rtl8139"
+VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
+
 
 VCT_DEB_PACKAGES=" \
     bridge-utils \
@@ -167,6 +185,7 @@ VCT_DEB_PACKAGES=" \
     kvm \
     libvirt-bin \
     net-tools \
+    openssh-client \
     qemu-kvm \
     udhcpd \
     virtinst \
@@ -183,6 +202,7 @@ VCT_TOOL_TESTS=( \
     'ipcalc --version' \
     'iptables --version' \
     'ipv6calc -I ipv6 :: -O ipv6' \
+    'which ssh-keygen' \
     'mkdir --version' \
     'ping -V'\
     'ssh -V' \

@@ -5,3 +5,5 @@
 /openwrt
 /packages/openwrt
 utils/vct/vct.conf
+utils/vct/vct
+
