@@ -53,7 +53,7 @@ confine_system_check() {
 
 confine_allocate_container() {
 
-    echo "$FUNCNAME $# $@" >&2
+#    echo "$FUNCNAME $# $@" >&2
 
     local SEARCH_BEGIN=$1 # max/min
     local OPT_CMD=${2:-}
@@ -123,17 +123,20 @@ confine_allocate_static_public_ipv4() {
 	if [ "$( uci_get confine-slivers.$TMP_SL_ID.if01_type soft,quiet )" = "public" ]; then
 	    TMP_IP=$( uci_get confine-slivers.$TMP_SL_ID.if01_ipv4 soft,quiet )
 
-	    echo "$USED_IPS" | grep $TMP_IP >/dev/null && \
-		err $FUNCNAME "public ip=$TMP_IP used twice !!!"
+	    if [ "$TMP_IP" ] ; then
 
-	    USED_IPS="$( [ "$USED_IPS" ] && echo "$USED_IPS $TMP_IP" || echo "$TMP_IP" )"
+		echo "$USED_IPS" | grep -e "$TMP_IP" >/dev/null && \
+		    err $FUNCNAME "public ip=$TMP_IP used twice !!!"
+
+		USED_IPS="$( [ "$USED_IPS" ] && echo "$USED_IPS $TMP_IP" || echo "$TMP_IP" )"
+	    fi
 	fi
     done
 
 
     for TMP_IP in $AVAIL_IPS ; do
 
-	if ! echo "$USED_IPS" | grep $TMP_IP > /dev/null; then
+	if ! echo "$USED_IPS" | grep -e "$TMP_IP" > /dev/null; then
 
 	    echo $TMP_IP
 	    return 0
@@ -182,8 +185,8 @@ config sliver ffffffffffff
     option if01_ipv4_proto none
 EOF
 
-	confine.lib uci_set lxc.7d.remount='bin lib sbin usr'
-        confine.lib uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
+	uci_set lxc.7d.remount='bin lib sbin usr'
+        uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
 
 	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
     fi
@@ -394,14 +397,14 @@ confine_sliver_allocate() {
 	local DATA_URL=$(     uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )
 
 	local IF01_TYPE=$(    uci_get $SRC_CFG.$SL_ID.if01_type        soft,quiet,path=$SRC_DIR )
-	local IF01_PROTO=$(   uci_get $SRC_CFG.$SL_ID.if01_proto       soft,quiet,path=$SRC_DIR )
+	local IF01_PROTO=$(   uci_get $SRC_CFG.$SL_ID.if01_ipv4_proto  soft,quiet,path=$SRC_DIR )
 
 	local CT_NR=
 	local IF01_PUBLIC_IPV4=
 
 	if [ "$IF01_TYPE" = "public" ] && ( [ "$IF01_PROTO" = "static" ] || [ "$IF01_PROTO" = "dhcp" ]); then 
 
-	    CT_NR=$( confine_allocate_container max soft ) || \
+	    CT_NR=$( confine_allocate_container min soft ) || \
 		err $FUNCNAME "Failed allocating container_nr"
 
 	    [ $(( 16#${CT_NR} )) -ge $( uci_get confine-node.node.public_ipv4_avail ) ] && \
@@ -421,7 +424,7 @@ confine_sliver_allocate() {
 
 	else
 
-	    CT_NR=$( confine_allocate_container min soft ) || \
+	    CT_NR=$( confine_allocate_container max soft ) || \
 		err $FUNCNAME "Failed allocating container_nr"
 	fi
 
