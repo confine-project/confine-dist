@@ -306,6 +306,12 @@ vct_system_init_check(){
 	    local BR_DUMMY_DEV=$( variable_check ${BRIDGE}_DUMMY_DEV soft 2>/dev/null ) 
 	    if [ $BR_DUMMY_DEV ] ; then
 
+		if ! ip link show dev $BR_DUMMY_DEV >/dev/null 2>&1 ; then
+		    vct_sudo ip link add $BR_DUMMY_DEV type dummy || \
+			{ err $FUNCNAME "Failed adding $BR_DUMMY_DEV" $CMD_SOFT || return 1 ;}
+		fi
+
+
 		if ! brctl show | grep $BR_NAME | grep $BR_DUMMY_DEV >/dev/null; then
 		    ( [ $CMD_INIT ] && \
 			vct_sudo "brctl addif $BR_NAME $BR_DUMMY_DEV" ) || \
@@ -584,33 +590,39 @@ vct_node_remove() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local VCRD_NAME=$( virsh -c qemu:///system list --all 2>/dev/null  | grep ${VCRD_ID} | awk '{print $2}' )
 
-	if [ $VCRD_NAME ]; then
+	local VCRD_NAME=
 
-	    vct_node_unmount $VCRD_ID
+	for VCRD_NAME in $( virsh -c qemu:///system list --all 2>/dev/null  | grep ${VCRD_ID} | awk '{print $2}' ) ; do
 
-	    local VCRD_PATH=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-		xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
-		grep -e "^${VCT_SYS_DIR}" || \
-		    err $FUNCNAME "Failed resolving disk path for $VCRD_NAME" )
+	    echo removing id=$VCRD_ID name=$VCRD_NAME
 
-	    if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "running" >/dev/null ; then
-		virsh -c qemu:///system destroy $VCRD_NAME ||\
+	    if [ "$VCRD_NAME" ]; then
+
+		vct_node_unmount $VCRD_ID
+
+		local VCRD_PATH=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+		    xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
+		    grep -e "^${VCT_SYS_DIR}" || \
+			err $FUNCNAME "Failed resolving disk path for $VCRD_NAME" soft ) 
+
+		if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "running" >/dev/null ; then
+		    virsh -c qemu:///system destroy $VCRD_NAME ||\
 	    err $FUNCNAME "Failed stopping domain $VCRD_NAME"
-	    fi
+		fi
 
-	    if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "off" >/dev/null ; then
-		virsh -c qemu:///system undefine $VCRD_NAME ||\
+		if virsh -c qemu:///system dominfo $VCRD_NAME  2>/dev/null | grep -e "^State:" | grep "off" >/dev/null ; then
+		    virsh -c qemu:///system undefine $VCRD_NAME ||\
 	    err $FUNCNAME "Failed undefining domain $VCRD_NAME"
+		fi
+		
+		[ $VCRD_PATH ] && [ -f $VCRD_PATH ] && rm -f $VCRD_PATH
+
+	    else
+		err $FUNCNAME "No system with rd-id=$VCRD_ID $VCRD_NAME found"
+
 	    fi
-	    
-	    [ -f $VCRD_PATH ] && rm -f $VCRD_PATH
-
-	else
-	    err $FUNCNAME "No system with rd-id=$VCRD_ID $VCRD_NAME found"
-
-	fi
+	done
     done
 }
 
@@ -649,7 +661,7 @@ vct_node_create() {
 	    echo $BRIDGE | grep -e "^VCT_BR[0-f][0-f]$" >/dev/null || \
 		err $FUNCNAME "Invalid VCT_BRIDGE_PREFIXES naming convention: $BRIDGE"
 
-	    if BR_NAME=$( variable_check ${BRIDGE}_NAME soft ); then
+	    if BR_NAME=$( variable_check ${BRIDGE}_NAME soft 2>/dev/null ); then
 
 		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null ) 
 		local BR_MAC48=$( variable_check ${BRIDGE}_MAC48 soft 2>/dev/null || \
@@ -795,42 +807,49 @@ vct_node_ssh() {
 
 vct_node_scp() {
 
-    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+    local VCRD_ID_RANGE=$1
+    local VCRD_ID=
+
     shift
     local WHAT="$@"
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-    local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
-    local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-    local COUNT=0
-    local COUNT_MAX=60
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-    while [ "$COUNT" -le $COUNT_MAX ]; do 
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
+	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
-	ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-	    break
-	
-	[ "$COUNT" = 0 ] && \
-	    echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-	    echo -n "."
+	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
+	local COUNT=0
+	local COUNT_MAX=60
 
-	COUNT=$(( $COUNT + 1 ))
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
+		break
+	    
+	    [ "$COUNT" = 0 ] && \
+		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
+		echo -n "."
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+
+	[ "$COUNT" = 0 ] || \
+	    echo
+
+	[ "$COUNT" -le $COUNT_MAX ] || \
+	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
+
+
+	echo > $VCT_SSH_DIR/known_hosts
+
+	scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IPV6\]:/ )
+
     done
-
-    [ "$COUNT" = 0 ] || \
-	echo
-
-    [ "$COUNT" -le $COUNT_MAX ] || \
-	err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
-
-
-    echo > $VCT_SSH_DIR/known_hosts
-
-    scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IPV6\]:/ )
 }
 
 
@@ -867,6 +886,8 @@ vct_node_mount() {
 	    
 	    vct_sudo mount -o loop,rw,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
 		err $FUNCNAME "Failed mounting $VCRD_PATH"
+
+	    echo $VCRD_MNTP
 
 	else
 	    err $FUNCNAME "Failed offline mounting node-id=$VCRD_ID"
@@ -1005,7 +1026,7 @@ vct_node_customize() {
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 
-	    vct_node_ssh $VCRD_ID confine_node_setup
+	    vct_node_ssh $VCRD_ID "/etc/init.d/confine start"
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
@@ -1384,33 +1405,36 @@ vct_help() {
     vct_system_init                : initialize vct system on host
     vct_system_cleanup             : revert vct_system_init
 
-    vct_node_info      [NODE_ID]   : summary of existing domain(s)
-    vct_node_create    <NODE_ID>   : create domain with given NODE_ID
-    vct_node_start     <NODE_ID>   : start domain with given NODE_ID
-    vct_node_stop      <NODE_ID>   : stop domain with given NODE_ID
-    vct_node_remove    <NODE_ID>   : remove domain with given NODE_ID
-    vct_node_console   <NODE_ID>   : open console to running domain
+    vct_node_info      [NODE_SET]   : summary of existing domain(s)
+    vct_node_create    <NODE_SET>   : create domain with given NODE_ID
+    vct_node_start     <NODE_SET>   : start domain with given NODE_ID
+    vct_node_stop      <NODE_SET>   : stop domain with given NODE_ID
+    vct_node_remove    <NODE_SET>   : remove domain with given NODE_ID
+    vct_node_console   <NODE_ID>      : open console to running domain
 
-    vct_node_customize <NODE_ID> [online|offline|sysupgrade]  : setup NODE_ID attributes
+    vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : setup NODE_ID attributes
 
-    vct_node_ssh    <NODE_ID> ["COMMANDS"]  : connect (& execute COMMANDS) via recovery IPv6
-    vct_node_scp    <NODE_ID> <SCP_ARGS>    : copy via recovery IPv6
-
-
-    vct_sliver_allocate  <SL_ID> <NODE_ID|node-range|all> [OS_TYPE:openwrt,debian] 
-    vct_sliver_deploy    <SL_ID> <NODE_ID|node-range|all> 
-    vct_sliver_start     <SL_ID> <NODE_ID|node-range|all> 
-    vct_sliver_stop      <SL_ID> <NODE_ID|node-range|all> 
-    vct_sliver_remove    <SL_ID> <NODE_ID|node-range|all> 
-
-    vct_slice_attributes  <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
+    vct_node_ssh       <NODE_ID>  ["COMMANDS"]  : connect (& execute COMMANDS) via recovery IPv6
+    vct_node_scp       <NODE_SET> <SCP_ARGS>    : copy via recovery IPv6
+    vct_node_mount     <NODE_SET>
+    vct_node_unmount   <NODE_SET>
 
 
-    NODE_ID:=  node id given by a 4-digit lower-case hex value 
-    SL_ID:=    slice id given by a 12-digit lower-case hex value
-    OS_TYPE:=  openwrt|debian
-    COMMANDS:= Commands to be executed on node
-    SCP_ARGS:= MUST contain keyword='remote:' which is replaced with 'root@[IPv6]:'
+    vct_sliver_allocate  <SL_ID> <NODE_SET> [OS_TYPE:openwrt,debian] 
+    vct_sliver_deploy    <SL_ID> <NODE_SET>
+    vct_sliver_start     <SL_ID> <NODE_SET>
+    vct_sliver_stop      <SL_ID> <NODE_SET>
+    vct_sliver_remove    <SL_ID> <NODE_SET> 
+
+    vct_slice_attributes <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
+
+
+    NODE_ID:=    node id given by a 4-digit lower-case hex value (eg: 0a12)
+    NODE_SET:=   set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (eg: 0001-0003)
+    SL_ID:=      slice id given by a 12-digit lower-case hex value
+    OS_TYPE:=    openwrt|debian
+    COMMANDS:=   Commands to be executed on node
+    SCP_ARGS:=   MUST contain keyword='remote:' which is replaced with 'root@[IPv6]:'
 
 -------------------------------------------------------------------------------------------
 

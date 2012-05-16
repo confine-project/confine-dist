@@ -1,8 +1,134 @@
+###########################################################################
+###########################################################################
+
+TODOs:
+
+
+- confine.lib: support proto=dhcp for slivers
+
+- package/confine-system documentation
+
+- utils/vct documentation
+
+- (bash) performance optimization
+
+
+- use ip link mac address instead of dummy interfaces for vct-local
+
+- rename container_nr to sliver_nr
+
+- fix sliver attribute state detection
+
+- add copyrights
+
+- openwrt.sh and debian.sh customize
+  - configure network
+  - set hostname,...
+  - unpack exp data
+  - start exp script
+
+- provide slice-attributes as bash environment variables
+
+- provide hello-world experiment
+
+
+###########################################################################
+###########################################################################
+
+Separate tasks:
+
+
+- shadow-passwd support (check manual passwd reset, default passwd,...)
+
+- firewall support (check spontanious firewall activation)
+
+- wireless support
+
+- squashfs and overlays
+
+
+
+
+###########################################################################
+###########################################################################
+
+Jankins Test Cases:
+
+ssh passwd login, passwd reset
+
+iterate over hello world experiment commands
+
+
+###########################################################################
+###########################################################################
+
+Done:
+
+
+vct_help
+vct_node_scp using remote: keyword, making it more flexible
+vct_node_mount
+vct_node_unmount
+
+use ip to setup dummy interface vct-local-dm for vct-local
+
+
+
+/etc/init.d/confine: start confine-dummy container (preparing sliver dhcp support)
+confine_info()
+setup_dummy_container()
+ssh_dummy_container()
+confine_system_check(): check node state
+confine_allocate_container(): differentiate high and low-level container_nr (preparing future sliver dhcp support)
+
+allow sliver desctipion if protos: none, static, (preparing dhcp)
+introduce slice description option exp_name
+
+
+
+
+
+ reduce confine image size to 256MB, 
+
+add dummy interface to internal bridge
+
+libvrtd
+local -> pub0..., internal -> priv, eth0 iso0...
+remove state from sliver-attributes
+LANG=C
+set dhpc ip
+
+
+ vct_system_phy_add, better add a variable in vct.conf
+
+
+- confine_sliver_start: must remove old slivers and attributes
+- confine_sliver_remove: must remove slivers and attributes
+
+
+- vct_node_customize : separate confine-configs from vct_node_install
+
+- vct_slice_attributes <state|flush|show|update>  <slice-id|all> [node-id]
+
+
+- vct_sliver_start    <slice-id> <node-id|all>
+- vct_sliver_stop     <sliver-id> <node-id|all>
+- vct_sliver_remove   <sliver-id> <node-id|all>
+
+- vct_sliver_allocate <sliver-id> <node-id|all> <system:openwrt,debian>
+- vct_sliver_deploy   <sliver-id> <node-id|all>
+
+
+- add links to vct.sh functions (vct_system_install,...)
 
 - confine_functions () return uci file format
 
-- customize function use ipv6 recovery address
+- replace arp with ip link command
+
+- vct_rpc_customize:  use ipv6 recovery address
+  NOT possible for vct, several nodes with equal IPv6 recovery address cause dadfailed
 
 - add links to confine.lib and lxc.lib functions
+
 
 

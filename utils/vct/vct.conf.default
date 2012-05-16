@@ -18,7 +18,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-25.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-26.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -122,7 +122,7 @@ VCT_NODE_PUBLIC_IPV4_GW=10.241.0.254
 
 VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01 VCT_BR02 VCT_BR03 VCT_BR04"  # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
 VCT_BR00_NAME="vct-local"
-VCT_BR00_DUMMY_DEV="dummy0"
+VCT_BR00_DUMMY_DEV="vct-local-dm"
 VCT_BR00_MODEL=""                          # optional, default rtl8139
 VCT_BR00_MAC48=""                          # optional, mac-address or RANDOM, empty (confine defaults)
 
@@ -147,9 +147,6 @@ VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
 VCT_BR01_NAME="vct-direct-01"
 
 VCT_BR02_NAME="vct-direct-02"
-
-VCT_BR03_NAME="vct-direct-03"
-
 
 
 #################################################
