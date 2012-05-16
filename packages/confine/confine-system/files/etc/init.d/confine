@@ -6,16 +6,25 @@ START=81
 
 start() {
 
+
+    confine.lib confine_system_check
+
+    confine_sliver_stop all
+
     if [ "$( uci -q get confine-node.node.state )" = "started" ] ; then
 	confine.lib uci_set confine-node.node.state=applied
     fi
 
-    rmmod dummy
-    insmod dummy numdummies=3
+    lsmod | grep dummy >/dev/null || insmod dummy
 
+    ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
+    ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
 
     confine_node_setup
 
+    confine.lib setup_dummy_container
+
+    confine.lib confine_info
 }
 
 

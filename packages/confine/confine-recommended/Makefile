@@ -52,6 +52,7 @@ define Package/confine-recommended
 	+nmap +lsof \
 	+wget +horst \
 	+ipv6calc \
+	+ipcalc \
 	+bmon +bwm +ebtables \
 
 endef

@@ -12,7 +12,7 @@ config defaults 'confine'
 config defaults system
         option local_ifname eth0
 
-       
+
 
 
 config 'container' 'openwrt'
