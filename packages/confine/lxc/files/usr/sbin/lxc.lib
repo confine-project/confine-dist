@@ -151,19 +151,30 @@ lxc_create_uci() {
 
 	if [ $IF_TYPE ]; then
 
-	    local IF_NAME="$(    uci_get $SL_CONFIG.if${IF_KEY}_name    soft,quiet 2>/dev/null )"
-	    local IF_NETCONF="$( uci_get $SL_CONFIG.if${IF_KEY}_netconf soft,quiet 2>/dev/null )"
-	    local IF_VLANPHY="$( uci_get $SL_CONFIG.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )"
+	    local IF_NAME="$(       uci_get $SL_CONFIG.if${IF_KEY}_name    soft,quiet 2>/dev/null )"
+	    local IF_NETCONF="$(    uci_get $SL_CONFIG.if${IF_KEY}_netconf soft,quiet 2>/dev/null )"
+	    local IF_VLANPHY="$(    uci_get $SL_CONFIG.if${IF_KEY}_vlanphy soft,quiet 2>/dev/null )"
+
+	    local IF_IPV4_PROTO="$( uci_get $SL_CONFIG.if${IF_KEY}_ipv4_proto soft,quiet 2>/dev/null )"
+	    local IF_IPV4="$(       uci_get $SL_CONFIG.if${IF_KEY}_ipv4 soft,quiet 2>/dev/null )"
+	    local IF_IPV6_PROTO="$( uci_get $SL_CONFIG.if${IF_KEY}_ipv6_proto soft,quiet 2>/dev/null )"
+	    local IF_IPV6="$(       uci_get $SL_CONFIG.if${IF_KEY}_ipv6 soft,quiet 2>/dev/null )"
 
 	    local IF_MAC=${MAC_PREFIX32}:${SL_ID_HEX}:${IF_KEY}
 	    local IF_PAIR=${LXC_VNET_PREFIX}-${SL_ID_HEX}-${IF_KEY}
 	    local IF_VLANTAG=F${SL_ID_HEX}
 
 	    uci_set lxc.$SL_NAME.if${IF_KEY}_type=$IF_TYPE
-	    [ ${IF_NAME:-} ]    && uci_set lxc.$SL_NAME.if${IF_KEY}_name=$IF_NAME
-	    [ ${IF_NETCONF:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_netconf=$IF_NETCONF
-	    [ ${IF_VLANPHY:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_vlanphy=$IF_VLANPHY
-	    [ ${IF_VLANPHY:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_vlantag=$IF_VLANTAG
+
+	    [ ${IF_NAME:-} ]       && uci_set lxc.$SL_NAME.if${IF_KEY}_name=$IF_NAME
+	    [ ${IF_IPV4_PROTO:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_ipv4_proto=$IF_IPV4_PROTO
+	    [ ${IF_IPV4:-} ]       && uci_set lxc.$SL_NAME.if${IF_KEY}_ipv4=$IF_IPV4
+	    [ ${IF_IPV6_PROTO:-} ] && uci_set lxc.$SL_NAME.if${IF_KEY}_ipv6_proto=$IF_IPV6_PROTO
+	    [ ${IF_IPV6:-} ]       && uci_set lxc.$SL_NAME.if${IF_KEY}_ipv6=$IF_IPV6
+	    [ ${IF_NETCONF:-} ]    && uci_set lxc.$SL_NAME.if${IF_KEY}_netconf=$IF_NETCONF
+	    [ ${IF_VLANPHY:-} ]    && uci_set lxc.$SL_NAME.if${IF_KEY}_vlanphy=$IF_VLANPHY
+	    [ ${IF_VLANPHY:-} ]    && uci_set lxc.$SL_NAME.if${IF_KEY}_vlantag=$IF_VLANTAG
+
 	    uci_set lxc.$SL_NAME.if${IF_KEY}_mac=$IF_MAC
 	    uci_set lxc.$SL_NAME.if${IF_KEY}_pair=$IF_PAIR
 
@@ -194,7 +205,7 @@ lxc_create() {
     echo creating container $SL_NAME using config=$SL_CONFIG >&2
 
 
-    [ "lxc.$SL_NAME" != "$SL_CONFIG" ] &&  ! uci_test lxc.$SL_NAME soft,quiet \
+    [ "lxc.$SL_NAME" != "$SL_CONFIG" ] &&  ! uci_test lxc.$SL_NAME soft,quiet && \
 	lxc_create_uci $SL_NAME $SL_CONFIG
 
     mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs
@@ -286,7 +297,7 @@ EOF
 
 	for COPY in $SL_COPY; do
 	    if echo "$COPY" | grep -e "^!" >/dev/null; then
-		rm -rf $LXC_IMAGES_PATH/$SL_NAME/rootfs/$COPY
+		rm -rf $LXC_IMAGES_PATH/$SL_NAME/rootfs/${COPY:1}
 	    fi
 	done
     fi
