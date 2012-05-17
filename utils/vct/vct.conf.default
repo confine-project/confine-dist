@@ -179,7 +179,6 @@ VCT_DEB_PACKAGES=" \
     iptables \
     iputils-ping \
     ipv6calc \
-    kvm \
     libvirt-bin \
     net-tools \
     openssh-client \
@@ -191,7 +190,7 @@ VCT_DEB_PACKAGES=" \
 "
 
 VCT_TOOL_TESTS=( \
-    'awk --version' \
+    'awk "" /dev/null' \
     'brctl --version' \
     'ebtables --version' \
     'fdisk -v' \

@@ -38,11 +38,15 @@ vct_sudo() {
 	echo "" >&2
 	echo "$0 wants to execute (VCT_SUDO_ASK=$VCT_SUDO_ASK set to ask):" >&2
 	echo ">>>>   sudo $@   <<<<" >&2
-	read -p "please type y to continue or anything else to abort: " QUERY >&2
+	read -p "Pleas type: y) to execute and continue, s) to skip and continue, or anything else to abort: " QUERY >&2
 
 	if [ "$QUERY" == "y" ] ; then
 	    sudo $@
 	    return $?
+
+	elif [ "$QUERY" == "s" ] ; then
+
+	    return 0
 	fi
 	
 	err $FUNCNAME "sudo execution cancelled: $QUERY"
@@ -166,20 +170,32 @@ vct_system_install_check() {
     fi
 
     # check debian system, packages, tools, and kernel modules
-    ! aptitude --version > /dev/null && dpkg --version > /dev/null &&\
-	{ err $FUNCNAME "missing debian system tool dpkg or aptitude" $CMD_SOFT || return 1 ;}
+    ! apt-get --version > /dev/null && dpkg --version > /dev/null &&\
+	{ err $FUNCNAME "missing debian system tool dpkg or apt-get" $CMD_SOFT || return 1 ;}
     
     if ! [ $CMD_QUICK ]; then
 
 	local PACKAGE=
 	local UPDATED=
+
 	for PACKAGE in $VCT_DEB_PACKAGES; do
-	    if ! dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep "install" |grep "ok" |grep "installed" > /dev/null ; then
-		echo "Missing debian package: $PACKAGE! Trying to install all required packets..."
-		( [ $CMD_INSTALL ] && ( [ $UPDATED ] || UPDATED=$( vct_sudo "aptitude update") ) && vct_sudo "aptitude install $PACKAGE" && \
-		    dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep "install" |grep "ok" |grep "installed" > /dev/null ) ||\
-                   { err $FUNCNAME "Missing debian packages $PACKAGE !!!" $CMD_SOFT || return 1 ;}
+
+	    if ! dpkg -s $PACKAGE 2>&1 |grep "Status:" |grep -v "not-installed" |grep "ok installed" > /dev/null ; then
+
+		if [ $CMD_INSTALL ] ; then
+		    echo "Missing debian package: $PACKAGE! Trying to install all required packets..." >&2 
+		else
+		    err $FUNCNAME "Missing debian packages $PACKAGE !!!" $CMD_SOFT || return 1
+		fi
+
+		if [ -z $UPDATED ] ; then
+		    vct_sudo "apt-get update" && UPDATED=1
+		fi
+
+		vct_sudo "apt-get  --no-install-recommends install $PACKAGE" || \
+                    { err $FUNCNAME "Missing debian packages $PACKAGE !!!" $CMD_SOFT || return 1 ;}
 	    fi
+
 	done
 
 	local TOOL_POS=
