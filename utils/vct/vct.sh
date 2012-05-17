@@ -723,6 +723,7 @@ vct_node_start() {
 	    xmlstarlet sel -T -t -m "/domain/devices/disk/source" -v attribute::file -n |
 	    grep -e "^${VCT_SYS_DIR}" || \
 		err $FUNCNAME "Failed resolving disk path for $VCRD_NAME" )
+
 	local VCRD_MNTP=$VCT_MNT_DIR/$VCRD_NAME
 
 	    mount | grep "$VCRD_MNTP" >/dev/null && \
@@ -763,46 +764,57 @@ vct_node_console() {
 
 vct_node_ssh() {
 
-    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+
+    local VCRD_ID_RANGE=$1
     local COMMAND=${2:-}
-    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-    local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+    local VCRD_ID=
 
-    local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-    local COUNT=0
-    local COUNT_MAX=60
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-    while [ "$COUNT" -le $COUNT_MAX ]; do 
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-	    break
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+	    err $FUNCNAME "$VCRD_NAME not running"
+	fi
+
+	local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
+	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+
+	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
+	local COUNT=0
+	local COUNT_MAX=60
+
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
+		break
+	    
+	    [ "$COUNT" = 0 ] && \
+		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
+		echo -n "."
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+
+	[ "$COUNT" = 0 ] || \
+	    echo
+
+	[ "$COUNT" -le $COUNT_MAX ] || \
+	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
 	
-	[ "$COUNT" = 0 ] && \
-	    echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-	    echo -n "."
 
-	COUNT=$(( $COUNT + 1 ))
+
+	echo > $VCT_SSH_DIR/known_hosts
+
+	if [ "$COMMAND" ]; then
+	    COMMAND=". /etc/profile > /dev/null; $COMMAND"
+	fi
+
+	ssh $VCT_SSH_OPTIONS root@$IPV6 "$COMMAND"
     done
-
-    [ "$COUNT" = 0 ] || \
-	echo
-
-    [ "$COUNT" -le $COUNT_MAX ] || \
-	err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
-    
-
-
-    echo > $VCT_SSH_DIR/known_hosts
-
-    if [ "$COMMAND" ]; then
-	COMMAND=". /etc/profile > /dev/null; $COMMAND"
-    fi
-
-    ssh $VCT_SSH_OPTIONS root@$IPV6 "$COMMAND"
 }
 
 vct_node_scp() {
@@ -816,6 +828,11 @@ vct_node_scp() {
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+	    err $FUNCNAME "$VCRD_NAME not running"
+	fi
+
 	local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
 	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
 	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
@@ -953,8 +970,9 @@ vct_node_customize() {
 
 	elif [ "$PROCEDURE" = "online" ] ; then
 
-	    virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
-		err $FUNCNAME "$VCRD_NAME not running"
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+		err $FUNCNAME "$VCRD_NAME not running" 
+	    fi
 
 	    vct_node_scp $VCRD_ID remote:/etc/config/* $PREP_UCI/
 
@@ -1167,9 +1185,9 @@ vct_sliver_allocate() {
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
 
-
-	virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null || \
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
 	    err $FUNCNAME "$VCRD_NAME not running"
+	fi
 
 	if [ "$OS_TYPE" = "debian" ]; then
             cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
@@ -1249,8 +1267,7 @@ vct_sliver_deploy() {
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
 
 	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running" soft
-	    continue
+	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 
 	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "allocated" ] ; then
@@ -1310,8 +1327,7 @@ vct_sliver_start() {
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
 
 	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running" soft
-	    continue
+	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 
 	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "deployed" ] ; then
@@ -1410,11 +1426,11 @@ vct_help() {
     vct_node_start     <NODE_SET>   : start domain with given NODE_ID
     vct_node_stop      <NODE_SET>   : stop domain with given NODE_ID
     vct_node_remove    <NODE_SET>   : remove domain with given NODE_ID
-    vct_node_console   <NODE_ID>      : open console to running domain
+    vct_node_console   <NODE_ID>    : open console to running domain
 
     vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : setup NODE_ID attributes
 
-    vct_node_ssh       <NODE_ID>  ["COMMANDS"]  : connect (& execute COMMANDS) via recovery IPv6
+    vct_node_ssh       <NODE_SET> ["COMMANDS"]  : connect (& execute COMMANDS) via recovery IPv6
     vct_node_scp       <NODE_SET> <SCP_ARGS>    : copy via recovery IPv6
     vct_node_mount     <NODE_SET>
     vct_node_unmount   <NODE_SET>
