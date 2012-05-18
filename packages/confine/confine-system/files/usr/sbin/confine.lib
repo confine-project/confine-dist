@@ -102,6 +102,63 @@ confine_allocate_container() {
     echo $CT_NR_HEX
 }
 
+confine_allocate_dhcp_public_ipv4() {
+
+    echo "$FUNCNAME $@" >&2
+
+    local DHCP_MAC=$1
+    local OPT_CMD=${2:-}
+    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+
+    local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
+    local PROTO_IPS="$( uci_get confine-node.node.sl_public_ipv4_proto soft)"
+
+    [ "$PROTO_IPS" = "dhcp" ] || \
+	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine-node.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
+
+    
+    local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.container_nr )
+    local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
+    local ORIG_MAC=$(          uci_get confine-slivers.ffffffffffff.if01_mac     )
+
+    local DHCP_REPORT="$( ssh_dummy_container "ip link set $DHCP_IF down && ip link set $DHCP_IF address $DHCP_MAC && udhcpc -i $DHCP_IF && ip addr show dev $DHCP_IF && echo COMPLETED; ip link set $DHCP_IF down && ip link set $DHCP_IF address $ORIG_MAC && uci show system.@system[0].hostname" )"
+
+    echo "$DHCP_REPORT" | grep -e "^system.cfg.......hostname=$DHCP_CONTAINER_NR$" >/dev/null || \
+	{ err $FUNCNAME "Incomplete DHCP_REPORT=$DHCP_REPORT" $CMD_SOFT; return 1; }
+
+    echo "$DHCP_REPORT" | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
+	{ err $FUNCNAME "Failed faking DHCP_MAC=$DHCP_MAC" $CMD_SOFT; return 1; }
+
+    local DHCP_IP=
+    DHCP_IP=$( echo "$DHCP_REPORT" | grep -e "^udhcpc: ifconfig $DHCP_IF" | awk '{print $4}' )
+    DHCP_IP=$( echo "$DHCP_REPORT" | grep -e "inet $DHCP_IP" | grep "scope global $DHCP_IF$" | awk '{print $2}' )
+
+    [ $DHCP_IP ] || \
+	{ err $FUNCNAME "Failed obtaining dhcp address" $CMD_SOFT; return 1; }
+    
+    local TMP_SL_ID=
+    local TMP_IP=
+
+    local USED_IPS=$DHCP_IP
+
+    for TMP_SL_ID in $SLIVERS; do
+
+	if [ "$( uci_get confine-slivers.$TMP_SL_ID.if01_type soft,quiet )" = "public" ]; then
+	    TMP_IP=$( uci_get confine-slivers.$TMP_SL_ID.if01_ipv4 soft,quiet )
+
+	    if [ "$TMP_IP" ] ; then
+
+		echo "$USED_IPS" | grep -e "$TMP_IP" >/dev/null && \
+		    { err $FUNCNAME "public ip=$TMP_IP used twice !!!" $CMD_SOFT; return 1; }
+
+		USED_IPS="$( [ "$USED_IPS" ] && echo "$USED_IPS $TMP_IP" || echo "$TMP_IP" )"
+	    fi
+	fi
+    done
+
+    echo $DHCP_IP
+}
+
 
 confine_allocate_static_public_ipv4() {
 
@@ -395,6 +452,7 @@ confine_sliver_allocate() {
 	local EXP_NAME="$(    uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
 	local FS_URL=$(       uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )
 	local DATA_URL=$(     uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )
+	local MAC_PREFIX16=$( uci_get confine-node.node.mac_prefix16 )
 
 	local IF01_TYPE=$(    uci_get $SRC_CFG.$SL_ID.if01_type        soft,quiet,path=$SRC_DIR )
 	local IF01_PROTO=$(   uci_get $SRC_CFG.$SL_ID.if01_ipv4_proto  soft,quiet,path=$SRC_DIR )
@@ -418,7 +476,12 @@ confine_sliver_allocate() {
 
 	    elif  [ "$IF01_PROTO" = "dhcp" ] ; then
 
-		IF01_PUBLIC_IPV4=$( confine_allocate_dhcp_public_ipv4 $CT_NR soft ) || \
+		local IF01_MAC=${MAC_PREFIX16}:${NODE_ID:0:2}:${NODE_ID:2:2}:${CT_NR}:01
+
+		echo $FUNCNAME allocating dhcp public...
+		confine_allocate_dhcp_public_ipv4 $IF01_MAC soft
+
+		IF01_PUBLIC_IPV4=$( confine_allocate_dhcp_public_ipv4 $IF01_MAC soft ) || \
 		    err $FUNCNAME "Failed allocating dhcp public ip"
 	    fi
 
@@ -462,7 +525,6 @@ confine_sliver_allocate() {
 
 
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
-	local MAC_PREFIX16=$( uci_get confine-node.node.mac_prefix16 )
 
 	echo "" > $OUT_DIR/$SLV_CFG
 	uci_set $SLV_CFG.$SL_ID=sliver path=$OUT_DIR

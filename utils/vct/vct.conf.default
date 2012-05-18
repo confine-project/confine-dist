@@ -103,7 +103,7 @@ VCT_NODE_CN_URL="NODE_ID.confine.community.net"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
 
 VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 
-VCT_NODE_SL_PUBLIC_IPV4_PROTO=static     # dhcp or static and following addresses
+VCT_NODE_SL_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static and following addresses
 VCT_NODE_PUBLIC_IPV4_AVAIL="8"
 
 VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"   # completes to prefix16.node-id-lsb.X/24

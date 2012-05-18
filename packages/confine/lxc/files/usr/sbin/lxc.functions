@@ -299,11 +299,10 @@ uci_merge() {
     uci_check_clean $TMP_CFG $CMD_PATH
 
     uci $OPT_PATH batch <<EOF
-$( grep -e "^$TMP_CFG\." | while read L; do echo $L | awk -F'=' '{print "set " $1 "=\"" $2 "\""}' ; done )
+$( grep -e "^$TMP_CFG\." | while read L; do echo "set $( echo "$L" | awk -F'=' '{print $1}' )=\"$(  echo "$L" | cut -d= -f2- )\""  ; done )
 EOF
 
     uci $OPT_PATH commit $TMP_CFG
-
 }
 
 

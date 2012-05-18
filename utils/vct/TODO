@@ -37,14 +37,20 @@ TODOs:
 
 Separate tasks:
 
+- firewall (iptables/ebtables) support 
+  - check spontanious firewall activation/deactivation with openwrt defaults
+  - prevent: 
+    - MAC changes by slivers
+    - IP changes by slivers for devs: pub0 priv
 
 - shadow-passwd support (check manual passwd reset, default passwd,...)
-
-- firewall support (check spontanious firewall activation)
 
 - wireless support
 
 - squashfs and overlays
+
+- check LXC security:
+  - MAC can be changed from inside container despite dropped mac admin capabilities
 
 
 

@@ -39,6 +39,7 @@ define Package/confine-system
 	+ip \
 	+iptables \
 	+kmod-dummy \
+	+tinc \
 
 endef
 
