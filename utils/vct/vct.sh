@@ -785,6 +785,8 @@ vct_node_ssh() {
     local COMMAND=${2:-}
     local VCRD_ID=
 
+    shift
+
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
@@ -826,10 +828,11 @@ vct_node_ssh() {
 	echo > $VCT_SSH_DIR/known_hosts
 
 	if [ "$COMMAND" ]; then
-	    COMMAND=". /etc/profile > /dev/null; $COMMAND"
+	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
+	else
+	    ssh $VCT_SSH_OPTIONS root@$IPV6
 	fi
 
-	ssh $VCT_SSH_OPTIONS root@$IPV6 "$COMMAND"
     done
 }
 
@@ -1168,6 +1171,7 @@ vct_slice_attributes() {
 
 
 
+
 vct_sliver_allocate() {
 
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
@@ -1244,7 +1248,7 @@ EOF
 	echo "# <<<< Input stream end <<<<<<" >&1
 
 	cat $VCT_RPC_DIR/$RPC_REQUEST | \
-	    vct_node_ssh $VCRD_ID "confine.lib confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
+	    vct_node_ssh $VCRD_ID "confine_sliver_allocate $SLICE_ID" > $VCT_RPC_DIR/$RPC_REPLY
 
 	cat $VCT_RPC_DIR/$RPC_REPLY           >&1
 
