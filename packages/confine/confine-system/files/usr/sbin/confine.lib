@@ -102,6 +102,69 @@ confine_allocate_container() {
     echo $CT_NR_HEX
 }
 
+
+setup_dummy_container() {
+    
+    echo "$FUNCNAME $# $@" >&2
+    
+    confine_system_check
+
+    local NODE_ID=$( uci_get confine-node.node.id )
+    local DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state soft,quiet )
+
+    if ! [ "$DUMMY_STATE" ] ; then
+
+	confine_sliver_allocate ffffffffffff <<EOF || err $FUNCNAME "Failed allocating dummy"
+config sliver ffffffffffff
+    option user_pubkey     "$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep rsa )"
+    option exp_name        "confine-dummy"
+    option if00_type       internal 
+    option if00_name       priv 
+    option if01_type       public   # optional
+    option if01_name       pub0
+    option if01_ipv4_proto none
+EOF
+
+	uci_set lxc.7d.remount='bin lib sbin usr'
+        uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
+
+	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
+    fi
+
+
+    if [ "$DUMMY_STATE" = "allocated" ] ; then
+
+	confine_sliver_deploy ffffffffffff <<EOF || err $FUNCNAME "Failed deploying dummy"
+config sliver ffffffffffff_$NODE_ID
+EOF
+
+	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
+    fi
+
+
+    if [ "$DUMMY_STATE" = "deployed" ] ; then
+
+	confine_sliver_start ffffffffffff || err $FUNCNAME "Failed starting dummy"
+    fi
+}
+
+
+ssh_dummy_container() {
+
+#    echo "$FUNCNAME $@" >&2
+    
+    local COMMAND="${1:-}"
+    local DUMMY_IP=$( uci_get confine-slivers.ffffffffffff.if00_ipv4 | awk -F'/' '{print $1}' )
+
+    if [ "$COMMAND" ]; then
+	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP ". /etc/profile; $@"
+    else
+	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP
+
+    fi
+}
+
+
 confine_allocate_dhcp_public_ipv4() {
 
     echo "$FUNCNAME $@" >&2
@@ -115,23 +178,35 @@ confine_allocate_dhcp_public_ipv4() {
 
     [ "$PROTO_IPS" = "dhcp" ] || \
 	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine-node.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
-
     
     local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.container_nr )
     local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
     local ORIG_MAC=$(          uci_get confine-slivers.ffffffffffff.if01_mac     )
+    local DUMMY_REPORT=/tmp/confine-$( date +%s )-$BASHPID-dhcp-report
+    local HOST_REPORT=/lxc/images/$DHCP_CONTAINER_NR/rootfs/$DUMMY_REPORT
+    local DHCP_REQUEST="\
+date  > $DUMMY_REPORT && \
+ip link set $DHCP_IF down && \
+ip link set $DHCP_IF address $DHCP_MAC && \
+udhcpc -i $DHCP_IF  >> $DUMMY_REPORT && \
+ip addr show dev $DHCP_IF >> $DUMMY_REPORT && \
+echo COMPLETED  >> $DUMMY_REPORT ; \
+ip link set $DHCP_IF down && \
+ip link set $DHCP_IF address $ORIG_MAC && \
+uci show system.@system[0].hostname  >> $DUMMY_REPORT \
+"
 
-    local DHCP_REPORT="$( ssh_dummy_container "ip link set $DHCP_IF down && ip link set $DHCP_IF address $DHCP_MAC && udhcpc -i $DHCP_IF && ip addr show dev $DHCP_IF && echo COMPLETED; ip link set $DHCP_IF down && ip link set $DHCP_IF address $ORIG_MAC && uci show system.@system[0].hostname" )"
+    ssh_dummy_container "$DHCP_REQUEST"
 
-    echo "$DHCP_REPORT" | grep -e "^system.cfg.......hostname=$DHCP_CONTAINER_NR$" >/dev/null || \
-	{ err $FUNCNAME "Incomplete DHCP_REPORT=$DHCP_REPORT" $CMD_SOFT; return 1; }
+    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=$DHCP_CONTAINER_NR$" >/dev/null || \
+	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
 
-    echo "$DHCP_REPORT" | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
+    cat $HOST_REPORT | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
 	{ err $FUNCNAME "Failed faking DHCP_MAC=$DHCP_MAC" $CMD_SOFT; return 1; }
 
     local DHCP_IP=
-    DHCP_IP=$( echo "$DHCP_REPORT" | grep -e "^udhcpc: ifconfig $DHCP_IF" | awk '{print $4}' )
-    DHCP_IP=$( echo "$DHCP_REPORT" | grep -e "inet $DHCP_IP" | grep "scope global $DHCP_IF$" | awk '{print $2}' )
+    DHCP_IP=$( cat $HOST_REPORT | grep -e "^udhcpc: ifconfig $DHCP_IF" | awk '{print $4}' )
+    DHCP_IP=$( cat $HOST_REPORT | grep -e "inet $DHCP_IP" | grep "scope global $DHCP_IF$" | awk '{print $2}' )
 
     [ $DHCP_IP ] || \
 	{ err $FUNCNAME "Failed obtaining dhcp address" $CMD_SOFT; return 1; }
@@ -208,62 +283,6 @@ confine_allocate_static_public_ipv4() {
 
 
 
-ssh_dummy_container() {
-    
-    local ARGS="$@"
-    local DUMMY_IP=$( uci_get confine-slivers.ffffffffffff.if00_ipv4 | awk -F'/' '{print $1}' )
-    local COMMAND=
-    if [ "${1:-}" ]; then
-	COMMAND=". /etc/profile > /dev/null; "
-    fi
-
-    ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP $COMMAND $@
-}
-
-setup_dummy_container() {
-    
-    echo "$FUNCNAME $# $@" >&2
-    
-    confine_system_check
-
-    local NODE_ID=$( uci_get confine-node.node.id )
-    local DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state soft,quiet )
-
-    if ! [ "$DUMMY_STATE" ] ; then
-
-	confine_sliver_allocate ffffffffffff <<EOF || err $FUNCNAME "Failed allocating dummy"
-config sliver ffffffffffff
-    option user_pubkey     "$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep rsa )"
-    option exp_name        "confine-dummy"
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto none
-EOF
-
-	uci_set lxc.7d.remount='bin lib sbin usr'
-        uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "allocated" ] ; then
-
-	confine_sliver_deploy ffffffffffff <<EOF || err $FUNCNAME "Failed deploying dummy"
-config sliver ffffffffffff_$NODE_ID
-EOF
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "deployed" ] ; then
-
-	confine_sliver_start ffffffffffff || err $FUNCNAME "Failed starting dummy"
-    fi
-}
 
 confine_node_setup() {
 
@@ -465,7 +484,7 @@ confine_sliver_allocate() {
 	    CT_NR=$( confine_allocate_container min soft ) || \
 		err $FUNCNAME "Failed allocating container_nr"
 
-	    [ $(( 16#${CT_NR} )) -ge $( uci_get confine-node.node.public_ipv4_avail ) ] && \
+	    [ $(( 16#${CT_NR} )) -gt $( uci_get confine-node.node.public_ipv4_avail ) ] && \
 		err $FUNCNAME "Failed allocating container_nr for public if"
 
 
@@ -478,8 +497,7 @@ confine_sliver_allocate() {
 
 		local IF01_MAC=${MAC_PREFIX16}:${NODE_ID:0:2}:${NODE_ID:2:2}:${CT_NR}:01
 
-		echo $FUNCNAME allocating dhcp public...
-		confine_allocate_dhcp_public_ipv4 $IF01_MAC soft
+		echo $FUNCNAME allocating dhcp public... >&2
 
 		IF01_PUBLIC_IPV4=$( confine_allocate_dhcp_public_ipv4 $IF01_MAC soft ) || \
 		    err $FUNCNAME "Failed allocating dhcp public ip"
