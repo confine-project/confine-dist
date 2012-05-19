@@ -1505,7 +1505,7 @@ if [ "$CMD" = "vct.sh" ]; then
     if [ "${1:-}" ]; then
 	"$@"
     else
-	help
+	vct_help
     fi
 
 else
