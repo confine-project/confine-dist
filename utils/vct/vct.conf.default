@@ -31,7 +31,7 @@ VCT_VIRT_DIR=/var/lib/vct
 
 
 
-PATH="$PATH=:/sbin:/usr/sbin"
+PATH="$PATH:/sbin:/usr/sbin"
 
 VCT_DL_DIR=$VCT_VIRT_DIR/downloads
 VCT_SYS_DIR=$VCT_VIRT_DIR/images
