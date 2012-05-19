@@ -120,10 +120,7 @@ vct_system_check_uci() {
     local UCI_INSTALL_DIR="/usr/local/bin"
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
 
-    if [ "$CMD_INSTALL" ] ; then
-
-	[ -f $UCI_INSTALL_PATH ] && \
-	    err $FUNCNAME "$UCI_INSTALL_PATH already exist, please remove manually"
+    if [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
 
 	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
 	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
@@ -207,6 +204,9 @@ vct_system_install_check() {
 	done
 
     fi
+
+    # check uci binary
+    vct_system_check_uci "$@"
 
 
     # check if user is in libvirt groups:
