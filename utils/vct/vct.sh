@@ -109,48 +109,6 @@ vct_system_config_check() {
 }
 
 
-vct_system_check_uci() {
-
-    local OPT_CMD=${1:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
-
-    local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
-
-    local UCI_INSTALL_DIR="/usr/local/bin"
-    local UCI_INSTALL_PATH="/usr/local/bin/uci"
-
-    if [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
-
-	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
-	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
-
-	if ! wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
-	    ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
-	    ! $UCI_INSTALL_PATH help 2>/dev/null ; then
-
-	    err $FUNCNAME "Failed installing statically linked uci binary to $UCI_INSTALL_PATH "
-	fi
-    fi
-
-    uci help 2>/dev/null && return 0
-
-    cat <<EOF >&2
-uci (unified configuration interface) tool is required for 
-this command (see: wiki.openwrt.org/doc/uci ).
-Unfortunately, there is no debian package available for uci.
-Please install uci manually using sources from here: 
-http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz
-
-Alternatively you can run
-$0 install
-and to download and install a statically linked uci binary.
-EOF
- 
-    err $FUNCNAME "uci binary not available" $CMD_SOFT
-
-}
-
 vct_system_install_check() {
 
     echo $FUNCNAME $@
@@ -206,7 +164,41 @@ vct_system_install_check() {
     fi
 
     # check uci binary
-    vct_system_check_uci "$@"
+    local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
+
+    local UCI_INSTALL_DIR="/usr/local/bin"
+    local UCI_INSTALL_PATH="/usr/local/bin/uci"
+
+    if [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
+
+	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
+	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
+
+	if ! wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
+	    ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
+	    ! $UCI_INSTALL_PATH help 2>/dev/null ; then
+
+	    err $FUNCNAME "Failed installing statically linked uci binary to $UCI_INSTALL_PATH "
+	fi
+    fi
+
+    if ! uci help 2>/dev/null; then
+
+	cat <<EOF >&2
+uci (unified configuration interface) tool is required for
+this command (see: wiki.openwrt.org/doc/uci ).
+Unfortunately, there is no debian package available for uci.
+Please install uci manually using sources from here:
+http://downloads.openwrt.org/sources/uci-0.7.5.tar.gz
+
+Alternatively you can run
+$0 install
+to download and install a statically linked uci binary.
+EOF
+
+	err $FUNCNAME "uci binary not available" $CMD_SOFT
+
+    fi
 
 
     # check if user is in libvirt groups:
@@ -966,8 +958,6 @@ vct_node_customize() {
 	*) err $FUNCNAME "Invalid customization procedure" ;;
     esac
 
-    vct_system_check_uci
-
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
@@ -1084,8 +1074,6 @@ vct_slice_attributes() {
     local SLICES=
     local SLICE_ID=
 
-    vct_system_check_uci
-
     uci -c $VCT_UCI_DIR changes | grep -e "^$VCT_SLICE_DB" && \
 	err $FUNCTION "dirty uci $VCT_SLICE_DB"
 
@@ -1179,8 +1167,6 @@ vct_sliver_allocate() {
     local OS_TYPE=${3:-openwrt}
     local VCRD_ID=
 
-    vct_system_check_uci
-
     [ "$OS_TYPE" = "openwrt" ] || [ "$OS_TYPE" = "debian" ] || \
 	err $FUNCNAME "OS_TYPE=$OS_TYPE NOT supported"
 
@@ -1270,8 +1256,6 @@ vct_sliver_deploy() {
     local VCRD_ID_RANGE=$2
     local VCRD_ID=
 
-    vct_system_check_uci
-
     vct_slice_attributes update $SLICE_ID
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
@@ -1330,8 +1314,6 @@ vct_sliver_start() {
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
 
-    vct_system_check_uci
-
     vct_slice_attributes update $SLICE_ID
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
@@ -1376,8 +1358,6 @@ vct_sliver_stop() {
     local VCRD_ID_RANGE=$2
     local VCRD_ID=
 
-    vct_system_check_uci
-
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
@@ -1408,8 +1388,6 @@ vct_sliver_remove() {
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
     local VCRD_ID=
-
-    vct_system_check_uci
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
@@ -1519,7 +1497,6 @@ else
 
 	vct_system_install_check)   $CMD "$@";;
 	vct_system_install)         $CMD "$@";;
-	vct_system_check_uci)       $CMD "$@";;
 	vct_system_init_check)      $CMD "$@";;
 	vct_system_init)            $CMD "$@";;
 	vct_system_cleanup)         $CMD "$@";;
