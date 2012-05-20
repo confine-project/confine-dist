@@ -169,7 +169,7 @@ vct_system_install_check() {
     local UCI_INSTALL_DIR="/usr/local/bin"
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
 
-    if [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
+    if ! uci help 2>/dev/null && [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
 
 	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
 	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
