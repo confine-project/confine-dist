@@ -15,6 +15,7 @@ fi
 
 # MAIN_PID=$BASHPID
 
+VCT_NODE_MAC_DB=./vct.nodes
 UCI_DEFAULT_PATH=$VCT_UCI_DIR
 ERR_LOG_TAG='VCT'
 . ./lxc.functions
@@ -781,17 +782,32 @@ vct_node_ssh() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	local MAC=
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
-	    err $FUNCNAME "$VCRD_NAME not running"
+	[ -f $VCT_NODE_MAC_DB  ] && \
+	    MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
+
+	if  [ $MAC ]  ; then
+
+	    echo $FUNCNAME "connecting to real node=$VCRD_ID mac=$MAC" >&2
+
+	else
+
+	    echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
+
+	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+		err $FUNCNAME "$VCRD_NAME not running"
+	    fi
+
+	    MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+		xmlstarlet sel -T -t -m "/domain/devices/interface" \
+		-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+		grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+		err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 	fi
 
-	local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
 	local COUNT=0
@@ -838,17 +854,30 @@ vct_node_scp() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+	local MAC=
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
-	    err $FUNCNAME "$VCRD_NAME not running"
+	[ -f $VCT_NODE_MAC_DB  ] && \
+	    MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
+
+	if  [ $MAC ]  ; then
+
+	    echo $FUNCNAME "connecting to real node=$VCRD_ID mac=$MAC" >&2
+
+	else
+
+	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+		err $FUNCNAME "$VCRD_NAME not running"
+	    fi
+
+	    local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+		xmlstarlet sel -T -t -m "/domain/devices/interface" \
+		-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+		grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+		err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 	fi
 
-	local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
-	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
 
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
 	local COUNT=0
@@ -979,9 +1008,11 @@ vct_node_customize() {
 
 	elif [ "$PROCEDURE" = "online" ] ; then
 
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
 	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
 		err $FUNCNAME "$VCRD_NAME not running" 
 	    fi
+	fi
 
 	    vct_node_scp $VCRD_ID remote:/etc/config/* $PREP_UCI/
 
@@ -1170,7 +1201,7 @@ vct_sliver_allocate() {
     [ "$OS_TYPE" = "openwrt" ] || [ "$OS_TYPE" = "debian" ] || \
 	err $FUNCNAME "OS_TYPE=$OS_TYPE NOT supported"
 
-    vct_slice_attributes update $SLICE_ID
+#    vct_slice_attributes update $SLICE_ID
 
     if ! uci_test $VCT_SLICE_DB.$SLICE_ID.state soft,quiet ; then
 
@@ -1191,8 +1222,11 @@ vct_sliver_allocate() {
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-reply"
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running"
+
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+		err $FUNCNAME "$VCRD_NAME not running"
+	    fi
 	fi
 
 	if [ "$OS_TYPE" = "debian" ]; then
@@ -1256,7 +1290,7 @@ vct_sliver_deploy() {
     local VCRD_ID_RANGE=$2
     local VCRD_ID=
 
-    vct_slice_attributes update $SLICE_ID
+#    vct_slice_attributes update $SLICE_ID
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
 
@@ -1270,8 +1304,10 @@ vct_sliver_deploy() {
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-request"
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-deploy-reply"
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running"
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+		err $FUNCNAME "$VCRD_NAME not running"
+	    fi
 	fi
 
 	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "allocated" ] ; then
@@ -1314,7 +1350,7 @@ vct_sliver_start() {
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
 
-    vct_slice_attributes update $SLICE_ID
+#    vct_slice_attributes update $SLICE_ID
 
     local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
 
@@ -1328,8 +1364,10 @@ vct_sliver_start() {
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
 	    err $FUNCNAME "$VCRD_NAME not running"
+	    fi
 	fi
 
 	if [ "$( uci_get $VCT_SLICE_DB.${SLICE_ID}_${VCRD_ID}.state soft )" != "deployed" ] ; then
@@ -1363,9 +1401,12 @@ vct_sliver_stop() {
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 	local RPC_REPLY="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-start-reply"
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running" soft
-	    continue
+
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+		err $FUNCNAME "$VCRD_NAME not running" soft
+		continue
+	    fi
 	fi
 
 	vct_node_ssh $VCRD_ID "confine.lib confine_sliver_stop $SLICE_ID" > ${VCT_RPC_DIR}/${RPC_REPLY}
@@ -1393,9 +1434,11 @@ vct_sliver_remove() {
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 
-	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
-	    err $FUNCNAME "$VCRD_NAME not running" soft
-	    continue
+	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ; then
+		err $FUNCNAME "$VCRD_NAME not running" soft
+		continue
+	    fi
 	fi
 
 	vct_node_ssh $VCRD_ID "confine.lib confine_sliver_remove $SLICE_ID"
