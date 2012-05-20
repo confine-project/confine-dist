@@ -1084,7 +1084,7 @@ vct_node_customize() {
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 
-	    vct_node_ssh $VCRD_ID "/etc/init.d/confine start"
+	    vct_node_ssh $VCRD_ID "confine_node_setup"
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 

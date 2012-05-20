@@ -295,18 +295,37 @@ confine_node_setup() {
     if ! check_node_state $NODE_STATE quiet,soft ; then
 	
 	confine_sliver_remove all
+	return 1
+    fi
 
-    elif [ "$NODE_STATE" = "started" ]; then
+    if [ "$NODE_STATE" = "started" ]; then
 
+	confine.lib confine_system_check
     	echo "node-id=$VCRD_ID started"
+	return 0
+    fi
 
-    elif [ "$NODE_STATE" = "applied" ] ; then
-   
+    if [ "$NODE_STATE" = "applied" ] ; then
+
+	confine.lib confine_system_check
+
+	confine_sliver_stop all
+
+	lsmod | grep dummy >/dev/null || insmod dummy
+	ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
+	ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
+	
 	uci_set confine-node.node.state=started
 
+	setup_dummy_container
+	
+	confine.lib confine_info
 
-    elif [ "$NODE_STATE" = "prepared" ] ; then
-   
+	return 0
+    fi
+
+    if [ "$NODE_STATE" = "prepared" ] ; then
+
 	confine_sliver_remove all
 
 	local SERVER_MGMT_PUBKEY="$(       uci_get confine-server.server.mgmt_pubkey             soft )"
@@ -427,7 +446,20 @@ confine_node_setup() {
 	    [ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
 	    [ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
 
+
+	    confine.lib confine_system_check
+	    
+	    lsmod | grep dummy >/dev/null || insmod dummy
+	    ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
+	    ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
+	
 	    uci_set confine-node.node.state=started
+
+	    confine.lib setup_dummy_container
+
+	    confine.lib confine_info
+
+	    return 0
 
 	else
 	    uci_set confine-node.node.state=unprepared
