@@ -515,6 +515,15 @@ vct_system_cleanup() {
 		  vct_sudo brctl delbr $BR_NAME
 	    fi
 
+            # check if bridge had a dummy device:
+	    local BR_DUMMY_DEV=$( variable_check ${BRIDGE}_DUMMY_DEV soft 2>/dev/null )
+	    if [ $BR_DUMMY_DEV ] ; then
+		if ip link show dev $BR_DUMMY_DEV >/dev/null 2>&1 ; then
+		    vct_sudo ip link del $BR_DUMMY_DEV || \
+			{ err $FUNCNAME "Failed deleting $BR_DUMMY_DEV" $CMD_SOFT || return 1 ;}
+		fi
+	    fi
+
 	fi
     done
 
