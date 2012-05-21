@@ -14,7 +14,7 @@ start() {
 	confine.lib uci_set confine-node.node.state=applied
     fi
 
-    confine_node_setup
+    confine_node_enable
 }
 
 

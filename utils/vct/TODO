@@ -3,8 +3,7 @@
 
 TODOs:
 
-
-- confine.lib: support proto=dhcp for slivers
+- vct_customize .. sysupgrade
 
 - package/confine-system documentation
 
@@ -31,6 +30,8 @@ TODOs:
 
 - provide hello-world experiment
 
+
+- use macvlan and 'udhcpc -s' for sliver dhcp fakes
 
 ###########################################################################
 ###########################################################################
@@ -70,6 +71,9 @@ iterate over hello world experiment commands
 
 Done:
 
+- confine_node_enable (renamed form confine_node_setup() ) and confine_node_disable
+
+- confine.lib: support proto=dhcp for slivers
 
 vct_help
 vct_node_scp using remote: keyword, making it more flexible

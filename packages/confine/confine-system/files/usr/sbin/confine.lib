@@ -281,10 +281,16 @@ confine_allocate_static_public_ipv4() {
     return 1
 }
 
+confine_node_disable() {
 
+    echo "$FUNCNAME $# $@" >&2
 
+    confine.lib uci_set confine-node.node.state=unprepared soft
+    
+    confine_sliver_remove all
+}
 
-confine_node_setup() {
+confine_node_enable() {
 
    echo "$FUNCNAME $# $@" >&2
 
@@ -947,7 +953,8 @@ confine_sliver_remove() {
 help() {
        cat <<EOF
 confine_info
-confine_node_setup
+confine_node_enable
+confine_node_disable
 confine_sliver_allocate <SLICE_ID> [BATCH FILE]
 confine_sliver_deploy   <SLICE_ID> [BATCH FILE]
 confine_sliver_start    <SLICE_ID|all>
@@ -971,7 +978,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_setup) $CMD ;;
+	confine_node_enable|confine_node_disable) $CMD ;;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_remove) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;

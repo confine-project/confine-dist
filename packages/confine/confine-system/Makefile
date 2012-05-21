@@ -85,7 +85,8 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.functions   $(1)/usr/sbin/
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
-	ln -sf confine.lib  $(1)/usr/sbin/confine_node_setup
+	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
+	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start

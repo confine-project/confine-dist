@@ -1008,12 +1008,13 @@ vct_node_customize() {
 
 	elif [ "$PROCEDURE" = "online" ] ; then
 
-	if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
-	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
-		err $FUNCNAME "$VCRD_NAME not running" 
+	    if ! ( [ -f $VCT_NODE_MAC_DB  ] &&  grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >/dev/null ); then
+		if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
+		    err $FUNCNAME "$VCRD_NAME not running" 
+		fi
 	    fi
-	fi
 
+	    vct_node_ssh $VCRD_ID "confine_node_disable"
 	    vct_node_scp $VCRD_ID remote:/etc/config/* $PREP_UCI/
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
@@ -1083,8 +1084,7 @@ vct_node_customize() {
 	elif [ "$PROCEDURE" = "online" ] ; then
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
-
-	    vct_node_ssh $VCRD_ID "confine_node_setup"
+	    vct_node_ssh $VCRD_ID "confine_node_enable"
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
