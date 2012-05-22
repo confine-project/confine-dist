@@ -67,7 +67,7 @@ confine_allocate_container() {
     local TMP_CT_NR=
 
     for TMP_SL_ID in $SLIVERS ; do
-	local HEX=$( uci_get confine-slivers.$TMP_SL_ID.container_nr soft,quiet)
+	local HEX=$( uci_get confine-slivers.$TMP_SL_ID.sliver_nr soft,quiet)
 	[ $HEX ] && CONTAINER_NRS="$( [ "$CONTAINER_NRS" ] && echo "$CONTAINER_NRS $HEX" || echo "$HEX" )"
     done
 
@@ -97,7 +97,7 @@ confine_allocate_container() {
     
 
     [ $CT_NR_HEX ] || \
-	{ err $FUNCNAME "Failed allocating container_nr" $CMD_SOFT; return 1; }
+	{ err $FUNCNAME "Failed allocating sliver_nr" $CMD_SOFT; return 1; }
     
     echo $CT_NR_HEX
 }
@@ -179,7 +179,7 @@ confine_allocate_dhcp_public_ipv4() {
     [ "$PROTO_IPS" = "dhcp" ] || \
 	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine-node.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
     
-    local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.container_nr )
+    local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.sliver_nr )
     local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
     local ORIG_MAC=$(          uci_get confine-slivers.ffffffffffff.if01_mac     )
     local DUMMY_REPORT=/tmp/confine-$( date +%s )-$BASHPID-dhcp-report
@@ -520,10 +520,10 @@ confine_sliver_allocate() {
 	if [ "$IF01_TYPE" = "public" ] && ( [ "$IF01_PROTO" = "static" ] || [ "$IF01_PROTO" = "dhcp" ]); then 
 
 	    CT_NR=$( confine_allocate_container min soft ) || \
-		err $FUNCNAME "Failed allocating container_nr"
+		err $FUNCNAME "Failed allocating sliver_nr"
 
 	    [ $(( 16#${CT_NR} )) -gt $( uci_get confine-node.node.public_ipv4_avail ) ] && \
-		err $FUNCNAME "Failed allocating container_nr for public if"
+		err $FUNCNAME "Failed allocating sliver_nr for public if"
 
 
 	    if  [ "$IF01_PROTO" = "static" ] ; then
@@ -544,7 +544,7 @@ confine_sliver_allocate() {
 	else
 
 	    CT_NR=$( confine_allocate_container max soft ) || \
-		err $FUNCNAME "Failed allocating container_nr"
+		err $FUNCNAME "Failed allocating sliver_nr"
 	fi
 
 
@@ -585,7 +585,7 @@ confine_sliver_allocate() {
 	echo "" > $OUT_DIR/$SLV_CFG
 	uci_set $SLV_CFG.$SL_ID=sliver path=$OUT_DIR
 	uci_set $SLV_CFG.$SL_ID.state=allocating path=$OUT_DIR
-	uci_set $SLV_CFG.$SL_ID.container_nr=$CT_NR path=$OUT_DIR
+	uci_set $SLV_CFG.$SL_ID.sliver_nr=$CT_NR path=$OUT_DIR
 	
 
 	local IF_KEY=
@@ -760,7 +760,7 @@ confine_sliver_deploy() {
 #    cat $SRC_DIR/$SRC_CFG >&2
 
     local NODE_ID=$( uci_get confine-node.node.id )
-    local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
     local USER_PUBKEY="$( uci_get confine-slices.$SL_ID.user_pubkey soft )"
 
     if  [ "$( uci_get $SRC_CFG.${SL_ID}_${NODE_ID} soft,path=$SRC_DIR )" = "sliver" ] && \
@@ -826,7 +826,7 @@ confine_sliver_start() {
     # echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=$( check_slice_id $1 )
-    local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
     local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
 
     if  [ "$( uci_get confine-slices.$SL_ID soft )" = "slice" ] && \
@@ -865,7 +865,7 @@ confine_sliver_stop() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $1 ); do
 
-	local CT_NR=$( uci_get confine-slivers.$SL_ID.container_nr soft )
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
 
 	if  [ "$CT_NR" ] ; then
 	    
@@ -880,7 +880,7 @@ confine_sliver_stop() {
 	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	    
 	else
-	    err $FUNCNAME "Failed retrieving container_nr for slice_id=$SL_ID " soft
+	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID " soft
 	fi
     done
 }
@@ -906,7 +906,7 @@ confine_info() {
 
 	printf "%-14s %-3s %-10s %-30s \n" \
 	    $SLICE_ID \
-	    $( uci_get confine-slivers.$SLICE_ID.container_nr soft,quiet ) \
+	    $( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet ) \
 	    $( uci_get confine-slivers.$SLICE_ID.state soft,quiet        ) \
 	    $( uci_get confine-slices.$SLICE_ID.exp_name soft,quiet      )
 
@@ -926,7 +926,7 @@ confine_sliver_remove() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
-	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.container_nr soft,$CMD_QUIET )
+	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	
 	if [ "$CT_NR" ] ; then
 	    lxc.lib lxc_stop $CT_NR
