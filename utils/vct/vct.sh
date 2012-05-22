@@ -1042,7 +1042,7 @@ vct_node_customize() {
 
 	touch $PREP_UCI/confine-testbed
 	uci_set confine-testbed.testbed=testbed                                                 path=$PREP_UCI
-	uci_set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48      path=$PREP_UCI
+	uci_set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48      path=$PREP_UCI
 	uci_set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16             path=$PREP_UCI
 	uci_set confine-testbed.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24 path=$PREP_UCI
 
