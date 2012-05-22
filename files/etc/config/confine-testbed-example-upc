@@ -1,0 +1,8 @@
+# This file can be safely copied to confine-tesbted:
+
+
+config 'testbed' 'testbed'
+	option 'mgmt_ipv6_prefix48' 'fdf5:5351:1dfd'
+	option 'mac_dflt_prefix16' '54:c0'
+	option 'priv_dflt_ipv4_prefix24' '192.168.241'
+
