@@ -3,22 +3,26 @@
 
 TODOs:
 
-- vct_customize .. sysupgrade
+- unite confine-testbed confine-server confine-node
 
-- package/confine-system documentation
+- unite confine-slices confine-slivers
 
-- utils/vct documentation
+- use SLICE_ID@NODE_ID in SLIVER_DESCRIPTION and SLIVER_STATUS
 
-- (bash) performance optimization
+- server.tinc_pubkey
+
+- node.state remove unprepared or disabled ?
+
+- replace ipXX_ipv4_proto with allocation_method ?
+
+- `Slice.ifXX_ipv4_proto` needs to match `Node.sl_public_ipv4_proto`.  Then
+   the former is redundant. 
 
 
-- use ip link mac address instead of dummy interfaces for vct-local
 
-- rename container_nr to sliver_nr
+- provide slice-attributes as uci config and bash environment variables to slivers as /root/confine/slice-attributes.bash/uci
 
-- fix sliver attribute state detection
-
-- add copyrights
+- provide hello-world experiment
 
 - openwrt.sh and debian.sh customize
   - configure network
@@ -26,9 +30,21 @@ TODOs:
   - unpack exp data
   - start exp script
 
-- provide slice-attributes as bash environment variables
 
-- provide hello-world experiment
+- vct_customize .. sysupgrade (test with squashfs images)
+
+- package/confine-system documentation
+
+- utils/vct documentation
+
+- (bash) performance optimization, change to openwrt ash
+
+
+- use ip link mac address instead of dummy interfaces for vct-local
+
+- fix sliver attribute state detection
+
+- add copyrights
 
 
 - use macvlan and 'udhcpc -s' for sliver dhcp fakes
@@ -70,6 +86,8 @@ iterate over hello world experiment commands
 ###########################################################################
 
 Done:
+
+- rename container_nr to sliver_nr
 
 - confine_node_enable (renamed form confine_node_setup() ) and confine_node_disable
 
