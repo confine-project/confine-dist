@@ -667,6 +667,10 @@ confine_sliver_allocate() {
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
 	    uci_del lxc.$CT_NR.rootfs_url
 
+	    if [ "$IF01_TYPE" = "public" ] && [ "$IF01_PROTO" = "dhcp" ]; then 
+		uci_set lxc.$CT_NR.customize=openwrt-confine-dhcp.sh
+	    fi
+
 	fi
 
 	uci_set lxc.$CT_NR.tag=confine-sliver-$SL_ID
@@ -799,16 +803,42 @@ confine_sliver_deploy() {
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR
 
 
-	if echo $FS_URL | grep debian >/dev/null ; then
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
 
+	uci_show confine-slice-attributes | \
+	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
+	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
+
+
+	local EXP_URL=$( uci_get confine-slices.$SL_ID.exp_data_url soft,quiet )
+
+	if [ $EXP_URL ]; then
+
+	    local EXP_COMP=$( ( echo $EXP_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $EXP_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $EXP_URL | grep -e "\.gz$" >/dev/null && echo ".gz" ) )
+	    
+	    local EXP_NAME=$(echo $EXP_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
+	    local EXP_SITE=$(echo $EXP_URL | awk -F ${EXP_NAME}.${EXP_COMP} '{print $1}')
+	    
+	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
+	    
+	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/
+	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
+	fi
+
+
+
+	if echo $FS_URL | grep debian >/dev/null ; then
 	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
 	    echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/authorized_keys
-
 	else
-
 	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/dropbear/
 	    echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/dropbear/authorized_keys
 	fi
+
 
 
 	uci_set confine-slivers.$SL_ID.state=deployed

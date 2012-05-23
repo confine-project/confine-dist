@@ -28,7 +28,7 @@ config 'container' 'openwrt'
        option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
        option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www'
 
-       option 'customize'     'openwrt.sh'
+       option 'customize'     'openwrt-confine.sh'
 
        option 'if00_type'      'veth'
        option 'if00_name'      'internal'
@@ -47,7 +47,7 @@ config 'container' 'debian'
 
        option 'rootfs_url'    'http://distro.confine-project.eu/misc/debian32.tgz'
 
-       option 'customize'     'debian.sh'
+       option 'customize'     'debian-confine.sh'
 
 
        option 'if00_type'      'veth'
