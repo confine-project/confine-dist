@@ -277,7 +277,7 @@ uci_dot_to_file() {
     uci_check_clean $TMP_CFG path=$TMP_DIR
 
     uci -c $TMP_DIR batch <<EOF
-$( grep -e "^$TMP_CFG\." | while read L; do echo $L | awk -F'=' '{print "set " $1 "=\"" $2 "\""}' ; done )
+$( grep -e "^$TMP_CFG\." | while read L; do echo "set $( echo "$L" | awk -F'=' '{print $1}' )=\"$(  echo "$L" | cut -d= -f2- )\""  ; done )
 EOF
 
     uci -c $TMP_DIR commit
