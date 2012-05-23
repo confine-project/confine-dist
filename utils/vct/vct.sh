@@ -1040,49 +1040,47 @@ vct_node_customize() {
 	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48    path=$PREP_UCI
 	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48  path=$PREP_UCI
 
-	touch $PREP_UCI/confine-testbed
-	uci_set confine-testbed.testbed=testbed                                                 path=$PREP_UCI
-	uci_set confine-testbed.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48      path=$PREP_UCI
-	uci_set confine-testbed.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16             path=$PREP_UCI
-	uci_set confine-testbed.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24 path=$PREP_UCI
+	touch $PREP_UCI/confine
+	uci_set confine.testbed=testbed                                                          path=$PREP_UCI
+	uci_set confine.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48               path=$PREP_UCI
+	uci_set confine.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16                      path=$PREP_UCI
+	uci_set confine.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24          path=$PREP_UCI
 
-	touch $PREP_UCI/confine-server
-	uci_set confine-server.server=server                                                    path=$PREP_UCI
-	uci_set confine-server.server.cn_url=$VCT_SERVER_CN_URL                                 path=$PREP_UCI
-	uci_set confine-server.server.mgmt_pubkey="$( cat $VCT_SERVER_MGMT_PUBKEY )"            path=$PREP_UCI
-	uci_set confine-server.server.tinc_ip=$VCT_SERVER_TINC_IP                               path=$PREP_UCI
-	uci_set confine-server.server.tinc_port=$VCT_SERVER_TINC_PORT                           path=$PREP_UCI
+	uci_set confine.server=server                                                            path=$PREP_UCI
+	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
+	uci_set confine.server.mgmt_pubkey="$( cat $VCT_SERVER_MGMT_PUBKEY )"                    path=$PREP_UCI
+	uci_set confine.server.tinc_ip=$VCT_SERVER_TINC_IP                                       path=$PREP_UCI
+	uci_set confine.server.tinc_port=$VCT_SERVER_TINC_PORT                                   path=$PREP_UCI
 
-	touch $PREP_UCI/confine-node
-	uci_set confine-node.node=node                                                          path=$PREP_UCI
-	uci_set confine-node.node.id=$VCRD_ID                                                   path=$PREP_UCI
-#       uci_set confine-node.node.rd_pubkey=""                                                  path=$PREP_UCI
-	uci_set confine-node.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )   path=$PREP_UCI
-	uci_set confine-node.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16                        path=$PREP_UCI
-	uci_set confine-node.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24            path=$PREP_UCI
+	uci_set confine.node=node                                                                path=$PREP_UCI
+	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
+#       uci_set confine.node.rd_pubkey=""                                                        path=$PREP_UCI
+	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
+	uci_set confine.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16                              path=$PREP_UCI
+	uci_set confine.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24                  path=$PREP_UCI
 
-	uci_set confine-node.node.public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL                 path=$PREP_UCI
-	uci_set confine-node.node.rd_public_ipv4_proto=$VCT_NODE_RD_PUBLIC_IPV4_PROTO           path=$PREP_UCI
+	uci_set confine.node.public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL                       path=$PREP_UCI
+	uci_set confine.node.rd_public_ipv4_proto=$VCT_NODE_RD_PUBLIC_IPV4_PROTO                 path=$PREP_UCI
 	if [ "$VCT_NODE_RD_PUBLIC_IPV4_PROTO" = "static" ] && [ "$VCT_NODE_PUBLIC_IPV4_PREFIX16" ] ; then
-	    uci_set confine-node.node.rd_public_ipv4=$( \
+	    uci_set confine.node.rd_public_ipv4=$( \
 		echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).1/$VCT_NODE_PUBLIC_IPV4_PL ) path=$PREP_UCI
-	    uci_set confine-node.node.rd_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                path=$PREP_UCI
-	    uci_set confine-node.node.rd_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS              path=$PREP_UCI
+	    uci_set confine.node.rd_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                      path=$PREP_UCI
+	    uci_set confine.node.rd_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS                    path=$PREP_UCI
 	fi
 
-	uci_set confine-node.node.sl_public_ipv4_proto=$VCT_NODE_SL_PUBLIC_IPV4_PROTO           path=$PREP_UCI
+	uci_set confine.node.sl_public_ipv4_proto=$VCT_NODE_SL_PUBLIC_IPV4_PROTO           path=$PREP_UCI
 	if [ "$VCT_NODE_SL_PUBLIC_IPV4_PROTO" = "static" ] && [ "$VCT_NODE_PUBLIC_IPV4_PREFIX16" ] ; then
-	    uci_set confine-node.node.sl_public_ipv4_addrs="$( echo $( \
+	    uci_set confine.node.sl_public_ipv4_addrs="$( echo $( \
 	    for i in $( seq 2 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do \
 	    echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i/$VCT_NODE_PUBLIC_IPV4_PL; \
 	    done ) )"                                                                           path=$PREP_UCI
-	    uci_set confine-node.node.sl_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                path=$PREP_UCI
-	    uci_set confine-node.node.sl_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS              path=$PREP_UCI
+	    uci_set confine.node.sl_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                path=$PREP_UCI
+	    uci_set confine.node.sl_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS              path=$PREP_UCI
 
 	fi
 
-	uci_set confine-node.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"                path=$PREP_UCI
-	uci_set confine-node.node.state=prepared                                                path=$PREP_UCI
+	uci_set confine.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"                path=$PREP_UCI
+	uci_set confine.node.state=prepared                                                path=$PREP_UCI
 
 
 	if [ "$PROCEDURE" = "offline" ] ; then

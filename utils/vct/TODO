@@ -3,8 +3,6 @@
 
 TODOs:
 
-- unite confine-testbed confine-server confine-node
-
 - unite confine-slices confine-slivers
 
 - use SLICE_ID@NODE_ID in SLIVER_DESCRIPTION and SLIVER_STATUS
@@ -20,15 +18,7 @@ TODOs:
 
 
 
-- provide slice-attributes as uci config and bash environment variables to slivers as /root/confine/slice-attributes.bash/uci
-
-- provide hello-world experiment
-
-- openwrt.sh and debian.sh customize
-  - configure network
-  - set hostname,...
-  - unpack exp data
-  - start exp script
+- provide slice-attributes as bash environment variables to slivers as /root/confine/slice-attributes.bash
 
 
 - vct_customize .. sysupgrade (test with squashfs images)
@@ -86,6 +76,21 @@ iterate over hello world experiment commands
 ###########################################################################
 
 Done:
+
+
+- unite confine-testbed confine-server confine-node
+
+- provide slice-attributes as uci config to slivers as /root/confine/uci/confine-slice-attributes
+
+- provide hello-world experiment
+
+- openwrt.sh and debian.sh customize
+  - configure network
+  - set hostname,...
+  - unpack exp data
+  - start exp script
+
+
 
 - rename container_nr to sliver_nr
 

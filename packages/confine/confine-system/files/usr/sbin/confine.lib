@@ -24,9 +24,7 @@ ERR_LOG_TAG='CONFINE'
 confine_system_check() {
 
     uci_show confine-defaults soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-defaults"
-    uci_show confine-testbed  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-testbed"
-    uci_show confine-server   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-server"
-    uci_show confine-node     soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-node"
+    uci_show confine          soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine"
     uci_show confine-slices   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slices"
     uci_show confine-slivers  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slivers"
     uci_show confine-slice-attributes  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slice-attributes"
@@ -39,7 +37,7 @@ confine_system_check() {
 
     [ -d $CONFINE_RPC_DIR ] || mkdir -p $CONFINE_RPC_DIR
 
-    local NODE_STATE="$( uci_get confine-node.node.state )"
+    local NODE_STATE="$( uci_get confine.node.state )"
 
     case "$NODE_STATE" in
 	prepared|applied|started) ;;
@@ -109,7 +107,7 @@ setup_dummy_container() {
     
     confine_system_check
 
-    local NODE_ID=$( uci_get confine-node.node.id )
+    local NODE_ID=$( uci_get confine.node.id )
     local DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state soft,quiet )
 
     if ! [ "$DUMMY_STATE" ] ; then
@@ -174,10 +172,10 @@ confine_allocate_dhcp_public_ipv4() {
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
 
     local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
-    local PROTO_IPS="$( uci_get confine-node.node.sl_public_ipv4_proto soft)"
+    local PROTO_IPS="$( uci_get confine.node.sl_public_ipv4_proto soft)"
 
     [ "$PROTO_IPS" = "dhcp" ] || \
-	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine-node.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
+	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
     
     local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.sliver_nr )
     local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
@@ -241,8 +239,8 @@ confine_allocate_static_public_ipv4() {
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
 
     local SLIVERS="$( uci_get_sections confine-slivers sliver soft )"
-    local PROTO_IPS="$( uci_get confine-node.node.sl_public_ipv4_proto soft)"
-    local AVAIL_IPS="$( uci_get confine-node.node.sl_public_ipv4_addrs soft)"
+    local PROTO_IPS="$( uci_get confine.node.sl_public_ipv4_proto soft)"
+    local AVAIL_IPS="$( uci_get confine.node.sl_public_ipv4_addrs soft)"
     local TMP_SL_ID=
     local TMP_IP=
     local USED_IPS=
@@ -285,7 +283,7 @@ confine_node_disable() {
 
     echo "$FUNCNAME $# $@" >&2
 
-    confine.lib uci_set confine-node.node.state=unprepared soft
+    confine.lib uci_set confine.node.state=unprepared soft
     
     confine_sliver_remove all
 }
@@ -295,8 +293,8 @@ confine_node_enable() {
    echo "$FUNCNAME $# $@" >&2
 
     confine_system_check
-    local NODE_STATE=$( uci_get confine-node.node.state soft )
-    local VCRD_ID=$(    uci_get confine-node.node.id    soft )
+    local NODE_STATE=$( uci_get confine.node.state soft )
+    local VCRD_ID=$(    uci_get confine.node.id    soft )
 
     if ! check_node_state $NODE_STATE quiet,soft ; then
 	
@@ -321,7 +319,7 @@ confine_node_enable() {
 	ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
 	ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
 	
-	uci_set confine-node.node.state=started
+	uci_set confine.node.state=started
 
 	setup_dummy_container
 	
@@ -334,18 +332,18 @@ confine_node_enable() {
 
 	confine_sliver_remove all
 
-	local SERVER_MGMT_PUBKEY="$(       uci_get confine-server.server.mgmt_pubkey             soft )"
-	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine-testbed.testbed.mgmt_ipv6_prefix48    soft )
+	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
+	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
 
-	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname          soft )
-	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine-node.node.priv_ipv4_prefix24          soft )
-	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48   soft )
-	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48  soft )
-	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine-node.node.rd_public_ipv4_proto        soft )
-	local NODE_RD_PUBL_IPV4=$(         uci_get confine-node.node.rd_public_ipv4              soft,quiet )
-	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine-node.node.rd_public_ipv4_gw           soft,quiet )
-	local NODE_RD_PUBL_IPV4_DNS=$(     uci_get confine-node.node.rd_public_ipv4_dns          soft,quiet )
-	local NODE_RD_ISOLATED_PARENTS=$(  uci_get confine-node.node.rd_if_iso_parents           soft,quiet )
+	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname         soft )
+	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
+	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48  soft )
+	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
+	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine.node.rd_public_ipv4_proto            soft )
+	local NODE_RD_PUBL_IPV4=$(         uci_get confine.node.rd_public_ipv4                  soft,quiet )
+	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine.node.rd_public_ipv4_gw               soft,quiet )
+	local NODE_RD_PUBL_IPV4_DNS=$(     uci_get confine.node.rd_public_ipv4_dns              soft,quiet )
+	local NODE_RD_ISOLATED_PARENTS=$(  uci_get confine.node.rd_if_iso_parents               soft,quiet )
 
 	if true && \
 	    [ "$VCRD_ID" ] && \
@@ -360,7 +358,7 @@ confine_node_enable() {
 
 	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
-	    uci_set confine-node.node.rd_pubkey="$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
+	    uci_set confine.node.rd_pubkey="$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
 
 	    echo "Configuring network... "
 
@@ -459,7 +457,7 @@ confine_node_enable() {
 	    ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
 	    ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
 	
-	    uci_set confine-node.node.state=started
+	    uci_set confine.node.state=started
 
 	    confine.lib setup_dummy_container
 
@@ -468,8 +466,8 @@ confine_node_enable() {
 	    return 0
 
 	else
-	    uci_set confine-node.node.state=unprepared
-	    err $FUNCNAME "Failed due to inproper confine-node config"
+	    uci_set confine.node.state=unprepared
+	    err $FUNCNAME "Failed due to inproper confine.node config"
 	fi
 
     else
@@ -494,7 +492,7 @@ confine_sliver_allocate() {
     
     cat $SRC > $SRC_DIR/$SRC_CFG
 
-    local NODE_ID=$( uci_get confine-node.node.id )
+    local NODE_ID=$( uci_get confine.node.id )
 
     if [ "$( uci_get $SRC_CFG.$SL_ID soft,path=$SRC_DIR )" = "sliver" ] ; then
 
@@ -509,7 +507,7 @@ confine_sliver_allocate() {
 	local EXP_NAME="$(    uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
 	local FS_URL=$(       uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )
 	local DATA_URL=$(     uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )
-	local MAC_PREFIX16=$( uci_get confine-node.node.mac_prefix16 )
+	local MAC_PREFIX16=$( uci_get confine.node.mac_prefix16 )
 
 	local IF01_TYPE=$(    uci_get $SRC_CFG.$SL_ID.if01_type        soft,quiet,path=$SRC_DIR )
 	local IF01_PROTO=$(   uci_get $SRC_CFG.$SL_ID.if01_ipv4_proto  soft,quiet,path=$SRC_DIR )
@@ -522,7 +520,7 @@ confine_sliver_allocate() {
 	    CT_NR=$( confine_allocate_container min soft ) || \
 		err $FUNCNAME "Failed allocating sliver_nr"
 
-	    [ $(( 16#${CT_NR} )) -gt $( uci_get confine-node.node.public_ipv4_avail ) ] && \
+	    [ $(( 16#${CT_NR} )) -gt $( uci_get confine.node.public_ipv4_avail ) ] && \
 		err $FUNCNAME "Failed allocating sliver_nr for public if"
 
 
@@ -600,7 +598,7 @@ confine_sliver_allocate() {
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
-		    local IF_PRIV_IPV4=$( uci_get confine-node.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
+		    local IF_PRIV_IPV4=$( uci_get confine.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
 		    local IF_PRIV_IPV6=$( uci_get confine-defaults.confine.priv_ipv6_prefix48 ):0:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:0/64
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=internal       path=$OUT_DIR
@@ -615,7 +613,7 @@ confine_sliver_allocate() {
 
 		elif [ "$IF_TYPE" = "public" ] && [ "$IF_KEY" = "01" ]; then
 
-		    local IF_PUBL_IPV6=$( uci_get confine-testbed.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:${IF_KEY}/64
+		    local IF_PUBL_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:${IF_KEY}/64
 
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=public         path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
@@ -763,7 +761,7 @@ confine_sliver_deploy() {
     cat $SRC > $SRC_DIR/$SRC_CFG
 #    cat $SRC_DIR/$SRC_CFG >&2
 
-    local NODE_ID=$( uci_get confine-node.node.id )
+    local NODE_ID=$( uci_get confine.node.id )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
     local USER_PUBKEY="$( uci_get confine-slices.$SL_ID.user_pubkey soft )"
 
@@ -923,8 +921,8 @@ confine_info() {
     local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
 
     printf "CONFINE node-id=%s node-state=%s \n" \
-	$( uci_get confine-node.node.id soft,quiet ) \
-	$( uci_get confine-node.node.state soft,quiet )
+	$( uci_get confine.node.id soft,quiet ) \
+	$( uci_get confine.node.state soft,quiet )
     printf "%-14s %-3s %-10s %-30s \n" slice-id lxc state name
     echo   "----------------------------------------------------------"
 
