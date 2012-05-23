@@ -25,7 +25,6 @@ confine_system_check() {
 
     uci_show confine-defaults soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-defaults"
     uci_show confine          soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine"
-    uci_show confine-slices   soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slices"
     uci_show confine-slivers  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slivers"
     uci_show confine-slice-attributes  soft,quiet >/dev/null || err $FUNCNAME "Missing config: confine-slice-attributes"
 
@@ -486,7 +485,6 @@ confine_sliver_allocate() {
     local SRC="${2:--}"
     local SRC_CFG=$( date +%s )-$BASHPID-allocate-in
     local SRC_DIR=$CONFINE_RPC_DIR
-    local SLC_CFG=$( date +%s )-$BASHPID-allocate-slice
     local SLV_CFG=$( date +%s )-$BASHPID-allocate-sliver
     local OUT_DIR=$CONFINE_RPC_DIR
     
@@ -497,7 +495,7 @@ confine_sliver_allocate() {
     if [ "$( uci_get $SRC_CFG.$SL_ID soft,path=$SRC_DIR )" = "sliver" ] ; then
 
 
-	uci_test confine-slices.$SL_ID soft,quiet && \
+	uci_test confine-slivers.$SL_ID soft,quiet && \
 	    err $FUNCNAME "slice=$SL_ID already defined"
 
 	confine_sliver_remove $SL_ID quiet
@@ -551,11 +549,11 @@ confine_sliver_allocate() {
 
 	    VLAN_NR=$( check_vlan_nr $VLAN_NR )
 	    
-	    local TMP_SLICES="$( uci_get_sections confine-slices slice soft )"
+	    local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
 	    local TMP_SLICE=
 	    for TMP_SLICE in $TMP_SLICES ; do
 
-		if [ "$(uci_get confine-slices.$SL_ID.vlan_nr soft,quiet )" = "$VLAN_NR" ] ; then
+		if [ "$(uci_get confine-slivers.$SL_ID.vlan_nr soft,quiet )" = "$VLAN_NR" ] ; then
 		    err $FUNCNAME "$VLAN_NR already used by SLICE_ID $TMP_SLICE"
 		fi
 	    done
@@ -564,24 +562,20 @@ confine_sliver_allocate() {
 
 	
 	
+	echo "" > $OUT_DIR/$SLV_CFG
+	uci_set $SLV_CFG.$SL_ID=sliver path=$OUT_DIR
 
-
-	echo "" > $OUT_DIR/$SLC_CFG
-	uci_set $SLC_CFG.$SL_ID=slice path=$OUT_DIR
-
-	[ "$USER_PUBKEY" ] && uci_set $SLC_CFG.$SL_ID.user_pubkey="$USER_PUBKEY"  path=$OUT_DIR
-	[ "$EXP_NAME" ]    && uci_set $SLC_CFG.$SL_ID.exp_name="$EXP_NAME"        path=$OUT_DIR
-	[ "$VLAN_NR" ]     && uci_set $SLC_CFG.$SL_ID.vlan_nr="$VLAN_NR"          path=$OUT_DIR
-	[ "$FS_URL" ]      && uci_set $SLC_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
-	[ "$DATA_URL" ]    && uci_set $SLC_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
+	[ "$USER_PUBKEY" ] && uci_set $SLV_CFG.$SL_ID.user_pubkey="$USER_PUBKEY"  path=$OUT_DIR
+	[ "$EXP_NAME" ]    && uci_set $SLV_CFG.$SL_ID.exp_name="$EXP_NAME"        path=$OUT_DIR
+	[ "$VLAN_NR" ]     && uci_set $SLV_CFG.$SL_ID.vlan_nr="$VLAN_NR"          path=$OUT_DIR
+	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
+	[ "$DATA_URL" ]    && uci_set $SLV_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
 
 
 
 
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 
-	echo "" > $OUT_DIR/$SLV_CFG
-	uci_set $SLV_CFG.$SL_ID=sliver path=$OUT_DIR
 	uci_set $SLV_CFG.$SL_ID.state=allocating path=$OUT_DIR
 	uci_set $SLV_CFG.$SL_ID.sliver_nr=$CT_NR path=$OUT_DIR
 	
@@ -688,7 +682,7 @@ confine_sliver_allocate() {
 		local IF_IPV4=$(    uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4       soft,quiet,path=$OUT_DIR )
 		local IF_IPV6=$(    uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6       soft,quiet,path=$OUT_DIR )
 		local IF_PARENT=$(  uci_get $SLV_CFG.$SL_ID.if${IF_KEY}_parent     soft,quiet,path=$OUT_DIR )
-		local IF_VLANTAG=$( uci_get $SLC_CFG.$SL_ID.vlan_nr                soft,quiet,path=$OUT_DIR )
+		local IF_VLANTAG=$( uci_get $SLV_CFG.$SL_ID.vlan_nr                soft,quiet,path=$OUT_DIR )
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 		    
@@ -737,7 +731,6 @@ confine_sliver_allocate() {
 
 	uci_set $SLV_CFG.$SL_ID.state=allocated path=$OUT_DIR
 
-	uci_show $SLC_CFG.$SL_ID path=$OUT_DIR | sed s/$SLC_CFG/confine-slices/  | uci_merge confine-slices 
 	uci_show $SLV_CFG.$SL_ID path=$OUT_DIR | sed s/$SLV_CFG/confine-slivers/ | uci_merge confine-slivers
 
 	uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
@@ -763,17 +756,16 @@ confine_sliver_deploy() {
 
     local NODE_ID=$( uci_get confine.node.id )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
-    local USER_PUBKEY="$( uci_get confine-slices.$SL_ID.user_pubkey soft )"
+    local USER_PUBKEY="$( uci_get confine-slivers.$SL_ID.user_pubkey soft )"
 
     if  [ "$( uci_get $SRC_CFG.${SL_ID}_${NODE_ID} soft,path=$SRC_DIR )" = "sliver" ] && \
-	[ "$( uci_get confine-slices.$SL_ID soft )" = "slice" ] && \
 	[ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
 	[ "$( uci_get confine-slivers.$SL_ID.state soft )" = "allocated" ] && \
 	[ "$CT_NR" ] && [ "$USER_PUBKEY" ]; then
 
 	uci_set confine-slivers.$SL_ID.state=deploying
 
-	local FS_URL=$( uci_get confine-slices.$SL_ID.fs_template_url soft,quiet )
+	local FS_URL=$( uci_get confine-slivers.$SL_ID.fs_template_url soft,quiet )
 
 	if [ $FS_URL ]; then
 	
@@ -809,7 +801,7 @@ confine_sliver_deploy() {
 	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
 
 
-	local EXP_URL=$( uci_get confine-slices.$SL_ID.exp_data_url soft,quiet )
+	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
 
 	if [ $EXP_URL ]; then
 
@@ -857,8 +849,7 @@ confine_sliver_start() {
     local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
     local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
 
-    if  [ "$( uci_get confine-slices.$SL_ID soft )" = "slice" ] && \
-	[ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
+    if 	[ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
 	[ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
 	[ "$CT_NR" ] && \
 	[ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] && \
@@ -936,7 +927,7 @@ confine_info() {
 	    $SLICE_ID \
 	    $( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet ) \
 	    $( uci_get confine-slivers.$SLICE_ID.state soft,quiet        ) \
-	    $( uci_get confine-slices.$SLICE_ID.exp_name soft,quiet      )
+	    $( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet      )
 
     done
 }
@@ -970,7 +961,6 @@ confine_sliver_remove() {
 	done
 
 	uci_del confine-slivers.$SLICE_ID soft,$CMD_QUIET
-	uci_del confine-slices.$SLICE_ID soft,$CMD_QUIET
 
     done
 }
