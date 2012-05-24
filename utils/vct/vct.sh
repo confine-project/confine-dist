@@ -29,8 +29,56 @@ ERR_LOG_TAG='VCT'
 ##########################################################################
 
 
+# The functions below can be used to selectively disable commands in dry run
+# mode.  For instance:
+#
+#     # This would change system state, `vct_do` disables in dry run
+#     # and reports the change.
+#     vct_do touch /path/to/file
+#     # This would then fail in dry run mode, `vct_true` succeeds.
+#     if vct_true [ ! -f /path/to/file ]; then
+#         echo "Failed to create /path/to/file." >&2
+#         exit 1
+#     fi
+#
+# The snippet above works as usual in normal mode.  The idiom `vct_true false
+# || COMMAND` avoids running the whole COMMAND in dry run mode (useful for
+# very complex commands).
 
+# In dry run mode just exit successfully.
+# Otherwise run argument(s) as a command and return result.
+vct_true() {
+    test "$VCT_DRY_RUN" && return 0
+    "$@"
+}
+
+# Same as `vct_true()`, run command in shell.
+vct_true_sh() {
+    vct_true sh -c "$@"
+}
+
+# In dry run mode print command to stderr and exit successfully.
+# Otherwise run argument(s) as a command and return result.
+vct_do() {
+    if [ "$VCT_DRY_RUN" ]; then
+	echo ">>>>   $@   <<<<" >&2
+	return 0
+    fi
+
+    "$@"
+}
+
+# Same as `vct_do()`, run command in shell.
+vct_do_sh() {
+    vct_do sh -c "$@"
+}
+
+# Same as `vct_do()`, run command with `sudo`.
 vct_sudo() {
+    if [ "$VCT_DRY_RUN" ]; then
+	vct_do sudo $@
+	return $?
+    fi
 
     local QUERY=
 
@@ -175,15 +223,15 @@ vct_system_install_check() {
 	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
 	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
 
-	if ! wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
+	if ! vct_do wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
 	    ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
-	    ! $UCI_INSTALL_PATH help 2>/dev/null ; then
+	    ! vct_true $UCI_INSTALL_PATH help 2>/dev/null ; then
 
 	    err $FUNCNAME "Failed installing statically linked uci binary to $UCI_INSTALL_PATH "
 	fi
     fi
 
-    if ! uci help 2>/dev/null; then
+    if ! vct_true uci help 2>/dev/null; then
 
 	cat <<EOF >&2
 uci (unified configuration interface) tool is required for
@@ -220,42 +268,42 @@ EOF
 
     # check libvirt systems directory:
     if ! [ -d $VCT_SYS_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_SYS_DIR ) ||\
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_SYS_DIR ) ||\
 	 { err $FUNCNAME "$VCT_SYS_DIR not existing" $CMD_SOFT || return 1 ;}
     fi
 
     # check downloads directory:
     if ! [ -d $VCT_DL_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_DL_DIR ) ||\
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_DL_DIR ) ||\
 	 { err $FUNCNAME "$VCT_DL_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
     # check rpc-file directory:
     if ! [ -d $VCT_RPC_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_RPC_DIR ) ||\
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_RPC_DIR ) ||\
 	 { err $FUNCNAME "$VCT_RPC_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
     # check node mount directory:
     if ! [ -d $VCT_MNT_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_MNT_DIR ) ||\
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_MNT_DIR ) ||\
 	 { err $FUNCNAME "$VCT_MNT_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
     # check vct uci directory:
     if ! [ -d $VCT_UCI_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_UCI_DIR ) ||\
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_UCI_DIR ) ||\
 	 { err $FUNCNAME "$VCT_UCI_DIR  not existing" $CMD_SOFT || return 1 ;}
     fi
 
 
-    [ "$CMD_UPDATE" ] && [ -d $VCT_SSH_DIR ] && rm -r $VCT_SSH_DIR
+    [ "$CMD_UPDATE" ] && [ -d $VCT_SSH_DIR ] && vct_do rm -r $VCT_SSH_DIR
 
     if ! [ -d $VCT_SSH_DIR ]; then
-	( [ $CMD_INSTALL ] && mkdir -p $VCT_SSH_DIR && \
-	    echo "$VCT_PUB_KEY" > $VCT_SSH_DIR/id_rsa.pub && \
-	    echo "$VCT_PRIV_KEY" > $VCT_SSH_DIR/id_rsa && \
-	    chmod og-rwx $VCT_SSH_DIR/id_rsa ) || \
+	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_SSH_DIR && \
+	    vct_do_sh "echo \"$VCT_PUB_KEY\" > $VCT_SSH_DIR/id_rsa.pub" && \
+	    vct_do_sh "echo \"$VCT_PRIV_KEY\" > $VCT_SSH_DIR/id_rsa" && \
+	    vct_do chmod og-rwx $VCT_SSH_DIR/id_rsa ) || \
 	 { err $FUNCNAME "$VCT_SSH_DIR not existing" $CMD_SOFT || return 1 ;}
     fi
 
@@ -263,7 +311,7 @@ EOF
 
 
     # check for existing or downloadable file-system-template file:
-    if ! install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 $OPT_CMD ; then
+    if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 $OPT_CMD ; then
 	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
     fi
 	
@@ -386,7 +434,7 @@ vct_system_init_check(){
 		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
 
 		    if [ $CMD_INIT ] ; then
-			cat <<EOF > $UDHCPD_CONF_FILE
+			vct_do_sh "cat <<EOF > $UDHCPD_CONF_FILE
 start           $DHCPD_IP_MIN
 end             $DHCPD_IP_MAX
 interface       $BR_NAME 
@@ -394,11 +442,12 @@ lease_file      $UDHCPD_LEASE_FILE
 option router   $( echo $BR_V4_LOCAL_IP | awk -F'/' '{print $1}' )
 option dns      $DHCPD_DNS
 EOF
+"
 
 			vct_sudo udhcpd $UDHCPD_CONF_FILE
 		    fi
 		    
-		    [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
+		    vct_true [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
 			err $FUNCNAME "NO udhcpd server running for $BR_NAME "
 		fi
 	    fi
@@ -406,8 +455,8 @@ EOF
             # check if local bridge has IPv6 for recovery network:
 	    local BR_V6_RESCUE2_PREFIX64=$( variable_check ${BRIDGE}_V6_RESCUE2_PREFIX64 soft 2>/dev/null ) 
 	    if [ $BR_V6_RESCUE2_PREFIX64 ] ; then
-		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( eui64_from_link $BR_NAME )/64
-		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
+		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( vct_true eui64_from_link $BR_NAME )/64
+		if vct_true false || ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
 		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_RESCUE2_IP -O ipv6 ) " >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_RESCUE2_IP dev $BR_NAME ) ||\
                 	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME $BR_V6_RESCUE2_IP" $CMD_SOFT || return 1 ;}
@@ -458,10 +507,10 @@ vct_system_cleanup() {
 
     local VCRD_ID=
     for VCRD_ID in $( vct_node_info | grep -e "$VCT_RD_NAME_PREFIX" | awk '{print $2}' | awk -F"$VCT_RD_NAME_PREFIX" '{print $2}' ); do
-	vct_node_remove $VCRD_ID
+	vct_do vct_node_remove $VCRD_ID
     done
 
-    vct_slice_attributes flush all
+    vct_do vct_slice_attributes flush all
 
     local BRIDGE=
     local BR_NAME=
