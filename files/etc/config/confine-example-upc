@@ -8,10 +8,11 @@ config 'testbed' 'testbed'
 
 
 config 'server' 'server'
-	option 'cn_url' 'confine.ac.upc.edu'
+	option 'cn_url' 'http://guifi.net/en/bcnupcdsg2'
 	option 'mgmt_pubkey' 'ssh-rsa MIIBCgKCAQEAtJsXUqQkWZIx5OzcGDNNgTs7su2lJx7nqpEMfbRMr8RgH/VvkUzQ0ppn1GdnOpXdJQCdk/bk1Sz8ice5GWet9eW/Z8lJiBG+xvlGduTBwUIvbB8XXkZHte/xs57Mrw7YInGr5vpe/+B0iQiOKtwtD+ma9yBgJI/H5ThqAd00fY32idfF/oQC/wv0WjVWW0t9qCreQbbdS9ViKdkbD7+EfPUcGTWHQBvid6WzhFpTM/7TiaCHD8sCSMVLE31A4lRxWZcbynsfv3UZxtLozL1RwGcBxk/slV3AbPKBvCaGJhilaHX8Jt4bO2J4XdlJjSUQH7ymcIhwJzDCxEIcri7bswIDAQAB'
 	option 'tinc_ip' '10.228.201.66'   # Official server at Pangea 10.228.204.4, Testing at UPC 10.228.201.66
 	option 'tinc_port' '655'
+	option 'tinc_pubkey' 'MIIBCgKCAQEAtJsXUqQkWZIx5OzcGDNNgTs7su2lJx7nqpEMfbRMr8RgH/VvkUzQ0ppn1GdnOpXdJQCdk/bk1Sz8ice5GWet9eW/Z8lJiBG+xvlGduTBwUIvbB8XXkZHte/xs57Mrw7YInGr5vpe/+B0iQiOKtwtD+ma9yBgJI/H5ThqAd00fY32idfF/oQC/wv0WjVWW0t9qCreQbbdS9ViKdkbD7+EfPUcGTWHQBvid6WzhFpTM/7TiaCHD8sCSMVLE31A4lRxWZcbynsfv3UZxtLozL1RwGcBxk/slV3AbPKBvCaGJhilaHX8Jt4bO2J4XdlJjSUQH7ymcIhwJzDCxEIcri7bswIDAQAB'
 
 
 config node 'node'
@@ -23,5 +24,5 @@ config node 'node'
 	option rd_public_ipv4_proto 'dhcp'
 	option sl_public_ipv4_proto 'dhcp'
 	option rd_if_iso_parents 'eth1'
-	option rd_pubkey 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAglJJTX20+o0pg8K6VMcIy1K10vSfQ0Ed0WthKfZNy6bboEl7qvwyiPC4n8ha3zJ92/ThA5BIuJ10fYUv3+0dLy3us3nQanRxEfi0H23g9BYi99+Khox8xzfSlfiHYRol9E5hP3vw4aOajK3AO2WyUAiTgFxovbuQQ73IvUSKqNmSy0s= root@OpenWrt'
+	option rd_pubkey 'THIS WILL BE ASSIGNED DURING confine_node_enable'
 	option state 'unprepared'  # Change this to 'prepared' afterwards and call: confine_node_enable or /etc/init.d/confine start

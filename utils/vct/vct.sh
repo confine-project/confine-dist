@@ -1048,9 +1048,10 @@ vct_node_customize() {
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
 	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
-	uci_set confine.server.mgmt_pubkey="$( cat $VCT_SERVER_MGMT_PUBKEY )"                    path=$PREP_UCI
+	uci_set confine.server.mgmt_pubkey="$VCT_SERVER_MGMT_PUBKEY"                             path=$PREP_UCI
 	uci_set confine.server.tinc_ip=$VCT_SERVER_TINC_IP                                       path=$PREP_UCI
 	uci_set confine.server.tinc_port=$VCT_SERVER_TINC_PORT                                   path=$PREP_UCI
+	uci_set confine.server.tinc_pubkey="$VCT_SERVER_TINC_PUBKEY"                             path=$PREP_UCI
 
 	uci_set confine.node=node                                                                path=$PREP_UCI
 	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
@@ -1239,9 +1240,10 @@ vct_sliver_allocate() {
 	if [ "$OS_TYPE" = "debian" ]; then
             cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
+    option user_pubkey     "$VCT_SERVER_MGMT_PUBKEY"
     option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
-    option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz'
+    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
+    option exp_name        "hello-world-experiment"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
     option if00_name       priv 
@@ -1255,9 +1257,10 @@ EOF
 	else
 	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_SERVER_MGMT_PUBKEY )"
+    option user_pubkey     "$VCT_SERVER_MGMT_PUBKEY"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option exp_data_url    'http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz'
+    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
+    option exp_name        "hello-world-experiment"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
     option if00_name       priv 

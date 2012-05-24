@@ -18,7 +18,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-31.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-32.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -50,8 +50,7 @@ VCT_RD_RPC_DIR=/var/run/confine/rpc
 # If changed: system must be updated: $ ./vct_system_install update
 
 VCT_PUB_KEY="\
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp root@confine
-"
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp root@confine"
 
 VCT_PRIV_KEY="\
 -----BEGIN RSA PRIVATE KEY-----
@@ -93,13 +92,13 @@ VCT_TESTBED_MGMT_IPV6_PREFIX48="fdf5:5351:1dfd"   # Used by UPC/Pangea
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
-VCT_SERVER_CN_URL="server.confine.community.net"
-VCT_SERVER_MGMT_PUBKEY="$VCT_SSH_DIR/id_rsa.pub"
+VCT_SERVER_CN_URL="http://community.net/node/yyyyy"
+VCT_SERVER_MGMT_PUBKEY="$VCT_PUB_KEY"
 VCT_SERVER_TINC_IP=10.241.0.254
 VCT_SERVER_TINC_PORT=655
+VCT_SERVER_TINC_PUBKEY="$( echo $VCT_PUB_KEY | awk '{print $2}' )"
 
-
-VCT_NODE_CN_URL="NODE_ID.confine.community.net"
+VCT_NODE_CN_URL="http://community.net/node/xxxxx"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
 
 VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 

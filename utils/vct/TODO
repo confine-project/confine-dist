@@ -1,13 +1,31 @@
 ###########################################################################
 ###########################################################################
 
-TODOs:
+TODOs (maybe later):
 
-- unite confine-slices confine-slivers
+- enable tinc daemon
+
+- vct_customize .. sysupgrade (test with squashfs images)
+
+- package/confine-system documentation
+
+- utils/vct documentation
+
+- provide slice-attributes as bash environment variables to slivers as /root/confine/slice-attributes.bash
+
+- (bash) performance optimization, change to openwrt ash
+
+- add copyrights
+
+- use macvlan and 'udhcpc -s' for sliver dhcp fakes
+
+###########################################################################
+###########################################################################
+
+Postponed tasks (for later releases, to be discussed):
+
 
 - use SLICE_ID@NODE_ID in SLIVER_DESCRIPTION and SLIVER_STATUS
-
-- server.tinc_pubkey
 
 - node.state remove unprepared or disabled ?
 
@@ -17,27 +35,6 @@ TODOs:
    the former is redundant. 
 
 
-
-- provide slice-attributes as bash environment variables to slivers as /root/confine/slice-attributes.bash
-
-
-- vct_customize .. sysupgrade (test with squashfs images)
-
-- package/confine-system documentation
-
-- utils/vct documentation
-
-- (bash) performance optimization, change to openwrt ash
-
-
-- use ip link mac address instead of dummy interfaces for vct-local
-
-- fix sliver attribute state detection
-
-- add copyrights
-
-
-- use macvlan and 'udhcpc -s' for sliver dhcp fakes
 
 ###########################################################################
 ###########################################################################
@@ -77,6 +74,12 @@ iterate over hello world experiment commands
 
 Done:
 
+- fix sliver attribute state detection
+    use vct_slice-attributes update SLICE_ID # before changing to next sliver state
+
+- add confine.server.tinc_pubkey field
+
+- unite confine-slices confine-slivers
 
 - unite confine-testbed confine-server confine-node
 

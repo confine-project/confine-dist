@@ -7,15 +7,16 @@ config 'testbed' 'testbed'
 
 
 config 'server' 'server'
-	option 'cn_url' 'server.confine.community.net'
+	option 'cn_url' 'http://community.net/node/xxxxx'
 	option 'mgmt_pubkey' 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp root@confine'
 	option 'tinc_ip' '10.241.0.254'
 	option 'tinc_port' '655'
+	option 'tinc_pubkey' 'AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp'
 
 
 config node 'node'
-	option id '1234'
-	option cn_url '1234.confine.community.net'
+	option id 'xxxx'
+	option cn_url 'http://community.net/node/xxxxx'
 	option mac_prefix16 '54:c0'
 	option priv_ipv4_prefix24 '192.168.241'
 	option public_ipv4_avail '8'
@@ -26,6 +27,6 @@ config node 'node'
 	option sl_public_ipv4_gw '10.241.0.254'
 	option sl_public_ipv4_dns '141.1.1.1'
 	option rd_if_iso_parents 'eth1 eth2'
-	option rd_pubkey 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAglJJTX20+o0pg8K6VMcIy1K10vSfQ0Ed0WthKfZNy6bboEl7qvwyiPC4n8ha3zJ92/ThA5BIuJ10fYUv3+0dLy3us3nQanRxEfi0H23g9BYi99+Khox8xzfSlfiHYRol9E5hP3vw4aOajK3AO2WyUAiTgFxovbuQQ73IvUSKqNmSy0s= root@OpenWrt'
+	option rd_pubkey 'THIS WILL BE ASSIGNED DURING confine_node_enable'
 	option state 'unprepared'  # Change this to 'prepared' afterwards and call: confine_node_enable or /etc/init.d/confine start
 
