@@ -40,6 +40,9 @@ define Package/confine-system
 	+iptables \
 	+kmod-dummy \
 	+tinc \
+	+e2fsprogs \
+	+kmod-fs-ext4 \
+	+kmod-fs-vfat \
 
 endef
 
