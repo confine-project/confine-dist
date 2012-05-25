@@ -10,6 +10,12 @@ VCT_USER="$(whoami)"  # better put your username here
 
 VCT_SUDO_ASK="YES"    # default:"YES" ask whether to execute sudo commands befor doing so"
 
+# Set this to some nonempty value to enable dry run mode during installation,
+# initialization and cleanup.  In dry run mode, commands changing system state
+# are reported instead of executed.
+#
+# VCT_DRY_RUN=
+
 VCT_VIRT_DIR=/var/lib/vct
 
 # 
