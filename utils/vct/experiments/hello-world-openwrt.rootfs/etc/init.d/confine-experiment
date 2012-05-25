@@ -1,0 +1,47 @@
+#!/bin/sh /etc/rc.common
+
+
+START=94
+
+
+start_ping() {
+
+    local IP=$1
+    local PING_MAX=100
+    local INIT_MAX=40
+    local CNT=0
+    local DATA=/root/confine/data/ping-$$-$IP.log
+    
+    echo "logging data to $DATA"
+
+    date > $DATA    
+    echo "First probing for $INIT_MAX seconds for valid route to $IP ..." >> $DATA
+    
+    while [ $CNT -le $INIT_MAX ] ; do
+    	ping -c 1 -W 2 -w 2 $IP >> $DATA 2>&1 && break
+    	CNT=$(( $CNT + 1 ))
+    	sleep 1
+    done
+
+    date >> $DATA
+    echo "Now sending $PING_MAX ping requests to $IP ..." >> $DATA
+    
+    ping -c $PING_MAX $IP >> $DATA 2>&1
+}
+
+
+start() {
+    
+    local IPS="$( uci show -c /root/confine/uci confine-slice-attributes | grep if01_ipv4= | awk -F'=' '{print $2'} | awk -F'/' '{print $1}' )"
+    local IP=
+    
+    for IP in $IPS; do 
+	start_ping $IP &
+    done
+}
+
+
+stop() {
+
+    killall ping
+}
