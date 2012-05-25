@@ -9,7 +9,7 @@ config 'testbed' 'testbed'
 
 config 'server' 'server'
 	option 'cn_url' 'http://guifi.net/en/bcnupcdsg2'
-	option 'mgmt_pubkey' 'ssh-rsa MIIBCgKCAQEAtJsXUqQkWZIx5OzcGDNNgTs7su2lJx7nqpEMfbRMr8RgH/VvkUzQ0ppn1GdnOpXdJQCdk/bk1Sz8ice5GWet9eW/Z8lJiBG+xvlGduTBwUIvbB8XXkZHte/xs57Mrw7YInGr5vpe/+B0iQiOKtwtD+ma9yBgJI/H5ThqAd00fY32idfF/oQC/wv0WjVWW0t9qCreQbbdS9ViKdkbD7+EfPUcGTWHQBvid6WzhFpTM/7TiaCHD8sCSMVLE31A4lRxWZcbynsfv3UZxtLozL1RwGcBxk/slV3AbPKBvCaGJhilaHX8Jt4bO2J4XdlJjSUQH7ymcIhwJzDCxEIcri7bswIDAQAB'
+	option 'mgmt_pubkey' 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDGl/x9r98Zpf/wn0XUa3pojxlOLKUfY7GX9BZ7aTnA88XRoJcnvwiWXVNLwp0LtN77mb2R+qr2tPkwPODr28s9z/FyFvLJYJA4SKHfADYbPDFVHhuK0+tgpX4GysGsaIXVsRWUSq+j151JdoSaiLdtoh0COJ91q5ySuzzPRyrhBKlYvy8o9wUaHfBgLfqLINeW6NqC7LFnoGm64Ozrq2E2NsJIT6WZo6PHbElzUQ8xE8peBIISaXn42qdXhFXWuQkNt0ajXWol2h5ab9HDa+sKx5CvzJiKm/vZcFP519sIjbKC6lf9AkTbIQs87efOc3LsuBj1CBHHh+NupHx2CZGD confine@controller'
 	option 'tinc_ip' '10.228.201.66'   # Official server at Pangea 10.228.204.4, Testing at UPC 10.228.201.66
 	option 'tinc_port' '655'
 	option 'tinc_pubkey' 'MIIBCgKCAQEAtJsXUqQkWZIx5OzcGDNNgTs7su2lJx7nqpEMfbRMr8RgH/VvkUzQ0ppn1GdnOpXdJQCdk/bk1Sz8ice5GWet9eW/Z8lJiBG+xvlGduTBwUIvbB8XXkZHte/xs57Mrw7YInGr5vpe/+B0iQiOKtwtD+ma9yBgJI/H5ThqAd00fY32idfF/oQC/wv0WjVWW0t9qCreQbbdS9ViKdkbD7+EfPUcGTWHQBvid6WzhFpTM/7TiaCHD8sCSMVLE31A4lRxWZcbynsfv3UZxtLozL1RwGcBxk/slV3AbPKBvCaGJhilaHX8Jt4bO2J4XdlJjSUQH7ymcIhwJzDCxEIcri7bswIDAQAB'
