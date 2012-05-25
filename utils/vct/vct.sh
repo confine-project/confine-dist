@@ -48,7 +48,7 @@ ERR_LOG_TAG='VCT'
 # In dry run mode just exit successfully.
 # Otherwise run argument(s) as a command and return result.
 vct_true() {
-    test "$VCT_DRY_RUN" && return 0
+    test "${VCT_DRY_RUN:-}" && return 0
     "$@"
 }
 
@@ -60,7 +60,7 @@ vct_true_sh() {
 # In dry run mode print command to stderr and exit successfully.
 # Otherwise run argument(s) as a command and return result.
 vct_do() {
-    if [ "$VCT_DRY_RUN" ]; then
+    if [ "${VCT_DRY_RUN:-}" ]; then
 	echo ">>>>   $@   <<<<" >&2
 	return 0
     fi
@@ -75,7 +75,7 @@ vct_do_sh() {
 
 # Same as `vct_do()`, run command with `sudo`.
 vct_sudo() {
-    if [ "$VCT_DRY_RUN" ]; then
+    if [ "${VCT_DRY_RUN:-}" ]; then
 	vct_do sudo $@
 	return $?
     fi
@@ -231,6 +231,8 @@ vct_system_install_check() {
 	fi
     fi
 
+
+
     if ! vct_true uci help 2>/dev/null; then
 
 	cat <<EOF >&2
@@ -248,6 +250,7 @@ EOF
 	err $FUNCNAME "uci binary not available" $CMD_SOFT
 
     fi
+
 
 
     # check if user is in libvirt groups:
@@ -314,7 +317,7 @@ EOF
     if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 $OPT_CMD ; then
 	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
     fi
-	
+
 }
 
 vct_system_install() {
