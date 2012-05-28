@@ -158,15 +158,93 @@ vct_system_config_check() {
 }
 
 
+
+
+vct_tinc_setup() {
+
+    vct_do mkdir -p $VCT_TINC_DIR
+    vct_do rm -rf $VCT_TINC_DIR/* 
+    vct_do mkdir -p $VCT_TINC_DIR/confine/hosts
+
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc.conf
+BindToAddress = $VCT_SERVER_TINC_IP
+Port = $VCT_SERVER_TINC_PORT
+Name = server
+EOF
+"
+
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/hosts/server
+Address = $VCT_SERVER_TINC_IP
+Port = $VCT_SERVER_TINC_PORT
+Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+EOF
+"
+    
+    #vct_do tincd -c $VCT_TINC_DIR/confine  -K
+    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/confine/hosts/server"
+    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/confine/rsa_key.priv
+
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-up
+#!/bin/sh
+ip -6 link set \\\$INTERFACE up mtu 1400
+ip -6 addr add $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
+EOF
+"
+
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-down
+#!/bin/sh
+ip -6 addr del $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
+ip -6 link set \\\$INTERFACE down
+EOF
+"
+    vct_do chmod a+rx $VCT_TINC_DIR/confine/tinc-{up,down}
+    
+}
+
+vct_tinc_start() {
+    echo "$FUNCNAME $@" >&2
+
+    vct_sudo $VCT_TINC_CMD
+}
+
+vct_tinc_stop() {
+
+    echo "$FUNCNAME $@" >&2
+
+    local TINC_PID=$( ps aux | grep -e "$VCT_TINC_CMD" | grep -v grep | awk '{print $2}' )
+    local TINC_CNT=0
+    local TINC_MAX=20
+    if [ "$TINC_PID" ] ; then 
+
+	vct_sudo kill $TINC_PID
+
+	echo -n "waiting till tinc cleaned up" >&2
+	while [ $TINC_CNT -le $TINC_MAX ]; do
+	    sleep 1
+	    [ -x /proc/$TINC_PID ] || break
+	    TINC_CNT=$(( TINC_CNT + 1 ))
+	    echo -n "." >&2
+	done
+	
+	echo  >&2
+	echo  >&2
+	[ -x /proc/$TINC_PID ] && vct_sudo kill -9 $TINC_PID && \
+	    echo "Killing confine tincd the hard way" >&2
+    fi
+}
+
+
 vct_system_install_check() {
 
-    echo $FUNCNAME $@
+    #echo $FUNCNAME $@ >&2
 
     local OPT_CMD=${1:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
-    local CMD_QUICK=$( echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," || echo "" )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
-    local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
+    local CMD_SOFT=$(    echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUICK=$(   echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
+    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," )
+    local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
+    local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
+    local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -300,21 +378,72 @@ EOF
     fi
 
 
-    [ "$CMD_UPDATE" ] && [ -d $VCT_SSH_DIR ] && vct_do rm -r $VCT_SSH_DIR
 
-    if ! [ -d $VCT_SSH_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_SSH_DIR && \
-	    vct_do_sh "echo \"$VCT_PUB_KEY\" > $VCT_SSH_DIR/id_rsa.pub" && \
-	    vct_do_sh "echo \"$VCT_PRIV_KEY\" > $VCT_SSH_DIR/id_rsa" && \
-	    vct_do chmod og-rwx $VCT_SSH_DIR/id_rsa ) || \
-	 { err $FUNCNAME "$VCT_SSH_DIR not existing" $CMD_SOFT || return 1 ;}
+    # check ssh and tinc keys:
+
+    if [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] ; then 
+
+	echo "Backing up existing keys to $VCT_KEYS_DIR.old (just in case) " >&2
+
+	[ -d $VCT_KEYS_DIR.old.old ] && vct_do rm -rf $VCT_KEYS_DIR.old.old
+	[ -d $VCT_KEYS_DIR.old     ] && vct_do mv $VCT_KEYS_DIR.old $VCT_KEYS_DIR.old.old
+	[ -d $VCT_KEYS_DIR         ] && vct_do mv $VCT_KEYS_DIR $VCT_KEYS_DIR.old
     fi
 
-    
+    if ! [ -d $VCT_KEYS_DIR ] &&  [ $CMD_INSTALL ] ; then
+
+	vct_do mkdir -p $VCT_KEYS_DIR
+	vct_do rm -rf $VCT_KEYS_DIR/* 
+	vct_do mkdir -p $VCT_KEYS_DIR/tinc
+	vct_do touch $VCT_KEYS_DIR/tinc/tinc.conf
+	
+	echo "Creating new tinc keys..." >&2
+	vct_do_sh "tincd -c $VCT_KEYS_DIR/tinc -K <<EOF
+$VCT_KEYS_DIR/tinc/rsa_key.priv
+$VCT_KEYS_DIR/tinc/rsa_key.pub
+EOF
+"
+	echo "Creating new ssh keys..." >&2
+	vct_do ssh-keygen -f $VCT_KEYS_DIR/id_rsa
+	
+	
+	local QUERY=
+	echo "Copy new public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
+	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
+
+	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
+	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
+
+    fi
+
+    [ -f $VCT_KEYS_DIR/tinc/rsa_key.priv ] && [ -f $VCT_KEYS_DIR/tinc/rsa_key.pub ] || \
+	{ err $FUNCNAME "$VCT_KEYS_DIR/tinc/rsa_key.* not existing" $CMD_SOFT || return 1 ;}
+
+    [ -f $VCT_KEYS_DIR/id_rsa ] &&  [ -f $VCT_KEYS_DIR/id_rsa.pub ] || \
+	{ err $FUNCNAME "$VCT_KEYS_DIR/id_rsa not existing" $CMD_SOFT || return 1 ;}
 
 
-    # check for existing or downloadable file-system-template file:
-    if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 $OPT_CMD ; then
+
+
+    # check tinc configuration:
+
+    [ $CMD_INSTALL ] && vct_do rm -rf $VCT_TINC_DIR
+
+    if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
+	vct_tinc_setup
+    fi
+
+    [ -f $VCT_TINC_DIR/confine/hosts/server ] || \
+	{ err $FUNCNAME "$VCT_TINC_DIR/confine/hosts/server not existing" $CMD_SOFT || return 1 ;}
+
+
+
+    # check for update and downloadable file-system-template file:
+
+    [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}
+
+    if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+
 	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
     fi
 
@@ -325,14 +454,16 @@ vct_system_install() {
 }
 
 
+
+
 vct_system_init_check(){
 
     local OPT_CMD=${1:-}
-    local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
-    local CMD_QUICK=$( echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," || echo "" )
-    local CMD_INIT=$( echo "$OPT_CMD" | grep -e "init" > /dev/null && echo "init," || echo "" )
+    local CMD_SOFT=$(  echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUICK=$( echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
+    local CMD_INIT=$(  echo "$OPT_CMD" | grep -e "init" > /dev/null && echo "init," )
 
-    vct_system_install_check $( [ $CMD_SOFT ] && echo "soft," )$( [ $CMD_QUICK ] && echo "quick," )
+    vct_system_install_check $CMD_SOFT$CMD_QUICK
 
     # check if  kernel modules are loaded:
     local KMOD=
@@ -498,6 +629,10 @@ EOF
 	    { err $FUNCNAME "/proc/sys/net/bridge/$PROC_FILE != 0" $CMD_SOFT || return 1 ;}
 	fi
     done
+
+    # check if tinc management network is running:
+    [ $CMD_INIT ] && vct_tinc_stop
+    [ $CMD_INIT ] && vct_tinc_start
 }
 
 
@@ -579,7 +714,7 @@ vct_system_cleanup() {
 	fi
     done
 
-
+    vct_tinc_stop
 }
 
 ##########################################################################
@@ -894,7 +1029,7 @@ vct_node_ssh() {
 	
 
 
-	echo > $VCT_SSH_DIR/known_hosts
+	echo > $VCT_KEYS_DIR/known_hosts
 
 	if [ "$COMMAND" ]; then
 	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
@@ -963,7 +1098,7 @@ vct_node_scp() {
 	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
 
 
-	echo > $VCT_SSH_DIR/known_hosts
+	echo > $VCT_KEYS_DIR/known_hosts
 
 	scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IPV6\]:/ )
 
@@ -1065,7 +1200,7 @@ vct_node_customize() {
 	    mount | grep $MNTP >/dev/null || \
 		vct_node_mount $VCRD_ID
 
-	    cp $MUCI/* $PREP_UCI/
+	    cp $MUCI/confine* $PREP_UCI/
 
 	elif [ "$PROCEDURE" = "online" ] ; then
 
@@ -1076,7 +1211,7 @@ vct_node_customize() {
 	    fi
 
 	    vct_node_ssh $VCRD_ID "confine_node_disable"
-	    vct_node_scp $VCRD_ID remote:/etc/config/* $PREP_UCI/
+	    vct_node_scp $VCRD_ID remote:/etc/config/confine* $PREP_UCI/
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
@@ -1088,9 +1223,9 @@ vct_node_customize() {
 	    err $FUNCNAME "confine configs dirty! Please commit or revert"
 
 	touch $PREP_UCI/confine-defaults
-	uci_set confine-defaults.defaults=defaults                                              path=$PREP_UCI
-	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48    path=$PREP_UCI
-	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48  path=$PREP_UCI
+	uci_set confine-defaults.defaults=defaults                                               path=$PREP_UCI
+	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48     path=$PREP_UCI
+	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48   path=$PREP_UCI
 
 	touch $PREP_UCI/confine
 	uci_set confine.testbed=testbed                                                          path=$PREP_UCI
@@ -1100,10 +1235,10 @@ vct_node_customize() {
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
 	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
-	uci_set confine.server.mgmt_pubkey="$VCT_SERVER_MGMT_PUBKEY"                             path=$PREP_UCI
+	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
 	uci_set confine.server.tinc_ip=$VCT_SERVER_TINC_IP                                       path=$PREP_UCI
 	uci_set confine.server.tinc_port=$VCT_SERVER_TINC_PORT                                   path=$PREP_UCI
-	uci_set confine.server.tinc_pubkey="$VCT_SERVER_TINC_PUBKEY"                             path=$PREP_UCI
+	uci_set confine.server.tinc_pubkey="$( ssh-keygen -yf $VCT_KEYS_DIR/tinc/rsa_key.priv )" path=$PREP_UCI
 
 	uci_set confine.node=node                                                                path=$PREP_UCI
 	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
@@ -1121,19 +1256,20 @@ vct_node_customize() {
 	    uci_set confine.node.rd_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS                    path=$PREP_UCI
 	fi
 
-	uci_set confine.node.sl_public_ipv4_proto=$VCT_NODE_SL_PUBLIC_IPV4_PROTO           path=$PREP_UCI
+
+	uci_set confine.node.sl_public_ipv4_proto=$VCT_NODE_SL_PUBLIC_IPV4_PROTO                 path=$PREP_UCI
 	if [ "$VCT_NODE_SL_PUBLIC_IPV4_PROTO" = "static" ] && [ "$VCT_NODE_PUBLIC_IPV4_PREFIX16" ] ; then
 	    uci_set confine.node.sl_public_ipv4_addrs="$( echo $( \
 	    for i in $( seq 2 $VCT_NODE_PUBLIC_IPV4_AVAIL ); do \
 	    echo $VCT_NODE_PUBLIC_IPV4_PREFIX16.$(( 16#${VCRD_ID:2:2} )).$i/$VCT_NODE_PUBLIC_IPV4_PL; \
-	    done ) )"                                                                           path=$PREP_UCI
-	    uci_set confine.node.sl_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                path=$PREP_UCI
-	    uci_set confine.node.sl_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS              path=$PREP_UCI
+	    done ) )"                                                                            path=$PREP_UCI
+	    uci_set confine.node.sl_public_ipv4_gw=$VCT_NODE_PUBLIC_IPV4_GW                      path=$PREP_UCI
+	    uci_set confine.node.sl_public_ipv4_dns=$VCT_NODE_PUBLIC_IPV4_DNS                    path=$PREP_UCI
 
 	fi
 
-	uci_set confine.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"                path=$PREP_UCI
-	uci_set confine.node.state=prepared                                                path=$PREP_UCI
+	uci_set confine.node.rd_if_iso_parents="$VCT_NODE_ISOLATED_PARENTS"                  path=$PREP_UCI
+	uci_set confine.node.state=prepared                                                  path=$PREP_UCI
 
 
 	if [ "$PROCEDURE" = "offline" ] ; then
@@ -1145,6 +1281,7 @@ vct_node_customize() {
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
+	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
@@ -1292,7 +1429,7 @@ vct_sliver_allocate() {
 	if [ "$OS_TYPE" = "debian" ]; then
             cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
-    option user_pubkey     "$VCT_SERVER_MGMT_PUBKEY"
+    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
     option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
     option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
     option exp_name        "hello-world-experiment"
@@ -1309,7 +1446,7 @@ EOF
 	else
 	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
-    option user_pubkey     "$VCT_SERVER_MGMT_PUBKEY"
+    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
     option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
     option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
     option exp_name        "hello-world-experiment"
@@ -1520,26 +1657,34 @@ vct_help() {
 
     vct_help
 
-    vct_system_install [update]    : install vct system requirements
-    vct_system_init                : initialize vct system on host
-    vct_system_cleanup             : revert vct_system_init
+    vct_system_install [OVERRIDE_DIRECTIVES]           : install vct system requirements
+    vct_system_init                                    : initialize vct system on host
+    vct_system_cleanup                                 : revert vct_system_init
 
-    vct_node_info      [NODE_SET]   : summary of existing domain(s)
-    vct_node_create    <NODE_SET>   : create domain with given NODE_ID
-    vct_node_start     <NODE_SET>   : start domain with given NODE_ID
-    vct_node_stop      <NODE_SET>   : stop domain with given NODE_ID
-    vct_node_remove    <NODE_SET>   : remove domain with given NODE_ID
-    vct_node_console   <NODE_ID>    : open console to running domain
 
-    vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : setup NODE_ID attributes
+    Node Management Functions
+    -------------------------
 
-    vct_node_ssh       <NODE_SET> ["COMMANDS"]  : connect (& execute COMMANDS) via recovery IPv6
-    vct_node_scp       <NODE_SET> <SCP_ARGS>    : copy via recovery IPv6
+    vct_node_info      [NODE_SET]                      : summary of existing domain(s)
+    vct_node_create    <NODE_SET>                      : create domain with given NODE_ID
+    vct_node_start     <NODE_SET>                      : start domain with given NODE_ID
+    vct_node_stop      <NODE_SET>                      : stop domain with given NODE_ID
+    vct_node_remove    <NODE_SET>                      : remove domain with given NODE_ID
+    vct_node_console   <NODE_ID>                       : open console to running domain
+
+    vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : configure & activate node
+
+    vct_node_ssh       <NODE_SET> ["COMMANDS"]         : ssh connect via recovery IPv6
+    vct_node_scp       <NODE_SET> <SCP_ARGS>           : copy via recovery IPv6
     vct_node_mount     <NODE_SET>
     vct_node_unmount   <NODE_SET>
 
 
-    vct_sliver_allocate  <SL_ID> <NODE_SET> [OS_TYPE:openwrt,debian] 
+    Slice and Sliver Management Functions
+    -------------------------------------
+    Following functions always connect to a running node for RPC execution.
+
+    vct_sliver_allocate  <SL_ID> <NODE_SET> [OS_TYPE]
     vct_sliver_deploy    <SL_ID> <NODE_SET>
     vct_sliver_start     <SL_ID> <NODE_SET>
     vct_sliver_stop      <SL_ID> <NODE_SET>
@@ -1547,28 +1692,30 @@ vct_help() {
 
     vct_slice_attributes <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
 
+   
+    Argument Definitions
+    --------------------
 
-    NODE_ID:=    node id given by a 4-digit lower-case hex value (eg: 0a12)
-    NODE_SET:=   set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (eg: 0001-0003)
-    SL_ID:=      slice id given by a 12-digit lower-case hex value
-    OS_TYPE:=    openwrt|debian
-    COMMANDS:=   Commands to be executed on node
-    SCP_ARGS:=   MUST contain keyword='remote:' which is replaced with 'root@[IPv6]:'
+    OVERRIDE_DIRECTIVES:= comma seperated list (NO spaces) of override directives: 
+                             override_node_template, override_server_template, override_keys
+    NODE_ID:=             node id given by a 4-digit lower-case hex value (eg: 0a12)
+    NODE_SET:=            set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (0001-0003)
+    SL_ID:=               slice id given by a 12-digit lower-case hex value
+    OS_TYPE:=             openwrt|debian
+    COMMANDS:=            Commands to be executed on node
+    SCP_ARGS:=            MUST contain keyword='remote:' which is substituted by 'root@[IPv6]:'
 
 -------------------------------------------------------------------------------------------
 
-    Future requests (commands not yet implemented):
-    -----------------------------------------------
+    Future requests (commands not yet implemented)
+    ----------------------------------------------
 
-    
-
-
-    vct_link_get [node-id]             : show configured links
-    vct_link_del [<node-id-A[:direct-if-A]>] [<node-id-B[:direct-if-B>]] : del configured link(s)
-    vct_link_add  <node-id-A:direct-if-A>     <node-id-B:direct-if-B> [packet-loss] 
-                                     virtually link node-id a via direct if a with rd b
-                                     example $ ./vct.sh link-add 0003:1 0005:1 10
-                                     to setup a link between given RDs with 10% packet loss
+    vct_link_get [NODE_ID]                               : show configured links
+    vct_link_del [NODE_ID[:IF]] [NODE_ID[:IF]]           : del configured link(s)
+    vct_link_add <NODE_ID:IF> <NODE_ID:IF> [PACKET_LOSS] : add virtually link between
+                                                           given nodes and interfaces, eg:
+                                                           vct_link_add 0003:1 0005:1 10
+                                                           to setup link with 10% loss
 
 
 EOF

@@ -40,6 +40,8 @@ define Package/confine-system
 	+iptables \
 	+kmod-dummy \
 	+tinc \
+	+dropbearconvert \
+	+openssh-keygen \
 	+e2fsprogs \
 	+kmod-fs-ext4 \
 	+kmod-fs-vfat \
@@ -48,6 +50,7 @@ endef
 
 define optional
 	@TARGET_x86 \
+	+@BUSYBOX_CONFIG_FOLD \
 	+ebtables \
 	+tinc \
 
@@ -81,6 +84,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/dropbear
+	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/lxc/scripts/openwrt-confine-dhcp.sh $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/

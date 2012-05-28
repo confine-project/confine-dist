@@ -278,18 +278,110 @@ confine_allocate_static_public_ipv4() {
     return 1
 }
 
+
+
+confine_tinc_start() {
+    echo "$FUNCNAME $@" >&2
+
+    local TINC_CMD="tincd --logfile -n confine"
+    $TINC_CMD
+}
+
+confine_tinc_stop() {
+
+    echo "$FUNCNAME $@" >&2
+
+    local TINC_CMD="tincd --logfile -n confine"
+    local TINC_PID=$( ps | grep -e "$TINC_CMD" | grep -v grep | awk '{print $1}' )
+    local TINC_CNT=0
+    local TINC_MAX=20
+    if [ "$TINC_PID" ] ; then 
+
+	kill $TINC_PID
+
+	echo -n "wait till tinc cleaned up"
+	while [ $TINC_CNT -le $TINC_MAX ]; do
+	    sleep 1
+	    [ -x /proc/$TINC_PID ] || break
+	    TINC_CNT=$(( TINC_CNT + 1 ))
+	    echo -n "."
+	done
+	echo
+
+	[ -x /proc/$TINC_PID ] && kill -9 $TINC_PID && \
+	    echo "Killing confine tincd the hard way" >&2
+    fi
+}
+
+
+confine_tinc_setup() {
+
+    echo "$FUNCNAME $@" >&2
+
+    local VCRD_ID=$1
+    local SERVER_MGMT_IPV6_PREFIX48=$2
+    local SERVER_TINC_IP=$3
+    local SERVER_TINC_PORT=$4
+    local SERVER_TINC_KEY="$5"
+
+    confine_tinc_stop
+
+    mkdir -p /etc/tinc/confine/
+    rm -rf   /etc/tinc/confine/*
+    mkdir    /etc/tinc/confine/hosts
+    
+    cat <<EOF > /etc/tinc/confine/tinc.conf
+Name = node_x$VCRD_ID
+ConnectTo = server
+EOF
+
+    cat <<EOF > /etc/tinc/confine/hosts/node_x$VCRD_ID
+Subnet = $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
+EOF
+
+    ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub >> /etc/tinc/confine/hosts/node_x$VCRD_ID
+
+    ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
+    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
+
+    cat <<EOF > /etc/tinc/confine/hosts/server
+Address = $SERVER_TINC_IP
+Port = $SERVER_TINC_PORT
+Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.priv )
+EOF
+
+    cat <<EOF > /etc/tinc/confine/tinc-up
+#!/bin/sh
+ip -6 link set "\$INTERFACE" up mtu 1400
+ip -6 addr add $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:2/48 dev "\$INTERFACE"
+EOF
+    chmod u+rx /etc/tinc/confine/tinc-up
+
+    cat <<EOF > /etc/tinc/confine/tinc-down
+#!/bin/sh
+ip -6 addr del $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:2/48 dev "\$INTERFACE"
+ip -6 link set "\$INTERFACE" down
+EOF
+    chmod u+rx /etc/tinc/confine/tinc-down
+
+}
+
+
 confine_node_disable() {
 
-    echo "$FUNCNAME $# $@" >&2
+    echo "$FUNCNAME $@" >&2
 
     confine.lib uci_set confine.node.state=unprepared soft
+
+    confine_tinc_stop
     
     confine_sliver_remove all
 }
 
 confine_node_enable() {
 
-   echo "$FUNCNAME $# $@" >&2
+   echo "$FUNCNAME $@" >&2
 
     confine_system_check
     local NODE_STATE=$( uci_get confine.node.state soft )
@@ -308,31 +400,16 @@ confine_node_enable() {
 	return 0
     fi
 
-    if [ "$NODE_STATE" = "applied" ] ; then
-
-	confine.lib confine_system_check
-
-	confine_sliver_stop all
-
-	lsmod | grep dummy >/dev/null || insmod dummy
-	ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
-	ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
-	
-	uci_set confine.node.state=started
-
-	setup_dummy_container
-	
-	confine.lib confine_info
-
-	return 0
-    fi
 
     if [ "$NODE_STATE" = "prepared" ] ; then
 
 	confine_sliver_remove all
 
-	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
+	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
+	local SERVER_TINC_IP=$(            uci_get confine.server.tinc_ip                       soft )
+	local SERVER_TINC_PORT=$(          uci_get confine.server.tinc_port                     soft )
+	local SERVER_TINC_KEY="$(          uci_get confine.server.tinc_pubkey                   soft )"
 
 	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname         soft )
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
@@ -347,6 +424,9 @@ confine_node_enable() {
 	if true && \
 	    [ "$VCRD_ID" ] && \
 	    [ "$SERVER_MGMT_PUBKEY" ] && \
+	    [ "$SERVER_TINC_IP" ] && \
+	    [ "$SERVER_TINC_PORT" ] && \
+	    [ "$SERVER_TINC_KEY" ] && \
 	    [ "$SERVER_MGMT_IPV6_PREFIX48" ] && \
 	    [ "$NODE_LOCAL_IFNAME" ] && \
 	    [ "$NODE_PRIV_IPV4_PREFIX24" ] && \
@@ -355,11 +435,38 @@ confine_node_enable() {
 	    [ "$NODE_RD_PUBL_IPV4_PROTO" ] && \
 	    true ; then
 
+	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
+
+	    echo "confine-${VCRD_ID}" > /proc/sys/kernel/hostname
+
 	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
-	    uci_set confine.node.rd_pubkey="$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key  | grep ssh-rsa )"
+	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
+		
+		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
+		    /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		
+		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
-	    echo "Configuring network... "
+		diff /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old >/dev/null 2>&1 || \
+		    /etc/init.d/dropbear restart
+
+	    elif [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
+		dropbearconvert dropbear openssh /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/openssh_rsa_host_key 
+	    fi
+
+	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
+
+		dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep ssh-rsa > /etc/dropbear/dropbear_rsa_host_key.pub
+		
+		uci_set confine.node.rd_pubkey="$( cat /etc/dropbear/dropbear_rsa_host_key.pub )"
+
+		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
+
+	    fi
+
+
+	    echo "Configuring network... " >&2
 
 
 #	    uci_del network.lan soft,quiet
@@ -441,38 +548,45 @@ confine_node_enable() {
 
 	    /etc/init.d/network restart
 
-	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
-
-	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
-
-            # remove useless busybox links:
-	    [ -h /bin/ping ] && [ -x /usr/bin/ping ] && rm /bin/ping
-	    [ -h /bin/rm ] && [ -x /usr/bin/rm ] && rm /bin/rm
-
-
 	    confine.lib confine_system_check
 	    
-	    lsmod | grep dummy >/dev/null || insmod dummy
-	    ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
-	    ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
-	
-	    uci_set confine.node.state=started
-
-	    confine.lib setup_dummy_container
-
-	    confine.lib confine_info
-
-	    return 0
+	    uci_set confine.node.state=applied
 
 	else
 	    uci_set confine.node.state=unprepared
 	    err $FUNCNAME "Failed due to inproper confine.node config"
 	fi
 
-    else
-	confine_sliver_remove all
     fi
 
+    local NODE_STATE=$( uci_get confine.node.state soft )
+
+    if [ "$NODE_STATE" = "applied" ] ; then
+
+	confine_system_check
+
+	confine_sliver_stop all
+
+	lsmod | grep dummy >/dev/null || insmod dummy
+	ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
+	ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
+
+
+	confine_tinc_stop
+	confine_tinc_start
+	
+	uci_set confine.node.state=started
+
+	setup_dummy_container
+	
+	confine.lib confine_info
+
+	return 0
+    fi
+
+
+    confine_sliver_remove all
+    err $FUNCNAME "Illegal node state"
 }
 
 confine_sliver_allocate() {
@@ -973,8 +1087,8 @@ help() {
 confine_info
 confine_node_enable
 confine_node_disable
-confine_sliver_allocate <SLICE_ID> [BATCH FILE]
-confine_sliver_deploy   <SLICE_ID> [BATCH FILE]
+confine_sliver_allocate <SLICE_ID> [BATCH_FILE]
+confine_sliver_deploy   <SLICE_ID> [BATCH_FILE]
 confine_sliver_start    <SLICE_ID|all>
 confine_sliver_stop     <SLICE_ID|all>
 confine_sliver_remove   <SLICE_ID|all>

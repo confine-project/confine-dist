@@ -24,7 +24,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-32.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-33.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -45,48 +45,16 @@ VCT_MNT_DIR=$VCT_VIRT_DIR/mnt
 VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
 VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 
-VCT_SSH_DIR=$VCT_VIRT_DIR/ssh
+VCT_KEYS_DIR=$VCT_VIRT_DIR/keys
+VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
 
-VCT_SSH_OPTIONS="-i /home/$VCT_USER/.ssh/id_rsa -i $VCT_SSH_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_SSH_DIR/known_hosts -o ConnectTimeout=1 "
+VCT_SSH_OPTIONS="-i /home/$VCT_USER/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
+
+VCT_TINC_CMD="tincd --logfile -c $VCT_TINC_DIR/confine -n confine"
+
 
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
-
-
-# If changed: system must be updated: $ ./vct_system_install update
-
-VCT_PUB_KEY="\
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDXWcW2C6kMEQp5O91eBisEdxh4isS1ydsjM6/BTI0PefyjRT+dmjtVaQDy0qWoeTzQ36DNy0s5IcMwtTlNTx/COhn5l9QeN8OVwtg75slTLisCXQob6BT/CPBGYnoNyISNmJ0vpeMzdFXfXB2oolLfLIbQ8+5tkrSaFlgJmOo4zVZqe98gIfLuJM3EAFpw3GJIw1Ni92V2T/z5nyc8SIKgxch8wMqtCaK8MaKcQv1uxfdqGLbMpJVuqCcqAw0p0hae84Lga6XeNEgBmwyepM0BG6KXgQztXc/9wmEw+vw1/ubM7jn4a+Umyrh0x5mzs2PGPDzLzqpRAN7YMPhyelDp root@confine"
-
-VCT_PRIV_KEY="\
------BEGIN RSA PRIVATE KEY-----
-MIIEpQIBAAKCAQEA11nFtgupDBEKeTvdXgYrBHcYeIrEtcnbIzOvwUyND3n8o0U/
-nZo7VWkA8tKlqHk80N+gzctLOSHDMLU5TU8fwjoZ+ZfUHjfDlcLYO+bJUy4rAl0K
-G+gU/wjwRmJ6DciEjZidL6XjM3RV31wdqKJS3yyG0PPubZK0mhZYCZjqOM1Wanvf
-ICHy7iTNxABacNxiSMNTYvdldk/8+Z8nPEiCoMXIfMDKrQmivDGinEL9bsX3ahi2
-zKSVbqgnKgMNKdIWnvOC4Gul3jRIAZsMnqTNARuil4EM7V3P/cJhMPr8Nf7mzO45
-+GvlJsq4dMeZs7Njxjw8y86qUQDe2DD4cnpQ6QIDAQABAoIBAQDWAo/6J0JbDIBV
-FMocS5LqgBSgjn+IjU6qgA4U0ieJDtijxQjAbeqzKYPYzL/2Wm22wdaDTZm28DeT
-KzYD/zL3iVgQ8/LICPDk3tqXRPYkJMh3M9D9BLoA7Xgi6nCTTAd21Ai5tmjA1McW
-DuwmjxI+WXitJQ14dQfn7XaWKxHxWUOUJVSm8v+DmLLlGT1ZywCzoh8aShjezAnA
-YckPPVr7fRm+J4KST5crJ45p5LsnB++YqNvv1tQJkfbEgwBUZXrszYEdnFu9769Z
-icW3rvN02onX/MWXsG9oBOPmT2ODfLjPDs5xqGUvy+jqXt0OUgn+ejLuP9u44OLg
-D73p9uIRAoGBAPQlFIKHv7mZ/mOwJBBBmEXlYP4qnk4pqHcP3umZwhXqT8yDPomN
-vUpdas9idP78gFn7ic9wX8YZTv2sXAZK5jkoTKKi6FaY4UIZUBGWjlkjCQpPNpGZ
-C/8/Q5WNdSPThIAqmaldAbZQoEkh5V7Bf26BPoEtcMmI1ZIYpcDRhN3NAoGBAOHO
-wdKdvRZS5zgdobCSAr75O78jVHnNXT5FbnYtZMoD9BpAY7DOCPzNdA8SgFz6zZb7
-tduyBmI1dXYlC2KVVQ9ivMknsiZjB9MRPfYTwVVm1QazUAOLa2NODLpe3mhcgKpM
-H+VetdVDkUUaescLwXz3NeF6G3EwA8ouAzpzvcONAoGBAIS9ZFlT1TnkMBujOPhd
-sZzPCd0m7sswexfA2UHJB21C6AAZm3bOSYyVHe2Danj4cBB8YoEWZ/wc5oWloKML
-NgD9mC0UxZ3PoSl++bmWUe7EzbV9O/4NaChvDR/SuU2xQuksQD+FAdlOHNemRj8u
-lUpPmtxBCIGKlBPKstQTFlpBAoGABgh3J0Btp+YJJXetNUGBb0bLcNzpyeNRxXMn
-c2LdGYSnhfgIcdXfaZm3qxtscI+G5KzO/BKylvckr0ZoGncw8ZtKvfkgimQE9n+0
-bxmyBa0crfQmhCG6ecnBD02vlYw7J9Gm3IL+Srdmbzk45I6M2eDlAKQ5jXmh8Enw
-biRfgpUCgYEAoC2Yay20TweP/oOLP1zOXVFLvGSjz+BP726FWvIPgsh6UbmSvuFY
-BMpjIkNUb9fO+Lfmg/WNNUDMN4E4sRujGz+PsGtKwMcIs/b0wGzop2ulQLAnMbLM
-xgEWppdBKkp8APYnfEld5jSX85tUCHsp3WeQBN1eZwYgBphWyeKzIVw=
------END RSA PRIVATE KEY-----
-"
 
 
 #################################################
@@ -99,10 +67,10 @@ VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
 VCT_SERVER_CN_URL="http://community.net/node/yyyyy"
-VCT_SERVER_MGMT_PUBKEY="$VCT_PUB_KEY"
 VCT_SERVER_TINC_IP=10.241.0.254
 VCT_SERVER_TINC_PORT=655
-VCT_SERVER_TINC_PUBKEY="$( echo $VCT_PUB_KEY | awk '{print $2}' )"
+#VCT_SERVER_MGMT_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
+#VCT_SERVER_TINC_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
 
 VCT_NODE_CN_URL="http://community.net/node/xxxxx"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
@@ -186,8 +154,10 @@ VCT_DEB_PACKAGES=" \
     ipv6calc \
     libvirt-bin \
     net-tools \
+    openssh-server \
     openssh-client \
     qemu-kvm \
+    tinc \
     udhcpd \
     virtinst \
     xmlstarlet \
@@ -207,6 +177,8 @@ VCT_TOOL_TESTS=( \
     'mkdir --version' \
     'ping -V'\
     'ssh -V' \
+    'tincd --version' \
+    'which ssh-keygen' \
     'which udhcpd' \
     'which scp' \
     'virsh --version' \

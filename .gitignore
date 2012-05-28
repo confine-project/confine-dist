@@ -8,6 +8,7 @@
 /utils/vct/vct
 *.tgz
 private
+/files/etc/dropbear/authorized_keys
 
 
 
