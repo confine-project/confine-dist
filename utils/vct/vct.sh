@@ -170,6 +170,7 @@ vct_tinc_setup() {
 BindToAddress = $VCT_SERVER_TINC_IP
 Port = $VCT_SERVER_TINC_PORT
 Name = server
+StrictSubnets = yes
 EOF
 "
 
