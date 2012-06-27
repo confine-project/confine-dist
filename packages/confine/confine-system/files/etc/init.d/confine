@@ -10,8 +10,8 @@ start() {
 
     confine_sliver_stop all
 
-    if [ "$( uci -q get confine-node.node.state )" = "started" ] ; then
-	confine.lib uci_set confine-node.node.state=applied
+    if [ "$( uci -q get confine.node.state )" = "started" ] ; then
+	confine.lib uci_set confine.node.state=applied
     fi
 
     confine_node_enable
@@ -22,8 +22,8 @@ stop() {
 
     confine_sliver_stop all
 
-    if [ "$( uci -q get confine-node.node.state )" = "started" ] ; then
-	confine.lib uci_set confine-node.node.state=applied
+    if [ "$( uci -q get confine.node.state )" = "started" ] ; then
+	confine.lib uci_set confine.node.state=applied
     fi
     
 }

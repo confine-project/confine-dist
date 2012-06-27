@@ -5,6 +5,23 @@ customize_rootfs() {
 
     rm -rf $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/init.d/firewall
 
+    local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
+    local TMP_SLICE=
+    local MY_SLICE=
+    for TMP_SLICE in $TMP_SLICES ; do
+		
+	if [ "$(uci_get confine-slivers.$TMP_SLICE.sliver_nr soft,quiet )" = "$SL_NAME" ] ; then
+	    MY_SLICE=$TMP_SLICE
+	    break;
+	fi
+    done
+
+    [ "$MY_SLICE" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES" 
+
+    local IPV6_ADDR="$(uci_get confine-slivers.$MY_SLICE.if01_ipv6)"
+    local IPV6_GW="$( uci_get confine.testbed.mgmt_ipv6_prefix48 )::2 "
+
+
     cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/network
 
 config 'interface' 'loopback'
@@ -13,8 +30,10 @@ config 'interface' 'loopback'
         option 'ipaddr' '127.0.0.1'
         option 'netmask' '255.0.0.0'
 
-        option 'ifname' 'pub0'
-        option 'proto'  'dhcp'
+        option 'ifname'  'pub0'
+        option 'proto'   'dhcp'
+        option 'ip6addr' "$IPV6_ADDR"
+        option 'ip6gw'   "$IPV6_GW"
 
 EOF
 

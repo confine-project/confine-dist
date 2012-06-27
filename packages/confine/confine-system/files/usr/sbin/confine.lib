@@ -667,8 +667,8 @@ confine_sliver_allocate() {
 	    local TMP_SLICE=
 	    for TMP_SLICE in $TMP_SLICES ; do
 
-		if [ "$(uci_get confine-slivers.$SL_ID.vlan_nr soft,quiet )" = "$VLAN_NR" ] ; then
-		    err $FUNCNAME "$VLAN_NR already used by SLICE_ID $TMP_SLICE"
+		if [ "$(uci_get confine-slivers.$TMP_SLICE.vlan_nr soft,quiet )" = "$VLAN_NR" ] ; then
+		    err $FUNCNAME "$VLAN_NR already used by SLICE_ID=$TMP_SLICE"
 		fi
 	    done
 	fi

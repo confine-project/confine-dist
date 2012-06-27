@@ -46,7 +46,6 @@ define prepare_workspace
 	git clone $(OWRT_GIT) $(BUILD_DIR)
 	git clone $(OWRT_PKG_GIT) $(OWRT_PKG_DIR)
 	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
-	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	rm -f $(BUILD_DIR)/dl || true
 	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
 	rm -rf $(BUILD_DIR)/files || true
@@ -54,6 +53,7 @@ define prepare_workspace
 endef
 
 define update_feeds
+	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	@echo "Updating feed $(1)"
 	$(BUILD_DIR)/$(1)/scripts/feeds update -a
 	$(BUILD_DIR)/$(1)/scripts/feeds install -a
