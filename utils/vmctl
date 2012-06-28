@@ -1,0 +1,118 @@
+#!/bin/sh
+
+print_usage () {
+	echo "Usage: `basename $0` (start|stop)"
+	echo
+	echo "Start: Start the last generated CONFINE image in QEMU/KVM"
+	echo "Stop:  Terminate the VM via QEMU/KVM console"
+	echo
+}
+print_packages () {
+	echo "The requested action could not be performed because of missing programs/packages"
+	echo "Required packages are: kvm|qemu, socat|netcat-openbsd"
+	echo
+}
+
+UID=`id -u`
+
+# Image to load
+IMGTYPE="vdi"
+SCRIPTDIR=`dirname \`readlink -f $0\``
+IMGDIR=`echo $SCRIPTDIR | sed 's/^\(.*\/\).*$/\1images/'`
+IMG=`ls -c $IMGDIR/*.$IMGTYPE | head -n 1`
+
+#UNIX-Socket for QEMU monitor
+MONITOR="/tmp/`basename $IMG | sed 's/\(.*\)\..*$/\1/'`-uid$UID.mon"
+
+start () {
+	# If we are root, unload load some drivers.
+	if [ "$UID" -eq 0 ]; then
+		# Unload Virtualbox drivers
+		[ -x /etc/init.d/vboxdrv         ] && /etc/init.d/vboxdrv         stop
+		[ -x /etc/init.d/vboxweb-service ] && /etc/init.d/vboxweb-service stop
+		[ -x /etc/init.d/virtualbox      ] && /etc/init.d/virtualbox      stop
+		rmmod vboxnetadp vboxnetflt vboxpci vboxdrv 2>/dev/null
+	
+		# Check if cpu has virtualisation support
+		unset KVM_CAPABLE
+		unset KVM_MODULE
+		if grep -q ^flags.*\\\<vmx\\\> /proc/cpuinfo; then
+			KVM_CAPABLE=true
+			KVM_MODULE=kvm_intel
+		elif grep -q ^flags.*\\\<svm\\\> /proc/cpuinfo; then
+			KVM_CAPABLE=true
+			KVM_MODULE=kvm_amd
+		fi
+	
+		# Load modules, if possible
+		if [ $KVM_CAPABLE ]; then
+			if [ -x /etc/init.d/qemu-kvm ]; then
+				/etc/init.d/qemu-kvm start
+			elif modprobe -q $KVM_MODULE; then
+				true
+			else
+				echo "Your CPU seems to have virtualisation support, but KVM kernel modules could not be loaded. The virtualization will use plain QEMU."
+			fi
+		else
+			# Try to use KQEMU (for old versions of QEMU only)
+			modprobe -q kqemu
+		fi
+	fi # UID=0
+
+	# Which emulator to use?
+	unset QEMU
+	if which kvm >/dev/null; then
+		QEMU=kvm
+	elif which qemu >/dev/null; then
+		QEMU=qemu
+	else
+		print_packages
+		exit 1
+	fi
+	
+	# Set parameters
+	MON="-name CONFINE -vnc 127.0.0.1:0,ipv4 -vga std -monitor unix:$MONITOR,server,nowait"
+	SYS="-cpu host -m 64"
+	NET="-net nic,vlan=1 -net user,vlan=1,hostname=confine,hostfwd=tcp:127.0.0.1:2222-:22"
+	HDD="-drive file=$IMG -boot c"
+
+	# Execute VM
+	echo "Starting `echo $QEMU | tr '[:lower:]' '[:upper:]'` ..."
+	echo " - VNC server will be started at 127.0.0.1, display 0"
+	echo " - SSH server will be started at 127.0.0.1, port 2222"
+	echo " - `echo $QEMU | tr '[:lower:]' '[:upper:]'` monitor will be started on UNIX stream socket $MONITOR"
+
+	$QEMU $MON $SYS $NET $HDD & 
+}
+
+stop () {
+	# Send acpi powerdown command to VM
+	echo "Shutting down VM ..."
+	if which socat >/dev/null; then
+		(echo system_powerdown; sleep 10; echo quit) | socat UNIX-CONNECT:$MONITOR STDIO
+	elif nc -h 2>&1 | grep "\-U" >/dev/null 2>&1; then
+		(echo system_powerdown; sleep 10; echo quit) | nc -U $MONITOR
+	elif which socat.openbsd >/dev/null; then
+		(echo system_powerdown; sleep 10; echo quit) | nc.openbsd -U $MONITOR
+	else
+		print_packages
+		exit 1
+	fi
+}
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	*)
+		print_usage
+		exit 1
+		;;
+esac
+
+
+exit 0
+
