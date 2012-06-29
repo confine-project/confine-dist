@@ -37,6 +37,7 @@ CONFIG = $(BUILD_DIR)/.config
 KCONFIG = $(BUILD_DIR)/target/linux/x86/config-3.3
 IMAGES = images
 IMAGE = openwrt-x86-generic-combined
+IMAGE_TYPE ?= squashfs
 J ?= 1
 V ?= 0
 MAKE_SRC = -j$(J) V=$(V)
@@ -91,8 +92,8 @@ endef
 
 define post_build
 	mkdir -p $(IMAGES)
-	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img.gz || true
-	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-squashfs.img $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
+	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz || true
+	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
 	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi
 	@echo 
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
@@ -100,6 +101,7 @@ endef
 
 
 all: prepare 
+	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call post_build)
 
@@ -110,6 +112,7 @@ target: prepare
 prepare: .prepared 
 
 .prepared:
+	@echo "Using $(IMAGE_TYPE)."
 	@echo "Developer mode enabled"
 	$(call prepare_workspace)
 	$(call update_workspace)
