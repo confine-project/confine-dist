@@ -44,37 +44,37 @@ MAKE_SRC = -j$(J) V=$(V)
 CONFINE_VERSION ?= testing
 
 define prepare_workspace
-	git clone $(OWRT_GIT) $(BUILD_DIR)
-	git clone $(OWRT_PKG_GIT) $(OWRT_PKG_DIR)
-	[ ! -d $(DOWNLOAD_DIR) ] && mkdir -p $(DOWNLOAD_DIR) || true
+	git clone $(OWRT_GIT) "$(BUILD_DIR)"
+	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
+	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
 	rm -f $(BUILD_DIR)/dl || true
-	ln -s `readlink -f $(DOWNLOAD_DIR)` $(BUILD_DIR)/dl
-	rm -rf $(BUILD_DIR)/files || true
-	ln -s ../$(FILES_DIR) $(BUILD_DIR)/files
+	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
+	rm -rf "$(BUILD_DIR)/files" || true
+	ln -s "../$(FILES_DIR)" "$(BUILD_DIR)/files"
 endef
 
 define update_feeds
 	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	@echo "Updating feed $(1)"
-	$(BUILD_DIR)/$(1)/scripts/feeds update -a
-	$(BUILD_DIR)/$(1)/scripts/feeds install -a
+	"$(BUILD_DIR)/$(1)/scripts/feeds" update -a
+	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
 endef
 
 define copy_config
-	cp -f $(CONFIG_DIR)/owrt_config $(CONFIG)
-	cp -f $(CONFIG_DIR)/kernel_config $(KCONFIG)
-	(cd $(BUILD_DIR) && make defconfig)
+	cp -f "$(CONFIG_DIR)/owrt_config" $(CONFIG)
+	cp -f "$(CONFIG_DIR)/kernel_config" $(KCONFIG)
+	(cd "$(BUILD_DIR)" && make defconfig)
 endef
 
 define menuconfig_owrt
-	make -C $(BUILD_DIR) menuconfig
-	mkdir -p $(MY_CONFIGS)
-	(cd $(BUILD_DIR) && scripts/diffconfig.sh) > $(MY_CONFIGS)/owrt_config
+	make -C "$(BUILD_DIR)" menuconfig
+	mkdir -p "$(MY_CONFIGS)"
+	(cd "$(BUILD_DIR)" && scripts/diffconfig.sh) > $(MY_CONFIGS)/owrt_config
 	@echo "New OpenWRT configuration file saved on $(MY_CONFIGS)/owrt_config"
 endef
 
 define kmenuconfig_owrt
-	make -C $(BUILD_DIR) kernel_menuconfig
+	make -C "$(BUILD_DIR)" kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
 	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
@@ -82,19 +82,19 @@ endef
 
 define update_workspace
 	git pull origin $(CONFINE_VERSION) && git checkout $(CONFINE_VERSION)
-	(cd $(BUILD_DIR) && git pull && git checkout $(CONFINE_VERSION))
-	(cd $(OWRT_PKG_DIR) && git pull && git checkout $(CONFINE_VERSION))
+	(cd "$(BUILD_DIR)" && git pull && git checkout $(CONFINE_VERSION))
+	(cd "$(OWRT_PKG_DIR)" && git pull && git checkout $(CONFINE_VERSION))
 endef
 
 define build_src
-	make -C $(BUILD_DIR) $(MAKE_SRC)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC)
 endef
 
 define post_build
-	mkdir -p $(IMAGES)
-	[ -f $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz ] && gunzip $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz || true
-	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img
-	cp -f $(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi $(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi
+	mkdir -p "$(IMAGES)"
+	[ -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
+	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
+	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	@echo 
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
@@ -134,13 +134,13 @@ kernel_menuconfig: prepare
 	$(call kmenuconfig_owrt)
 
 clean:
-	make -C $(BUILD_DIR) clean
+	make -C "$(BUILD_DIR)" clean
 
 dirclean:
-	make -C $(BUILD_DIR) dirclean
+	make -C "$(BUILD_DIR)" dirclean
 
 distclean:
-	make -C $(BUILD_DIR) distclean
+	make -C "$(BUILD_DIR)" distclean
 	$(call copy_config)
 
 help:
