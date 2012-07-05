@@ -343,6 +343,7 @@ EOF
 
     ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
     echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
+    chmod 600 /etc/tinc/confine/server_rsa_key.priv
 
     cat <<EOF > /etc/tinc/confine/hosts/server
 Address = $SERVER_TINC_IP
@@ -444,7 +445,7 @@ confine_node_enable() {
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		
 		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		    cp /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
 		
 		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
