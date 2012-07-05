@@ -36,6 +36,7 @@ DOWNLOAD_DIR = dl
 CONFIG = $(BUILD_DIR)/.config
 KCONFIG = $(BUILD_DIR)/target/linux/x86/config-3.3
 IMAGES = images
+NIGHTLY_IMAGES_DIR = www
 IMAGE = openwrt-x86-generic-combined
 IMAGE_TYPE ?= squashfs
 J ?= 1
@@ -99,11 +100,29 @@ define post_build
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
 
+define nightly_build
+	$(eval REV_ID := $(shell git log -n 1 --format=oneline | cut -f1 -d' '))
+	$(eval OWRT_REV_ID := $(shell cd $(BUILD_DIR); git log -n 1 --format=oneline | cut -f1 -d' '))
+	$(eval PACKAGES_REV_ID := $(shell cd $(OWRT_PKG_DIR); git log -n 1 --format=oneline | cut -f1 -d' '))
+	$(eval BUILD_ID := $(REV_ID)-$(OWRT_REV_ID)-$(PACKAGES_REV_ID))
+
+	@echo $(BUILD_ID)
+	
+	mkdir -p "$(NIGHTLY_IMAGES_DIR)"
+	[ -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
+	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(BUILD_ID).img"
+endef
+
 
 all: prepare 
 	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call post_build)
+
+nightly: prepare
+	@echo "Using $(IMAGE_TYPE)."
+	$(call build_src)
+	$(call nightly_build)
 
 target: prepare 
 	$(call build_src)
