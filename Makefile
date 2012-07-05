@@ -110,7 +110,7 @@ define nightly_build
 	
 	mkdir -p "$(NIGHTLY_IMAGES_DIR)"
 	[ -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
-	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(BUILD_ID).img"
+	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img"
 endef
 
 
