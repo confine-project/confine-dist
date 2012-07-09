@@ -304,15 +304,21 @@ check_deb() {
 }
 
 check_rpm() {
+    touch .rpm-installed.cache
     for PKG in $VCT_RPM_PACKAGES; do
-        if [ "x$(yum info $PKG 2>&1 | grep 'No matching')" == "x" ]; then
-            if [ "x$(yum info $PKG 2>/dev/null | grep installed)" == "x" ]; then
-                vct_sudo "yum install -y $PKG"
-            else
-                echo "$PKG ok"
-            fi
+        if [ "x$(grep "$PKG" .rpm-installed.cache)" != "x" ]; then
+            echo "$PKG ok (cached)"
         else
-            echo "$PKG not available"
+            if [ "x$(yum info $PKG 2>&1 | grep 'No matching')" == "x" ]; then
+                if [ "x$(yum info $PKG 2>/dev/null | grep installed)" == "x" ]; then
+                    vct_sudo "yum install -y $PKG"
+                else
+                    echo "$PKG ok"
+                    echo $PKG >> .rpm-installed.cache
+                fi
+            else
+                echo "$PKG not available"
+            fi
         fi
     done
 }
