@@ -599,14 +599,19 @@ vct_system_init_check(){
 
 		local UDHCPD_CONF_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.conf
 		local UDHCPD_LEASE_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.leases
-		local UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
+		local UDHCPD_COMMAND
+		if is_rpm; then
+    		UDHCPD_COMMAND="busybox udhcpd $UDHCPD_CONF_FILE"
+    	else
+    	    UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
+    	fi
+    	echo $UDHCPD_COMMAND;
 		local UDHCPD_PID=$( ps aux | grep "$UDHCPD_COMMAND" | grep -v grep | awk '{print $2}' )
 	    
 		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID && sleep 1
 		
 
 		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
-
 		    if [ $CMD_INIT ] ; then
 			vct_do_sh "cat <<EOF > $UDHCPD_CONF_FILE
 start           $DHCPD_IP_MIN
@@ -618,11 +623,7 @@ option dns      $DHCPD_DNS
 EOF
 "
 
-            if is_rpm; then
-                vct_sudo busybox udhcpd $UDHCPD_CONF_FILE
-            else
-    			vct_sudo udhcpd $UDHCPD_CONF_FILE
-    	    fi
+            vct_sudo $UDHCPD_COMMAND
 		    fi
 		    
 		    vct_true [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
