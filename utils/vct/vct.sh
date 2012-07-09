@@ -9,7 +9,7 @@ LANG=C
 if [ -f ./vct.conf ]; then
     . ./vct.conf
 elif [ -f ./vct.conf.default ]; then
-	. ./vct.conf.default
+    . ./vct.conf.default
 fi
 
 
@@ -235,23 +235,7 @@ vct_tinc_stop() {
 }
 
 
-vct_system_install_check() {
-
-    #echo $FUNCNAME $@ >&2
-
-    local OPT_CMD=${1:-}
-    local CMD_SOFT=$(    echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local CMD_QUICK=$(   echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," )
-    local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
-    local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
-    local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
-
-    # check if correct user:
-    if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
-	err $FUNCNAME "command must be executed as user=$VCT_USER" $CMD_SOFT || return 1
-    fi
-
+check_deb() {
     # check debian system, packages, tools, and kernel modules
     ! apt-get --version > /dev/null && dpkg --version > /dev/null &&\
 	{ err $FUNCNAME "missing debian system tool dpkg or apt-get" $CMD_SOFT || return 1 ;}
@@ -290,6 +274,26 @@ vct_system_install_check() {
 	done
 
     fi
+}
+
+vct_system_install_check() {
+
+    #echo $FUNCNAME $@ >&2
+
+    local OPT_CMD=${1:-}
+    local CMD_SOFT=$(    echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
+    local CMD_QUICK=$(   echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
+    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," )
+    local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
+    local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
+    local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
+
+    # check if correct user:
+    if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
+	err $FUNCNAME "command must be executed as user=$VCT_USER" $CMD_SOFT || return 1
+    fi
+
+    check_deb()
 
     # check uci binary
     local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
