@@ -26,7 +26,7 @@ config node 'node'
 #	option sl_public_ipv4_addrs '10.241.17.2/16 10.241.17.3 .... put available sliver addresses here'
 	option sl_public_ipv4_gw '10.241.0.254'
 	option sl_public_ipv4_dns '141.1.1.1'
-	option rd_if_iso_parents 'eth1 eth2'
+	option rd_if_iso_parents 'eth1 eth2 wlan0 wlan1'
 	option rd_pubkey 'THIS WILL BE ASSIGNED DURING confine_node_enable'
 	option state 'unprepared'  # Change this to 'prepared' afterwards and call: confine_node_enable or /etc/init.d/confine start
 
