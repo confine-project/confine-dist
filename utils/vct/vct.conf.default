@@ -164,6 +164,25 @@ VCT_DEB_PACKAGES=" \
     wget \
 "
 
+VCT_RPM_PACKAGES=" \
+    bridge-utils \
+    ebtables \
+    initscripts \
+    iproute \
+    iptables \
+    iputils \
+    ipv6calc \
+    virt-manager \
+    libvirt-daemon \
+    net-tools \
+    openssh-server \
+    openssh-clients \
+    qemu-kvm \
+    tinc \
+    xmlstarlet \
+    wget \
+"
+
 VCT_TOOL_TESTS=( \
     'awk "" /dev/null' \
     'brctl --version' \

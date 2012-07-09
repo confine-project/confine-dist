@@ -123,6 +123,7 @@ vct_system_config_check() {
     variable_check VCT_MNT_DIR         quiet
     variable_check VCT_UCI_DIR         quiet
     variable_check VCT_DEB_PACKAGES    quiet
+    variable_check VCT_RPM_PACKAGES    quiet
     variable_check VCT_USER            quiet
     variable_check VCT_BRIDGE_PREFIXES quiet
     variable_check VCT_TOOL_TESTS      quiet
@@ -276,6 +277,20 @@ check_deb() {
     fi
 }
 
+check_rpm() {
+    for PKG in $VCT_RPM_PACKAGES; do
+        if [ "x$(yum info $PKG 2>&1 | grep 'No matching')" == "x" ]; then
+            if [ "x$(yum info $PKG 2>/dev/null | grep installed)" == "x" ]; then
+                vct_sudo "yum install -y $PKG"
+            else
+                echo "$PKG ok"
+            fi
+        else
+            echo "$PKG not available"
+        fi
+    done
+}
+
 vct_system_install_check() {
 
     #echo $FUNCNAME $@ >&2
@@ -293,7 +308,11 @@ vct_system_install_check() {
 	err $FUNCNAME "command must be executed as user=$VCT_USER" $CMD_SOFT || return 1
     fi
 
-    check_deb()
+    if [ -f /etc/redhat-release ]; then
+        check_rpm
+    else
+        check_deb
+    fi
 
     # check uci binary
     local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
