@@ -6,7 +6,10 @@ set -u # set -o nounset
 LANG=C
 
 
-if [ -f ./vct.conf ]; then
+if [ -f ./vct.conf.overrides ]; then
+    . ./vct.conf.default
+    . ./vct.conf.overrides
+elif [ -f ./vct.conf ]; then
     . ./vct.conf
 elif [ -f ./vct.conf.default ]; then
     . ./vct.conf.default
@@ -235,6 +238,29 @@ vct_tinc_stop() {
     fi
 }
 
+type_of_system() {
+    if [ -f /etc/fedora-release ]; then
+        echo "fedora"
+    else
+        echo "debian"
+    fi
+}
+
+is_rpm() {
+    local tos=$(type_of_system)
+    case $tos in
+        "fedora" | "redhat") true ;;
+        *) false ;;
+    esac
+}
+
+is_deb() {
+    local tos=$(type_of_system)
+    case $tos in
+        "debian" | "ubuntu") true ;;
+        *) false ;;
+    esac
+}
 
 check_deb() {
     # check debian system, packages, tools, and kernel modules
@@ -308,7 +334,19 @@ vct_system_install_check() {
 	err $FUNCNAME "command must be executed as user=$VCT_USER" $CMD_SOFT || return 1
     fi
 
-    if [ -f /etc/redhat-release ]; then
+    if ! [ -d $VCT_VIRT_DIR ]; then
+	( [ $CMD_INSTALL ] && vct_sudo mkdir -p $VCT_VIRT_DIR ) && vct_sudo chown $VCT_USER: $VCT_VIRT_DIR ||\
+	 { err $FUNCNAME "$VCT_VIRT_DIR not existing" $CMD_SOFT || return 1 ;}
+    fi
+
+    for dir in "$VCT_SYS_DIR" "$VCT_DL_DIR" "$VCT_RPC_DIR" "$VCT_MNT_DIR" "$VCT_UCI_DIR"; do 
+        if ! [ -d $dir ]; then
+	    ( [ $CMD_INSTALL ] && vct_do mkdir -p $dir) ||\
+	     { err $FUNCNAME "$dir not existing" $CMD_SOFT || return 1 ;}
+        fi
+    done
+    
+    if [ is_rpm ]; then
         check_rpm
     else
         check_deb
@@ -321,12 +359,8 @@ vct_system_install_check() {
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
 
     if ! uci help 2>/dev/null && [ "$CMD_INSTALL" -a ! -f "$UCI_INSTALL_PATH" ] ; then
-
-	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
-	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
-
-        vct_sudo mkdir -p $VCT_DL_DIR
-        vct_sudo chown -R $VCT_USER: $VCT_DL_DIR
+	    [ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
+	    [ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
 	    if ! vct_do wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
 	        ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
 	        ! vct_true $UCI_INSTALL_PATH help 2>/dev/null ; then
@@ -355,52 +389,15 @@ EOF
 
     fi
 
-
-
-    # check if user is in libvirt groups:
-    local VCT_VIRT_GROUP=$( cat /etc/group | grep libvirt | awk -F':' '{print $1}' )
-    if [ "$VCT_VIRT_GROUP" ]; then
-	groups | grep "$VCT_VIRT_GROUP" > /dev/null || { \
-	    err $FUNCNAME "user=$VCT_USER MUST be in groups: $VCT_VIRT_GROUP \n do: sudo adduser $VCT_USER $VCT_VIRT_GROUP and ReLogin!" $CMD_SOFT || return 1 ;}
-    else
-	err $FUNCNAME "Failed detecting libvirt group" $CMD_SOFT || return 1
-    fi
-
-
-
-    if ! [ -d $VCT_VIRT_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_sudo mkdir -p $VCT_VIRT_DIR ) && vct_sudo chown $VCT_USER $VCT_VIRT_DIR ||\
-	 { err $FUNCNAME "$VCT_VIRT_DIR not existing" $CMD_SOFT || return 1 ;}
-    fi
-
-    # check libvirt systems directory:
-    if ! [ -d $VCT_SYS_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_SYS_DIR ) ||\
-	 { err $FUNCNAME "$VCT_SYS_DIR not existing" $CMD_SOFT || return 1 ;}
-    fi
-
-    # check downloads directory:
-    if ! [ -d $VCT_DL_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_DL_DIR ) ||\
-	 { err $FUNCNAME "$VCT_DL_DIR  not existing" $CMD_SOFT || return 1 ;}
-    fi
-
-    # check rpc-file directory:
-    if ! [ -d $VCT_RPC_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_RPC_DIR ) ||\
-	 { err $FUNCNAME "$VCT_RPC_DIR  not existing" $CMD_SOFT || return 1 ;}
-    fi
-
-    # check node mount directory:
-    if ! [ -d $VCT_MNT_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_MNT_DIR ) ||\
-	 { err $FUNCNAME "$VCT_MNT_DIR  not existing" $CMD_SOFT || return 1 ;}
-    fi
-
-    # check vct uci directory:
-    if ! [ -d $VCT_UCI_DIR ]; then
-	( [ $CMD_INSTALL ] && vct_do mkdir -p $VCT_UCI_DIR ) ||\
-	 { err $FUNCNAME "$VCT_UCI_DIR  not existing" $CMD_SOFT || return 1 ;}
+    if is_deb; then
+        # check if user is in libvirt groups:
+        local VCT_VIRT_GROUP=$( cat /etc/group | grep libvirt | awk -F':' '{print $1}' )
+        if [ "$VCT_VIRT_GROUP" ]; then
+	    groups | grep "$VCT_VIRT_GROUP" > /dev/null || { \
+	        err $FUNCNAME "user=$VCT_USER MUST be in groups: $VCT_VIRT_GROUP \n do: sudo adduser $VCT_USER $VCT_VIRT_GROUP and ReLogin!" $CMD_SOFT || return 1 ;}
+        else
+	    err $FUNCNAME "Failed detecting libvirt group" $CMD_SOFT || return 1
+        fi
     fi
 
 
@@ -621,7 +618,11 @@ option dns      $DHCPD_DNS
 EOF
 "
 
-			vct_sudo udhcpd $UDHCPD_CONF_FILE
+            if is_rpm; then
+                vct_sudo busybox udhcpd $UDHCPD_CONF_FILE
+            else
+    			vct_sudo udhcpd $UDHCPD_CONF_FILE
+    	    fi
 		    fi
 		    
 		    vct_true [ "$(ps aux | grep "$UDHCPD_COMMAND" | grep -v grep )" ] || \
