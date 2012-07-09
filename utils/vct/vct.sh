@@ -325,12 +325,14 @@ vct_system_install_check() {
 	[ -f $VCT_DL_DIR/uci.tgz ] && vct_sudo "rm -f $VCT_DL_DIR/uci.tgz"
 	[ -f $UCI_INSTALL_PATH ]  && vct_sudo "rm -f $UCI_INSTALL_PATH"
 
-	if ! vct_do wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
-	    ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
-	    ! vct_true $UCI_INSTALL_PATH help 2>/dev/null ; then
+        vct_sudo mkdir -p $VCT_DL_DIR
+        vct_sudo chown -R $VCT_USER: $VCT_DL_DIR
+	    if ! vct_do wget -O $VCT_DL_DIR/uci.tgz $UCI_URL || \
+	        ! vct_sudo "tar xzf $VCT_DL_DIR/uci.tgz -C $UCI_INSTALL_DIR" || \
+	        ! vct_true $UCI_INSTALL_PATH help 2>/dev/null ; then
 
-	    err $FUNCNAME "Failed installing statically linked uci binary to $UCI_INSTALL_PATH "
-	fi
+	        err $FUNCNAME "Failed installing statically linked uci binary to $UCI_INSTALL_PATH "
+	    fi
     fi
 
 
