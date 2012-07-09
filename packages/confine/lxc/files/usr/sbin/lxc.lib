@@ -41,7 +41,7 @@ lxc_check() {
     fi
 
     [ -d /cgroup  ] || err $FUNCNAME ""
-    mount | grep -e "cgroup" > /dev/null || mount -t cgroup none /cgroup || err $FUNCNAME ""
+    mount | grep -e "cgroup" > /dev/null || mount -t cgroup -o cpu,cpuacct,cpuset,memory,devices cgroup /cgroup || err $FUNCNAME ""
 }
 
 
@@ -520,13 +520,13 @@ lxc_start() {
 	    /etc/init.d/network reload
 
 	else
-	    err $FUNCNAME "Failed starting container $SL_NAME" >&2
+	    err $FUNCNAME "Failed starting container $SL_NAME" soft
 
 	    local DEV=
 	    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | \
-		awk -F'#' '{print $1}' | awk -F'=' '{print $2}' ); do 
+		awk -F'=' '{print $2}' ); do 
 
-		if [$DEV]; then
+		if [ "$DEV" ]; then
 		#echo "$0: checking $DEV"  >&2
 
 		    if ip link show dev $DEV > /dev/null 2>&1 ; then 
