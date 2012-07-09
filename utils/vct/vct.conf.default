@@ -73,7 +73,7 @@ VCT_SERVER_TINC_PORT=655
 #VCT_SERVER_TINC_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
 
 VCT_NODE_CN_URL="http://community.net/node/xxxxx"
-VCT_NODE_ISOLATED_PARENTS="eth1 eth2"   # 
+VCT_NODE_ISOLATED_PARENTS="eth1 eth2 wlan0 wlan1"   # 
 
 VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 
 VCT_NODE_SL_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static and following addresses
@@ -84,6 +84,15 @@ VCT_NODE_PUBLIC_IPV4_PL=16
 VCT_NODE_PUBLIC_IPV4_DNS=141.1.1.1
 VCT_NODE_PUBLIC_IPV4_GW=10.241.0.254
 
+VCT_EXPERIMENT_DEBIAN_FS_URL="http://distro.confine-project.eu/misc/debian32.tgz"
+VCT_EXPERIMENT_DEBIAN_DATA_URL="http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
+VCT_EXPERIMENT_DEBIAN_NAME="hello-world-experiment"
+
+
+VCT_EXPERIMENT_OPENWRT_FS_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
+VCT_EXPERIMENT_OPENWRT_FS_URL="http://distro.confine-project.eu/misc/CONFINE-sliver-openwrt-backfire-240612_1246.tar.gz"
+VCT_EXPERIMENT_OPENWRT_DATA_URL="http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
+VCT_EXPERIMENT_OPENWRT_NAME="hello-world-experiment"
 
 
 #################################################

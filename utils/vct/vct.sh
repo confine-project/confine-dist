@@ -417,7 +417,7 @@ EOF
 	local QUERY=
 	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
 	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
-	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
+	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
 	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
     fi
 
@@ -1474,9 +1474,9 @@ vct_sliver_allocate() {
             cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
-    option exp_name        "hello-world-experiment"
+    option fs_template_url "$VCT_EXPERIMENT_DEBIAN_FS_URL"
+    option exp_data_url    "$VCT_EXPERIMENT_DEBIAN_DATA_URL"
+    option exp_name        "$VCT_EXPERIMENT_DEBIAN_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
     option if00_name       priv 
@@ -1491,18 +1491,24 @@ EOF
 	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
-    option exp_name        "hello-world-experiment"
+    option fs_template_url "$VCT_EXPERIMENT_OPENWRT_FS_URL"
+    option exp_data_url    "$VCT_EXPERIMENT_OPENWRT_DATA_URL"
+    option exp_name        "$VCT_EXPERIMENT_OPENWRT_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal 
     option if00_name       priv 
     option if01_type       public   # optional
     option if01_name       pub0
     option if01_ipv4_proto $VCT_NODE_SL_PUBLIC_IPV4_PROTO   # mandatory for if-type public
-    option if02_type       isolated # optional
-    option if02_name       iso0
-    option if02_parent     eth1     # mandatory for if-types isolated
+#    option if02_type       isolated # optional
+#    option if02_name       iso0
+#    option if02_parent     eth1     # mandatory for if-types isolated
+#    option if03_type       isolated # optional
+#    option if03_name       iso1
+#    option if03_parent     wlan0     # mandatory for if-types isolated
+#    option if04_type       isolated # optional
+#    option if04_name       iso2
+#    option if04_parent     wlan1     # mandatory for if-types isolated
 EOF
 	fi
 
@@ -1692,6 +1698,50 @@ vct_sliver_remove() {
 }
 
 
+vct_sliver_ssh() {
+
+
+    local SLIVER=$1
+    local VCRD_ID_RANGE=$2
+    local COMMAND=${3:-}
+    local VCRD_ID=
+
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
+
+	local IPV6=$( uci_get $VCT_SLICE_DB.${SLIVER}_${VCRD_ID}.if01_ipv6 | awk -F'/' '{print $1}' )
+	local COUNT=0
+	local COUNT_MAX=60
+
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
+		break
+	    
+	    [ "$COUNT" = 0 ] && \
+		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
+		echo -n "."
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+
+	[ "$COUNT" = 0 ] || \
+	    echo
+
+	[ "$COUNT" -le $COUNT_MAX ] || \
+	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
+	
+
+
+	echo > $VCT_KEYS_DIR/known_hosts
+
+	if [ "$COMMAND" ]; then
+	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
+	else
+	    ssh $VCT_SSH_OPTIONS root@$IPV6
+	fi
+
+    done
+}
 
 
 vct_help() {
