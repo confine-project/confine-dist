@@ -109,9 +109,8 @@ define nightly_build
 	@echo $(BUILD_ID)
 	
 	mkdir -p "$(NIGHTLY_IMAGES_DIR)"
-	[ -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
-	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img"
-	ln -fs  "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-latest.img"
+	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz"
+	ln -fs  "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-latest.img.gz"
 endef
 
 
