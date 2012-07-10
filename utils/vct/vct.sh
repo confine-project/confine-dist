@@ -352,7 +352,7 @@ vct_system_install_check() {
         fi
     done
     
-    if [ is_rpm ]; then
+    if is_rpm; then
         check_rpm
     else
         check_deb
