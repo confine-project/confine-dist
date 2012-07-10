@@ -3,6 +3,13 @@
 set -u # set -o nounset
 #set -o errexit
 
+# We want to expand aliases because
+# in a fedora environment it might be useful
+# to alias virsh to 'sudo virsh' otherwise it would ask for
+# a password every time the command is executed.
+# Aliasses set before this line (outside the script), will not be expanded.
+shopt -s expand_aliases
+
 LANG=C
 
 
