@@ -195,7 +195,7 @@ uci show system.@system[0].hostname  >> $DUMMY_REPORT \
 
     ssh_dummy_container "$DHCP_REQUEST"
 
-    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=$DHCP_CONTAINER_NR$" >/dev/null || \
+    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=" >/dev/null || \
 	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
 
     cat $HOST_REPORT | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
@@ -343,6 +343,7 @@ EOF
 
     ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
     echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
+    chmod 600 /etc/tinc/confine/server_rsa_key.priv
 
     cat <<EOF > /etc/tinc/confine/hosts/server
 Address = $SERVER_TINC_IP
@@ -376,7 +377,7 @@ confine_node_disable() {
 
     confine_tinc_stop
     
-    confine_sliver_remove all
+    confine_sliver_remove ALL
 }
 
 confine_node_enable() {
@@ -389,7 +390,7 @@ confine_node_enable() {
 
     if ! check_node_state $NODE_STATE quiet,soft ; then
 	
-	confine_sliver_remove all
+	confine_sliver_remove ALL
 	return 1
     fi
 
@@ -403,7 +404,7 @@ confine_node_enable() {
 
     if [ "$NODE_STATE" = "prepared" ] ; then
 
-	confine_sliver_remove all
+	confine_sliver_remove ALL
 
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
 	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
@@ -444,7 +445,7 @@ confine_node_enable() {
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		
 		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		    cp /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
 		
 		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
@@ -464,6 +465,70 @@ confine_node_enable() {
 		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
 
 	    fi
+
+
+	    echo "Configuring wireless... " >&2
+
+	    if [ -f /etc/config/wireless ]; then
+		mv  /etc/config/wireless  /etc/config/wireless.orig
+	    fi
+	    
+	    wifi detect > /etc/config/wifi-detect
+	    cp /etc/config/wifi-detect /etc/config/wireless 
+	    
+	    local WDEVS="$(uci_get_sections wifi-template wifi-device)"
+	    local WDEV
+	    for WDEV in $WDEVS; do
+
+		echo "Configuring wifi-iface $WDEV ... " >&2
+
+		if [ "$(uci_get wifi-template.${WDEV} soft,quiet)" = "wifi-device" ] && \
+		    [ "$(uci_get wireless.${WDEV} soft,quiet)" = "wifi-device" ]; then
+
+		    local WTEST=
+
+#		    WTEST="$(uci_get wifi-template.${WDEV}.macaddr   soft,quiet)" && uci_set wireless.${WDEV}.macaddr="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.channel   soft,quiet)" && uci_set wireless.${WDEV}.channel="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.diversity soft,quiet)" && uci_set wireless.${WDEV}.diversity="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.txantenna soft,quiet)" && uci_set wireless.${WDEV}.txantenna="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.rxantenna soft,quiet)" && uci_set wireless.${WDEV}.rxantenna="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.country   soft,quiet)" && uci_set wireless.${WDEV}.country="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.outdoor   soft,quiet)" && uci_set wireless.${WDEV}.outdoor="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.hwmode    soft,quiet)" && uci_set wireless.${WDEV}.hwmode="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.htmode    soft,quiet)" && uci_set wireless.${WDEV}.htmode="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.txpower   soft,quiet)" && uci_set wireless.${WDEV}.txpower="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.noscan    soft,quiet)" && uci_set wireless.${WDEV}.noscan="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.disabled  soft,quiet)" && \
+			uci_set wireless.${WDEV}.disabled="$WTEST" || uci_del wireless.${WDEV}.disabled soft,quiet
+
+
+		    local WTIF="$(uci_get_section_by_option wifi-template wifi-iface device $WDEV)"
+
+		    local WDIF="$(uci_get_section_by_option wireless wifi-iface device $WDEV soft,quiet)"
+
+		    if [ "$WDIF" ]; then
+			
+			WTEST="$(uci_get wifi-template.${WTIF}.network soft,quiet)" && \
+			    uci_set wireless.${WTIF}.network="$WTEST" || uci_del wireless.${WTIF}.network soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.mode soft,quiet)" && \
+			    uci_set wireless.${WTIF}.mode="$WTEST" || uci_del wireless.${WTIF}.mode soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.ssid soft,quiet)" && \
+			    uci_set wireless.${WTIF}.ssid="$WTEST" || uci_del wireless.${WTIF}.ssid soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.bssid soft,quiet)" && \
+			    uci_set wireless.${WTIF}.bssid="$WTEST" || uci_del wireless.${WTIF}.bssid soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.encryption soft,quiet)" && \
+			    uci_set wireless.${WTIF}.encryption="$WTEST" || uci_del wireless.${WTIF}.encryption soft,quiet
+
+		    fi
+
+		fi
+	    done
+
+	    wifi
 
 
 	    echo "Configuring network... " >&2
@@ -585,7 +650,7 @@ confine_node_enable() {
     fi
 
 
-    confine_sliver_remove all
+    confine_sliver_remove ALL
     err $FUNCNAME "Illegal node state"
 }
 
@@ -1055,9 +1120,13 @@ confine_sliver_remove() {
     echo "$FUNCNAME $# $@" >&2
 
     local SLICE_ID=
-    for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
+    for SLICE_ID in $( ( [ "$SLIVER_ARG" = "ALL" ] || [ "$SLIVER_ARG" = "all" ] ) && \
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
+
+	if [ "$SLIVER_ARG" = "all" ] && [ "$SLICE_ID" = "ffffffffffff" ]; then
+	    continue
+	fi
 
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	
