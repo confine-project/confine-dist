@@ -193,7 +193,7 @@ ip link set $DHCP_IF address $ORIG_MAC && \
 uci show system.@system[0].hostname  >> $DUMMY_REPORT \
 "
 
-    ssh_dummy_container "$DHCP_REQUEST"
+    ssh_dummy_container "$DHCP_REQUEST" >&2
 
     cat $HOST_REPORT | grep -e "^system.cfg.......hostname=" >/dev/null || \
 	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
