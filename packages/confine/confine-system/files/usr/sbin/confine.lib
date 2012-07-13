@@ -977,14 +977,9 @@ confine_sliver_deploy() {
 
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR
 
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/
 
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
-
-	uci_show confine-slice-attributes | \
-	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
-	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
-
+	# Install sliver rootfs:
 
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
 
@@ -1005,6 +1000,14 @@ confine_sliver_deploy() {
 	fi
 
 
+	# Customize sliver rootfs:
+
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
+
+	uci_show confine-slice-attributes | \
+	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
+	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
 
 	if echo $FS_URL | grep debian >/dev/null ; then
 	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
@@ -1015,6 +1018,36 @@ confine_sliver_deploy() {
 	fi
 
 
+	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
+#!/bin/sh
+
+echo "Backung up uci-default scripts"
+
+mkdir -p /etc/uci-applied-defaults
+cp /etc/uci-defaults/* /etc/uci-applied-defaults/
+
+EOF1
+
+
+#	if [ "${DISABLE_TELNET:-}" = "1" ] ; then
+	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/disable-telnet.sh
+#!/bin/sh
+
+PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
+
+echo "Setting random passwd=\$PASSWD (enabling ssh authorized key login)"
+
+passwd <<EOF2
+\$PASSWD
+\$PASSWD
+EOF2
+
+EOF1
+#	fi
+
+
+
+	# Finish sliver deployment:
 
 	uci_set confine-slivers.$SL_ID.state=deployed
 
