@@ -1765,25 +1765,25 @@ vct_help() {
 
     vct_help
 
-    vct_system_install [OVERRIDE_DIRECTIVES]           : install vct system requirements
-    vct_system_init                                    : initialize vct system on host
-    vct_system_cleanup                                 : revert vct_system_init
+    vct_system_install [OVERRIDE_DIRECTIVES]              : install vct system requirements
+    vct_system_init                                       : initialize vct system on host
+    vct_system_cleanup                                    : revert vct_system_init
 
 
     Node Management Functions
     -------------------------
 
-    vct_node_info      [NODE_SET]                      : summary of existing domain(s)
-    vct_node_create    <NODE_SET>                      : create domain with given NODE_ID
-    vct_node_start     <NODE_SET>                      : start domain with given NODE_ID
-    vct_node_stop      <NODE_SET>                      : stop domain with given NODE_ID
-    vct_node_remove    <NODE_SET>                      : remove domain with given NODE_ID
-    vct_node_console   <NODE_ID>                       : open console to running domain
+    vct_node_info      [NODE_SET]                         : summary of existing domain(s)
+    vct_node_create    <NODE_SET>                         : create domain with given NODE_ID
+    vct_node_start     <NODE_SET>                         : start domain with given NODE_ID
+    vct_node_stop      <NODE_SET>                         : stop domain with given NODE_ID
+    vct_node_remove    <NODE_SET>                         : remove domain with given NODE_ID
+    vct_node_console   <NODE_ID>                          : open console to running domain
 
     vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : configure & activate node
 
-    vct_node_ssh       <NODE_SET> ["COMMANDS"]         : ssh connect via recovery IPv6
-    vct_node_scp       <NODE_SET> <SCP_ARGS>           : copy via recovery IPv6
+    vct_node_ssh       <NODE_SET> ["COMMANDS"]            : ssh connect via recovery IPv6
+    vct_node_scp       <NODE_SET> <SCP_ARGS>              : copy via recovery IPv6
     vct_node_mount     <NODE_SET>
     vct_node_unmount   <NODE_SET>
 
@@ -1797,6 +1797,7 @@ vct_help() {
     vct_sliver_start     <SL_ID> <NODE_SET>
     vct_sliver_stop      <SL_ID> <NODE_SET>
     vct_sliver_remove    <SL_ID> <NODE_SET> 
+    vct_sliver_ssh       <SL_ID> <NODE_SET> ["COMMANDS"]  : ssh connect via recovery IPv6
 
     vct_slice_attributes <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
 
@@ -1879,6 +1880,7 @@ else
         vct_sliver_start)           $CMD "$@";;
         vct_sliver_stop)            $CMD "$@";;
         vct_sliver_remove)          $CMD "$@";;
+        vct_sliver_ssh)             $CMD "$@";;
 
 	vct_slice_attributes)       $CMD "$@";;
 
