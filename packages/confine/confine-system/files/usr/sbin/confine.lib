@@ -550,7 +550,8 @@ confine_node_enable() {
 	    uci_set network.local.ifname="$NODE_LOCAL_IFNAME dm-local" # NODE_LOCAL_IFNAME MUST be first for MAC
 #	    uci_set network.local.macaddr=$( ip link show dev eth0 | grep "link/ether" | awk '{print $2}' )
 	    uci_set network.local.proto=$NODE_RD_PUBL_IPV4_PROTO
-	    uci_set network.local.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
+
+
 
 
 	    if [ "$NODE_RD_PUBL_IPV4_PROTO" = "static" ] && [ "$NODE_RD_PUBL_IPV4" ]; then
@@ -583,6 +584,11 @@ confine_node_enable() {
 		uci_del network.dflt_route    soft,quiet
 
 	    fi
+
+	    uci_set network.management=alias
+	    uci_set network.management.interface=local
+	    uci_set network.management.proto=static
+	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
 	    uci_set network.recovery1=alias
 	    uci_set network.recovery1.interface=local
