@@ -438,7 +438,7 @@ confine_node_enable() {
 
 	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
 
-	    echo "confine-${VCRD_ID}" > /proc/sys/kernel/hostname
+	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
 
 	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
