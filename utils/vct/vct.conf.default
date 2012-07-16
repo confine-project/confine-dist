@@ -51,7 +51,11 @@ VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
 
 VCT_SSH_OPTIONS="-i $VCT_USER_HOME/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
 
-VCT_TINC_CMD="tincd --logfile -c $VCT_TINC_DIR/confine -n confine"
+#VCT_TINC_PID=$VCT_TINC_DIR/confine.pid
+VCT_TINC_PID=/var/run/tinc.confine.pid
+VCT_TINC_LOG=$VCT_TINC_DIR/confine.log
+#VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/confine -n confine"
+VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG -c $VCT_TINC_DIR/confine -n confine"
 
 
 VCT_SLICE_DB="slice-attributes"

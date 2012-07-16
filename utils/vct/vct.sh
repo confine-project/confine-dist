@@ -139,7 +139,10 @@ vct_system_config_check() {
     variable_check VCT_TOOL_TESTS      quiet
     variable_check VCT_INTERFACE_MODEL quiet
     variable_check VCT_INTERFACE_MAC24 quiet
-
+    variable_check VCT_SSH_OPTIONS     quiet
+    variable_check VCT_TINC_PID        quiet
+    variable_check VCT_TINC_LOG        quiet
+    variable_check VCT_TINC_CMD        quiet
 
 
 # Typical cases:
@@ -223,7 +226,7 @@ vct_tinc_stop() {
 
     echo "$FUNCNAME $@" >&2
 
-    local TINC_PID=$( ps aux | grep -e "$VCT_TINC_CMD" | grep -v grep | awk '{print $2}' )
+    local TINC_PID=$( [ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID )
     local TINC_CNT=0
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
@@ -480,7 +483,7 @@ EOF
 
     # check tinc configuration:
 
-    [ $CMD_INSTALL ] && vct_do rm -rf $VCT_TINC_DIR
+    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] && vct_do rm -rf $VCT_TINC_DIR
 
     if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
 	vct_tinc_setup
@@ -1345,6 +1348,10 @@ vct_node_customize() {
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
 	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
+
+	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
+
+	    [ "$TINC_PID" ] && vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
