@@ -1126,7 +1126,7 @@ confine_info() {
     printf "CONFINE node-id=%s node-state=%s \n" \
 	$( uci_get confine.node.id soft,quiet ) \
 	$( uci_get confine.node.state soft,quiet )
-    printf "%-14s %-3s %-10s %-30s \n" slice-id lxc state name
+    printf "%-14s %-3s %-5s %-10s %-30s \n" slice-id lxc pid state name
     echo   "----------------------------------------------------------"
 
     local SLICE_ID=
@@ -1134,12 +1134,14 @@ confine_info() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
+	local SLIVER_NR="$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet )"
+	local SLIVER_STATE="$( uci_get confine-slivers.$SLICE_ID.state soft,quiet )"
+	local LXC_PID="$( lxc-info -n $SLIVER_NR 2>/dev/null | grep pid: | awk '{print $2}' )"
+	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
-	printf "%-14s %-3s %-10s %-30s \n" \
-	    $SLICE_ID \
-	    $( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet ) \
-	    $( uci_get confine-slivers.$SLICE_ID.state soft,quiet        ) \
-	    $( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet      )
+
+	printf "%-14s %-3s %-5s %-10s %-30s \n" \
+	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE $SLIVER_EXP_NAME
 
     done
 }
