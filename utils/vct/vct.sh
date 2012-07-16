@@ -970,7 +970,8 @@ vct_node_create() {
 
 	    if BR_NAME=$( variable_check ${BRIDGE}_NAME soft 2>/dev/null ); then
 
-		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null ) 
+		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null || \
+		    echo "${VCT_INTERFACE_MODEL}" ) 
 		local BR_MAC48=$( variable_check ${BRIDGE}_MAC48 soft 2>/dev/null || \
 		    echo "${VCT_INTERFACE_MAC24}:$( echo ${BRIDGE:6:7} ):${VCRD_ID:0:2}:${VCRD_ID:2:3}" ) 
 		local BR_VNET="vct-rd${VCRD_ID}-br$( echo ${BRIDGE:6:7} )"
