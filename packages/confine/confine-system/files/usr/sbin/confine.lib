@@ -1018,32 +1018,26 @@ confine_sliver_deploy() {
 	fi
 
 
-	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
 #!/bin/sh
 
 echo "Backung up uci-default scripts"
 
 mkdir -p /etc/uci-applied-defaults
 cp /etc/uci-defaults/* /etc/uci-applied-defaults/
+EOF
 
-EOF1
 
-
-#	if [ "${DISABLE_TELNET:-}" = "1" ] ; then
-	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/disable-telnet.sh
+	# set random passwd (FIXME: not working!):
+	local PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
+	cat <<EOF1 > /dev/null # $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/random-passwd.sh
 #!/bin/sh
-
-PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
-
-echo "Setting random passwd=\$PASSWD (enabling ssh authorized key login)"
-
+echo "Setting random passwd=$PASSWD (disabling telnet, enabling ssh authorized key login)"
 passwd <<EOF2
-\$PASSWD
-\$PASSWD
+$PASSWD
+$PASSWD
 EOF2
-
 EOF1
-#	fi
 
 
 
