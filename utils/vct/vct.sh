@@ -1465,11 +1465,15 @@ vct_sliver_allocate() {
 
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
-    local OS_TYPE=${3:-openwrt}
+    local EXPERIMENT=${3:-openwrt}
     local VCRD_ID=
 
-    [ "$OS_TYPE" = "openwrt" ] || [ "$OS_TYPE" = "debian" ] || \
-	err $FUNCNAME "OS_TYPE=$OS_TYPE NOT supported"
+    [ "$EXPERIMENT" = "openwrt" ] && EXPERIMENT="vct_hello_openwrt"
+
+    [ "$EXPERIMENT" = "debian" ] && EXPERIMENT="vct_hello_debian"
+
+    $EXPERIMENT > /dev/null || \
+	err $FUNCNAME "EXPERIMENT=$EXPERIMENT NOT supported"
 
 #    vct_slice_attributes update $SLICE_ID
 
@@ -1485,8 +1489,8 @@ vct_sliver_allocate() {
 
     fi
 
-    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
@@ -1499,47 +1503,7 @@ vct_sliver_allocate() {
 	    fi
 	fi
 
-	if [ "$OS_TYPE" = "debian" ]; then
-            cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
-config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "$VCT_EXPERIMENT_DEBIAN_FS_URL"
-    option exp_data_url    "$VCT_EXPERIMENT_DEBIAN_DATA_URL"
-    option exp_name        "$VCT_EXPERIMENT_DEBIAN_NAME"
-    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto $VCT_NODE_SL_PUBLIC_IPV4_PROTO   # mandatory for if-type public
-    option if02_type       isolated # optional
-    option if02_name       iso0
-    option if02_parent     eth1     # mandatory for if-types isolated
-EOF
-	else
-	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
-config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "$VCT_EXPERIMENT_OPENWRT_FS_URL"
-    option exp_data_url    "$VCT_EXPERIMENT_OPENWRT_DATA_URL"
-    option exp_name        "$VCT_EXPERIMENT_OPENWRT_NAME"
-    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto $VCT_NODE_SL_PUBLIC_IPV4_PROTO   # mandatory for if-type public
-#    option if02_type       isolated # optional
-#    option if02_name       iso0
-#    option if02_parent     eth1     # mandatory for if-types isolated
-#    option if03_type       isolated # optional
-#    option if03_name       iso1
-#    option if03_parent     wlan0     # mandatory for if-types isolated
-#    option if04_type       isolated # optional
-#    option if04_name       iso2
-#    option if04_parent     wlan1     # mandatory for if-types isolated
-EOF
-	fi
+	$EXPERIMENT > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
 	echo "# >>>> Input stream begin >>>>" >&1
 	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
@@ -1807,7 +1771,7 @@ vct_help() {
     -------------------------------------
     Following functions always connect to a running node for RPC execution.
 
-    vct_sliver_allocate  <SL_ID> <NODE_SET> [OS_TYPE]
+    vct_sliver_allocate  <SL_ID> <NODE_SET> [EXPERIMENT]
     vct_sliver_deploy    <SL_ID> <NODE_SET>
     vct_sliver_start     <SL_ID> <NODE_SET>
     vct_sliver_stop      <SL_ID> <NODE_SET>
@@ -1825,7 +1789,7 @@ vct_help() {
     NODE_ID:=             node id given by a 4-digit lower-case hex value (eg: 0a12)
     NODE_SET:=            set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (0001-0003)
     SL_ID:=               slice id given by a 12-digit lower-case hex value
-    OS_TYPE:=             openwrt|debian
+    EXPERIMENT:=          vct_hello_openwrt | vct_hello_debian | as defined in vct.conf
     COMMANDS:=            Commands to be executed on node
     SCP_ARGS:=            MUST contain keyword='remote:' which is substituted by 'root@[IPv6]:'
 
