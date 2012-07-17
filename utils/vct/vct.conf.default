@@ -154,7 +154,7 @@ VCT_RD_LOCAL_BRIDGE="vct-local"
 
 VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel dummy"
 
-VCT_INTERFACE_MODEL="rtl8139"
+VCT_INTERFACE_MODEL="e1000"
 VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
 
 
