@@ -470,18 +470,28 @@ lxc_cleanup_dev() {
     err $FUNCNAME "Failed starting container $SL_NAME" soft
 
     local DEV=
-    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | \
-	awk -F'=' '{print $2}' ); do 
-
+    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | awk -F'=' '{print $2}' ); do 
 	if [ "$DEV" ]; then
-		#echo "$0: checking $DEV"  >&2
-
 	    if ip link show dev $DEV > /dev/null 2>&1 ; then 
 		echo "$0: cleaning up $DEV" >&2
 		ip link del dev $DEV
 	    fi
 	fi
     done
+
+    local VLANID=
+    for VLANID in $( grep "lxc.network.vlan.id" $LXC_IMAGES_PATH/$SL_NAME/config | awk -F'=' '{print $2}' | sed s/" "// ); do 
+	if [ "$VLANID" ]; then
+
+	    local VLAN=$( ip link show | grep -e "vlan$VLANID" | awk -F':' {'print $2}' | sed s/" "// | awk -F'@' {'print $1'} )
+
+	    if [ $VLAN ] ; then 
+		echo "$0: cleaning up $VLAN" >&2
+		ip link del dev $VLAN
+	    fi
+	fi
+    done
+
 }
 
 lxc_start() {
