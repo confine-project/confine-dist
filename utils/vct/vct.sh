@@ -650,7 +650,8 @@ EOF
             # check if local bridge has IPv6 for recovery network:
 	    local BR_V6_RESCUE2_PREFIX64=$( variable_check ${BRIDGE}_V6_RESCUE2_PREFIX64 soft 2>/dev/null ) 
 	    if [ $BR_V6_RESCUE2_PREFIX64 ] ; then
-		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( vct_true eui64_from_link $BR_NAME )/64
+#		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( vct_true eui64_from_link $BR_NAME )/64
+		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64::2/64
 		if vct_true false || ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
 		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_RESCUE2_IP -O ipv6 ) " >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_RESCUE2_IP dev $BR_NAME ) ||\
@@ -658,15 +659,16 @@ EOF
 		fi
 	    fi
 
-            # check if local bridge has IPv6 for debug network:
-	    local BR_V6_DEBUG_IP=$( variable_check ${BRIDGE}_V6_DEBUG_IP soft 2>/dev/null ) 
-	    if [ $BR_V6_DEBUG_IP ] ; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
-		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_DEBUG_IP -O ipv6 ) " >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_DEBUG_IP dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME $BR_V6_DEBUG_IP" $CMD_SOFT || return 1 ;}
-		fi
-	    fi
+# disabled, currently not needed...	    
+#	    #check if local bridge has IPv6 for debug network:
+#	    local BR_V6_DEBUG_IP=$( variable_check ${BRIDGE}_V6_DEBUG_IP soft 2>/dev/null ) 
+#	    if [ $BR_V6_DEBUG_IP ] ; then
+#		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
+#		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_DEBUG_IP -O ipv6 ) " >/dev/null; then
+#		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_DEBUG_IP dev $BR_NAME ) ||\
+#               	{ err $FUNCNAME "unconfigured ipv6 debut net: $BR_NAME $BR_V6_DEBUG_IP" $CMD_SOFT || return 1 ;}
+#		fi
+#	    fi
 
 
 
