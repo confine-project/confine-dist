@@ -3,7 +3,11 @@
 
 TODOs (maybe later):
 
-- enable tinc daemon
+- add confine version info
+
+- echo "URL" > openwrt/scripts/localmirrors  AND grep localmirrors .config
+
+- fix debian slivers and provide powerful debian default file systems
 
 - vct_customize .. sysupgrade (test with squashfs images)
 
@@ -73,6 +77,10 @@ iterate over hello world experiment commands
 ###########################################################################
 
 Done:
+
+- set ipv6 route in slivers during CNS customization of slivers
+
+- enable tinc daemon
 
 - fix sliver attribute state detection
     use vct_slice-attributes update SLICE_ID # before changing to next sliver state
