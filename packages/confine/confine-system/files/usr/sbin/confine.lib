@@ -774,6 +774,7 @@ confine_sliver_allocate() {
 		local IF_MAC=${MAC_PREFIX16}:${NODE_ID:0:2}:${NODE_ID:2:2}:${CT_NR}:${IF_KEY}
 		local IF_NAME=$(   uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_name   soft,quiet,path=$SRC_DIR )
 		local IF_PARENT=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_parent soft,quiet,path=$SRC_DIR )
+		local IF_ISO_PARENTS="$( uci_get confine.node.rd_if_iso_parents soft,quiet )"
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
@@ -815,13 +816,14 @@ confine_sliver_allocate() {
 		    fi
 
 
-		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ] ; then
+		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ]; then
 
-
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    if [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    fi
 
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
