@@ -7,6 +7,7 @@
 # install/init related parameters:
 
 VCT_USER="$(whoami)"  # better put your username here
+VCT_USER_HOME="$(cd ~ && pwd)"
 
 VCT_SUDO_ASK="YES"    # default:"YES" ask whether to execute sudo commands befor doing so"
 
@@ -48,7 +49,7 @@ VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 VCT_KEYS_DIR=$VCT_VIRT_DIR/keys
 VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
 
-VCT_SSH_OPTIONS="-i ~$VCT_USER/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
+VCT_SSH_OPTIONS="-i $VCT_USER_HOME/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
 
 VCT_TINC_CMD="tincd --logfile -c $VCT_TINC_DIR/confine -n confine"
 
