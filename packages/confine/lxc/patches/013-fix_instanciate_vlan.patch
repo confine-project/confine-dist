@@ -1,0 +1,19 @@
+--- a/src/lxc/conf.c
++++ b/src/lxc/conf.c
+@@ -1501,13 +1501,14 @@ static int instanciate_vlan(struct lxc_h
+ {
+ 	char peer[IFNAMSIZ];
+ 	int err;
++        static uint16_t vlan_cntr = 0;
+ 
+ 	if (!netdev->link) {
+ 		ERROR("no link specified for vlan netdev");
+ 		return -1;
+-	}
++        }
+ 
+-	snprintf(peer, sizeof(peer), "vlan%d", netdev->priv.vlan_attr.vid);
++        snprintf(peer, sizeof (peer), "vlan%d-%d", netdev->priv.vlan_attr.vid, vlan_cntr++);
+ 
+ 	err = lxc_vlan_create(netdev->link, peer, netdev->priv.vlan_attr.vid);
+ 	if (err) {

@@ -438,7 +438,7 @@ confine_node_enable() {
 
 	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
 
-	    echo "confine-${VCRD_ID}" > /proc/sys/kernel/hostname
+	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
 
 	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
@@ -774,6 +774,7 @@ confine_sliver_allocate() {
 		local IF_MAC=${MAC_PREFIX16}:${NODE_ID:0:2}:${NODE_ID:2:2}:${CT_NR}:${IF_KEY}
 		local IF_NAME=$(   uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_name   soft,quiet,path=$SRC_DIR )
 		local IF_PARENT=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_parent soft,quiet,path=$SRC_DIR )
+		local IF_ISO_PARENTS="$( uci_get confine.node.rd_if_iso_parents soft,quiet )"
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
@@ -815,13 +816,14 @@ confine_sliver_allocate() {
 		    fi
 
 
-		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ] ; then
+		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ]; then
 
-
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    if [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    fi
 
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
@@ -1018,32 +1020,26 @@ confine_sliver_deploy() {
 	fi
 
 
-	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
 #!/bin/sh
 
 echo "Backung up uci-default scripts"
 
 mkdir -p /etc/uci-applied-defaults
 cp /etc/uci-defaults/* /etc/uci-applied-defaults/
+EOF
 
-EOF1
 
-
-#	if [ "${DISABLE_TELNET:-}" = "1" ] ; then
-	cat <<EOF1 > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/disable-telnet.sh
+	# set random passwd (FIXME: not working!):
+	local PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
+	cat <<EOF1 > /dev/null # $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/random-passwd.sh
 #!/bin/sh
-
-PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
-
-echo "Setting random passwd=\$PASSWD (enabling ssh authorized key login)"
-
+echo "Setting random passwd=$PASSWD (disabling telnet, enabling ssh authorized key login)"
 passwd <<EOF2
-\$PASSWD
-\$PASSWD
+$PASSWD
+$PASSWD
 EOF2
-
 EOF1
-#	fi
 
 
 
@@ -1132,7 +1128,7 @@ confine_info() {
     printf "CONFINE node-id=%s node-state=%s \n" \
 	$( uci_get confine.node.id soft,quiet ) \
 	$( uci_get confine.node.state soft,quiet )
-    printf "%-14s %-3s %-10s %-30s \n" slice-id lxc state name
+    printf "%-14s %-3s %-5s %-10s %-30s \n" slice-id lxc pid state name
     echo   "----------------------------------------------------------"
 
     local SLICE_ID=
@@ -1140,12 +1136,14 @@ confine_info() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
+	local SLIVER_NR="$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet )"
+	local SLIVER_STATE="$( uci_get confine-slivers.$SLICE_ID.state soft,quiet )"
+	local LXC_PID="$( lxc-info -n $SLIVER_NR 2>/dev/null | grep pid: | awk '{print $2}' )"
+	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
-	printf "%-14s %-3s %-10s %-30s \n" \
-	    $SLICE_ID \
-	    $( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet ) \
-	    $( uci_get confine-slivers.$SLICE_ID.state soft,quiet        ) \
-	    $( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet      )
+
+	printf "%-14s %-3s %-5s %-10s %-30s \n" \
+	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE $SLIVER_EXP_NAME
 
     done
 }

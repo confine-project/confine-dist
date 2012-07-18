@@ -139,7 +139,10 @@ vct_system_config_check() {
     variable_check VCT_TOOL_TESTS      quiet
     variable_check VCT_INTERFACE_MODEL quiet
     variable_check VCT_INTERFACE_MAC24 quiet
-
+    variable_check VCT_SSH_OPTIONS     quiet
+    variable_check VCT_TINC_PID        quiet
+    variable_check VCT_TINC_LOG        quiet
+    variable_check VCT_TINC_CMD        quiet
 
 
 # Typical cases:
@@ -223,7 +226,7 @@ vct_tinc_stop() {
 
     echo "$FUNCNAME $@" >&2
 
-    local TINC_PID=$( ps aux | grep -e "$VCT_TINC_CMD" | grep -v grep | awk '{print $2}' )
+    local TINC_PID=$( [ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID )
     local TINC_CNT=0
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
@@ -480,7 +483,7 @@ EOF
 
     # check tinc configuration:
 
-    [ $CMD_INSTALL ] && vct_do rm -rf $VCT_TINC_DIR
+    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] && vct_do rm -rf $VCT_TINC_DIR
 
     if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
 	vct_tinc_setup
@@ -647,7 +650,8 @@ EOF
             # check if local bridge has IPv6 for recovery network:
 	    local BR_V6_RESCUE2_PREFIX64=$( variable_check ${BRIDGE}_V6_RESCUE2_PREFIX64 soft 2>/dev/null ) 
 	    if [ $BR_V6_RESCUE2_PREFIX64 ] ; then
-		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( vct_true eui64_from_link $BR_NAME )/64
+#		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64:$( vct_true eui64_from_link $BR_NAME )/64
+		local BR_V6_RESCUE2_IP=$BR_V6_RESCUE2_PREFIX64::2/64
 		if vct_true false || ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
 		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_RESCUE2_IP -O ipv6 ) " >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_RESCUE2_IP dev $BR_NAME ) ||\
@@ -655,15 +659,16 @@ EOF
 		fi
 	    fi
 
-            # check if local bridge has IPv6 for debug network:
-	    local BR_V6_DEBUG_IP=$( variable_check ${BRIDGE}_V6_DEBUG_IP soft 2>/dev/null ) 
-	    if [ $BR_V6_DEBUG_IP ] ; then
-		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
-		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_DEBUG_IP -O ipv6 ) " >/dev/null; then
-		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_DEBUG_IP dev $BR_NAME ) ||\
-                	{ err $FUNCNAME "unconfigured ipv6 rescue net: $BR_NAME $BR_V6_DEBUG_IP" $CMD_SOFT || return 1 ;}
-		fi
-	    fi
+# disabled, currently not needed...	    
+#	    #check if local bridge has IPv6 for debug network:
+#	    local BR_V6_DEBUG_IP=$( variable_check ${BRIDGE}_V6_DEBUG_IP soft 2>/dev/null ) 
+#	    if [ $BR_V6_DEBUG_IP ] ; then
+#		if ! ip addr show dev $BR_NAME | grep -e "inet6 " | \
+#		    grep -ie " $( ipv6calc -I ipv6 $BR_V6_DEBUG_IP -O ipv6 ) " >/dev/null; then
+#		    ( [ $CMD_INIT ] && vct_sudo ip addr add $BR_V6_DEBUG_IP dev $BR_NAME ) ||\
+#               	{ err $FUNCNAME "unconfigured ipv6 debut net: $BR_NAME $BR_V6_DEBUG_IP" $CMD_SOFT || return 1 ;}
+#		fi
+#	    fi
 
 
 
@@ -701,10 +706,7 @@ vct_system_init() {
 
 vct_system_cleanup() {
 
-    local VCRD_ID=
-    for VCRD_ID in $( vct_node_info | grep -e "$VCT_RD_NAME_PREFIX" | awk '{print $2}' | awk -F"$VCT_RD_NAME_PREFIX" '{print $2}' ); do
-	vct_do vct_node_remove $VCRD_ID
-    done
+    vct_do vct_node_remove all
 
     vct_do vct_slice_attributes flush all
 
@@ -789,7 +791,7 @@ vcrd_ids_get() {
 
     if [ "$VCRD_ID_RANGE" = "all" ] ; then
 	
-	vct_node_info | grep -e "$VCT_RD_NAME_PREFIX" | grep -e "$VCRD_ID_STATE$" | \
+	 virsh -c qemu:///system list --all 2>/dev/null | grep -e "$VCT_RD_NAME_PREFIX" | grep -e "$VCRD_ID_STATE$" | \
 	    awk -F" $VCT_RD_NAME_PREFIX" '{print $2}' | awk '{print $1}'
 
     elif echo $VCRD_ID_RANGE | grep -e "-" >/dev/null; then
@@ -807,23 +809,67 @@ vcrd_ids_get() {
     fi
 }
 
+vct_node_get_mac() {
+    local VCRD_ID=$1
+    local OPT_CMD=${2:-}
+    local CMD_QUIET=$(  echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
+    local MAC=
+
+    [ -f $VCT_NODE_MAC_DB  ] && \
+	MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
+
+    if  [ $MAC ]  ; then
+
+	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to real node=$VCRD_ID mac=$MAC" >&2
+
+    else
+
+	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
+
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+
+	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" >/dev/null; then
+	    err $FUNCNAME "$VCRD_NAME not running"
+	fi
+
+	MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
+	    xmlstarlet sel -T -t -m "/domain/devices/interface" \
+	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
+	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
+	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+    fi
+
+    echo $MAC
+}
 
 vct_node_info() {
 
     local VCRD_ID_RANGE=${1:-}
 
-    if [ -z "$VCRD_ID_RANGE" ]; then
+    # virsh --connect qemu:///system list --all
 
-	virsh -c qemu:///system list --all
+    local REAL_IDS="$( cat $VCT_NODE_MAC_DB | awk '{print $1}' | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" )"
+    local VIRT_IDS="$( virsh -c qemu:///system list --all | grep ${VCT_RD_NAME_PREFIX} | awk '{print $2}' | awk -F'-' '{print $2}' )"
+    local ALL_IDS="$REAL_IDS $VIRT_IDS"
 
-    else
+    printf "%-4s %-8s %-39s %-5s  %-22s %-5s\n" node state rescue rtt management rtt
+    echo   "-----------------------------------------------------------------------------------------"
 
-	local VCRD_ID=
-	for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
-	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-	    virsh -c qemu:///system dominfo $VCRD_NAME
-	done
-    fi
+    local ID=
+    for ID in $( [ "$VCRD_ID_RANGE" ] && vcrd_ids_get $VCRD_ID_RANGE || echo "$ALL_IDS" ); do
+	local NAME="${VCT_RD_NAME_PREFIX}${ID}"
+	local STATE=$( echo "$VIRT_IDS" | grep -e "$ID" > /dev/null && \
+	    ( virsh -c qemu:///system dominfo $NAME | grep -e "State:" | grep -e "running" > /dev/null && echo "running" || echo "down"  ) || \
+	    echo "EXTERN" )
+	local MAC=$( vct_node_get_mac $ID quiet )
+	local RESCUE=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
+	local RESCUE_DELAY="$( [ "$STATE" = "down" ] && echo "--" || ping6 -c 1 -w 1 -W 1 $RESCUE  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
+	local MGMT=$VCT_TESTBED_MGMT_IPV6_PREFIX48:$ID::2
+	local MGMT_DELAY="$( [ "$STATE" = "down" ] && echo "--" || ping6 -c 1 -w 1 -W 1 $MGMT  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
+
+	printf "%-4s %-8s %-39s %-5s  %-22s %-5s\n" $ID $STATE $RESCUE ${RESCUE_DELAY:---} $MGMT ${MGMT_DELAY:---}
+    done
+    
 }
 
 vct_node_stop() {
@@ -926,7 +972,8 @@ vct_node_create() {
 
 	    if BR_NAME=$( variable_check ${BRIDGE}_NAME soft 2>/dev/null ); then
 
-		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null ) 
+		local BR_MODEL=$( variable_check ${BRIDGE}_MODEL soft 2>/dev/null || \
+		    echo "${VCT_INTERFACE_MODEL}" ) 
 		local BR_MAC48=$( variable_check ${BRIDGE}_MAC48 soft 2>/dev/null || \
 		    echo "${VCT_INTERFACE_MAC24}:$( echo ${BRIDGE:6:7} ):${VCRD_ID:0:2}:${VCRD_ID:2:3}" ) 
 		local BR_VNET="vct-rd${VCRD_ID}-br$( echo ${BRIDGE:6:7} )"
@@ -1025,44 +1072,26 @@ vct_node_console() {
 }
 
 
+
+
 vct_node_ssh() {
 
 
     local VCRD_ID_RANGE=$1
     local COMMAND=${2:-}
     local VCRD_ID=
-
+    
     shift
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local MAC=
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	[ -f $VCT_NODE_MAC_DB  ] && \
-	    MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
-
-	if  [ $MAC ]  ; then
-
-	    echo $FUNCNAME "connecting to real node=$VCRD_ID mac=$MAC" >&2
-
-	else
-
-	    echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
-
-	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-
-	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
-		err $FUNCNAME "$VCRD_NAME not running"
-	    fi
-
-	    MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-		xmlstarlet sel -T -t -m "/domain/devices/interface" \
-		-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-		grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-		err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 
-
+	local MAC=$( vct_node_get_mac $VCRD_ID )
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
 	local COUNT=0
 	local COUNT_MAX=60
@@ -1108,31 +1137,13 @@ vct_node_scp() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local MAC=
+	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	[ -f $VCT_NODE_MAC_DB  ] && \
-	    MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
-
-	if  [ $MAC ]  ; then
-
-	    echo $FUNCNAME "connecting to real node=$VCRD_ID mac=$MAC" >&2
-
-	else
-
-	    local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-
-	    if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null; then
-		err $FUNCNAME "$VCRD_NAME not running"
-	    fi
-
-	    local MAC=$( virsh -c qemu:///system dumpxml $VCRD_NAME | \
-		xmlstarlet sel -T -t -m "/domain/devices/interface" \
-		-v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
-		grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
-		err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 
-
+	local MAC=$( vct_node_get_mac $VCRD_ID )
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
 	local COUNT=0
 	local COUNT_MAX=60
@@ -1182,7 +1193,7 @@ vct_node_mount() {
 
 	if [ -f $VCRD_PATH ] && \
 	    ! mount | grep "$VCRD_MNTP" >/dev/null && \
-	    vct_node_info | grep $VCRD_NAME  | grep "shut off" >/dev/null; then
+	     virsh -c qemu:///system list --all 2>/dev/null | grep $VCRD_NAME  | grep "shut off" >/dev/null; then
 
 	    local IMG_UNIT_SIZE=$( fdisk -lu $VCRD_PATH 2>/dev/null | \
 		grep "^Units = " | awk -F'=' '{print $(NF) }' | awk '{print $1 }' )
@@ -1341,6 +1352,10 @@ vct_node_customize() {
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
 	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
 
+	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
+
+	    [ "$TINC_PID" ] && vct_sudo kill -1 $TINC_PID
+
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
 	    err $FUNCNAME ""
@@ -1450,11 +1465,15 @@ vct_sliver_allocate() {
 
     local SLICE_ID=$1; check_slice_id $SLICE_ID quiet
     local VCRD_ID_RANGE=$2
-    local OS_TYPE=${3:-openwrt}
+    local EXPERIMENT=${3:-openwrt}
     local VCRD_ID=
 
-    [ "$OS_TYPE" = "openwrt" ] || [ "$OS_TYPE" = "debian" ] || \
-	err $FUNCNAME "OS_TYPE=$OS_TYPE NOT supported"
+    [ "$EXPERIMENT" = "openwrt" ] && EXPERIMENT="vct_hello_openwrt"
+
+    [ "$EXPERIMENT" = "debian" ] && EXPERIMENT="vct_hello_debian"
+
+    $EXPERIMENT > /dev/null || \
+	err $FUNCNAME "EXPERIMENT=$EXPERIMENT NOT supported"
 
 #    vct_slice_attributes update $SLICE_ID
 
@@ -1470,8 +1489,8 @@ vct_sliver_allocate() {
 
     fi
 
-    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
+    for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"    
 	local RPC_REQUEST="${VCRD_ID}-$( date +%Y%m%d_%H%M%S )-${SLICE_ID}-allocate-request"
@@ -1484,47 +1503,7 @@ vct_sliver_allocate() {
 	    fi
 	fi
 
-	if [ "$OS_TYPE" = "debian" ]; then
-            cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
-config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "$VCT_EXPERIMENT_DEBIAN_FS_URL"
-    option exp_data_url    "$VCT_EXPERIMENT_DEBIAN_DATA_URL"
-    option exp_name        "$VCT_EXPERIMENT_DEBIAN_NAME"
-    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto $VCT_NODE_SL_PUBLIC_IPV4_PROTO   # mandatory for if-type public
-    option if02_type       isolated # optional
-    option if02_name       iso0
-    option if02_parent     eth1     # mandatory for if-types isolated
-EOF
-	else
-	    cat <<EOF > ${VCT_RPC_DIR}/${RPC_REQUEST}
-config sliver $SLICE_ID
-    option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "$VCT_EXPERIMENT_OPENWRT_FS_URL"
-    option exp_data_url    "$VCT_EXPERIMENT_OPENWRT_DATA_URL"
-    option exp_name        "$VCT_EXPERIMENT_OPENWRT_NAME"
-    option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto $VCT_NODE_SL_PUBLIC_IPV4_PROTO   # mandatory for if-type public
-#    option if02_type       isolated # optional
-#    option if02_name       iso0
-#    option if02_parent     eth1     # mandatory for if-types isolated
-#    option if03_type       isolated # optional
-#    option if03_name       iso1
-#    option if03_parent     wlan0     # mandatory for if-types isolated
-#    option if04_type       isolated # optional
-#    option if04_name       iso2
-#    option if04_parent     wlan1     # mandatory for if-types isolated
-EOF
-	fi
+	$EXPERIMENT > ${VCT_RPC_DIR}/${RPC_REQUEST}
 
 	echo "# >>>> Input stream begin >>>>" >&1
 	cat $VCT_RPC_DIR/$RPC_REQUEST         >&1
@@ -1792,7 +1771,7 @@ vct_help() {
     -------------------------------------
     Following functions always connect to a running node for RPC execution.
 
-    vct_sliver_allocate  <SL_ID> <NODE_SET> [OS_TYPE]
+    vct_sliver_allocate  <SL_ID> <NODE_SET> [EXPERIMENT]
     vct_sliver_deploy    <SL_ID> <NODE_SET>
     vct_sliver_start     <SL_ID> <NODE_SET>
     vct_sliver_stop      <SL_ID> <NODE_SET>
@@ -1810,7 +1789,7 @@ vct_help() {
     NODE_ID:=             node id given by a 4-digit lower-case hex value (eg: 0a12)
     NODE_SET:=            set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (0001-0003)
     SL_ID:=               slice id given by a 12-digit lower-case hex value
-    OS_TYPE:=             openwrt|debian
+    EXPERIMENT:=          vct_hello_openwrt | vct_hello_debian | as defined in vct.conf
     COMMANDS:=            Commands to be executed on node
     SCP_ARGS:=            MUST contain keyword='remote:' which is substituted by 'root@[IPv6]:'
 
