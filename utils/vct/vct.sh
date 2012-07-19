@@ -872,6 +872,7 @@ vct_node_info() {
     
 }
 
+
 vct_node_stop() {
 
     local VCRD_ID_RANGE=$1
@@ -1367,10 +1368,11 @@ vct_node_customize() {
 }
 
 
+
 vct_slice_attributes() {
 
     local CMD=$1
-    local SLICE_ARG=$2
+    local SLICE_ARG=${2:-all}
     local NODE_ARG="${3:-}"
     local SLICES=
     local SLICE_ID=
@@ -1384,6 +1386,10 @@ vct_slice_attributes() {
 	SLICES="$( uci_get_sections $VCT_SLICE_DB slice )"
     else
 	SLICES=$( check_slice_id $SLICE_ARG )
+    fi
+
+    if [ "$CMD" = "short" ] ; then
+	printf "%-17s %-11s %-12s %-30s %-39s %-5s %-15s %-5s %-4s\n" sliver slice-state sliver-state exp_name IPv6 rtt IPv4 rtt vlan
     fi
 
     for SLICE_ID in $SLICES; do
@@ -1400,6 +1406,25 @@ vct_slice_attributes() {
 	    for SLIVER_ID in $SLIVERS ; do
 		uci_show $VCT_SLICE_DB.$SLIVER_ID | uci_dot_to_file $VCT_SLICE_DB
 		echo
+	    done
+
+	elif [ "$CMD" = "short" ] ; then
+
+	    local SLICE_STATE=$( uci_get $VCT_SLICE_DB.$SLICE_ID.state soft,quiet )
+
+	    for SLIVER_ID in $SLIVERS ; do
+
+		local SLIVER_STATE=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.state soft,quiet )
+		local NAME="$( uci_get $VCT_SLICE_DB.$SLIVER_ID.exp_name soft,quiet )"
+		local IPV6=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.if01_ipv6 soft,quiet | awk -F'/' '{print $1}' )
+		local V6RTT=$( [ "$IPV6" ] && ping6 -c 1 -w 1 -W 1 $IPV6 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
+		local IPV4=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.if01_ipv4 soft,quiet | awk -F'/' '{print $1}' )
+		local V4RTT=$( [ "$IPV4" ] && ping -c 1 -w 1 -W 1 $IPV4 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
+		local VLAN=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.vlan_nr soft,quiet )
+		
+		printf "%-17s %-11s %-12s %-30s %-39s %-5s %-15s %-5s %-4s\n" \
+		    ${SLIVER_ID:---} ${SLICE_STATE:---} ${SLIVER_STATE:---} ${NAME:---} ${IPV6:---} ${V6RTT:---} ${IPV4:---} ${V4RTT:---} ${VLAN:---}
+
 	    done
 
 	elif [ "$CMD" = "flush" ] ; then
@@ -1459,6 +1484,10 @@ vct_slice_attributes() {
 }
 
 
+vct_slice_info() {
+
+    vct_slice_attributes short "${1:-all}" "${2:-}"
+}
 
 
 vct_sliver_allocate() {
@@ -1778,7 +1807,8 @@ vct_help() {
     vct_sliver_remove    <SL_ID> <NODE_SET> 
     vct_sliver_ssh       <SL_ID> <NODE_SET> ["COMMANDS"]  : ssh connect via recovery IPv6
 
-    vct_slice_attributes <show|flush|update|state=<STATE>> <SL_ID|all> [NODE_ID]
+    vct_slice_attributes <show|short|flush|update|state=<STATE>> [SL_ID|all [NODE_ID]]
+    vct_slice_info                                               [SL_ID|all [NODE_ID]]
 
    
     Argument Definitions
@@ -1804,7 +1834,6 @@ vct_help() {
                                                            given nodes and interfaces, eg:
                                                            vct_link_add 0003:1 0005:1 10
                                                            to setup link with 10% loss
-
 
 EOF
 
@@ -1862,6 +1891,7 @@ else
         vct_sliver_ssh)             $CMD "$@";;
 
 	vct_slice_attributes)       $CMD "$@";;
+	vct_slice_info)             $CMD "$@";;
 
 	*) vct_help;;
     esac
