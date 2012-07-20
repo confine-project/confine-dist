@@ -585,28 +585,27 @@ confine_node_enable() {
 
 	    fi
 
-	    uci_set network.management=alias
-	    uci_set network.management.interface=local
+	    uci_set network.management=interface
+	    uci_set network.management.ifname=br-local
 	    uci_set network.management.proto=static
 	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
-	    uci_set network.recovery1=alias
-	    uci_set network.recovery1.interface=local
+	    uci_set network.recovery1=interface
+	    uci_set network.recovery1.ifname=br-local
 	    uci_set network.recovery1.proto=static
 	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
 	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
 	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
 
-	    uci_set network.recovery2=alias
-	    uci_set network.recovery2.interface=local
+	    uci_set network.recovery2=interface
+	    uci_set network.recovery2.ifname=br-local
 	    uci_set network.recovery2.proto=static
 	    uci_set network.recovery2.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0002:$( eui64_from_link $NODE_LOCAL_IFNAME )/64
 
-
-	    uci_set network.debug=alias
-	    uci_set network.debug.interface=local
-	    uci_set network.debug.proto=static
-	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
+#	    uci_set network.debug=interface
+#	    uci_set network.debug.ifname=br-local
+#	    uci_set network.debug.proto=static
+#	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
 
 	    local ISO_DEV=
 	    for ISO_DEV in $NODE_RD_ISOLATED_PARENTS; do
