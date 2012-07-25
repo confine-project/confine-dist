@@ -41,7 +41,7 @@ lxc_check() {
     fi
 
     [ -d /cgroup  ] || err $FUNCNAME ""
-    mount | grep -e "cgroup" > /dev/null || mount -t cgroup none /cgroup || err $FUNCNAME ""
+    mount | grep -e "cgroup" > /dev/null || mount -t cgroup -o cpu,cpuacct,cpuset,memory,devices cgroup /cgroup || err $FUNCNAME ""
 }
 
 
@@ -464,6 +464,36 @@ lxc_stop() {
 }
 
 
+lxc_cleanup_dev() {
+    local SL_NAME=$( lxc_name "$1" )
+
+    err $FUNCNAME "Failed starting container $SL_NAME" soft
+
+    local DEV=
+    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | awk -F'=' '{print $2}' ); do 
+	if [ "$DEV" ]; then
+	    if ip link show dev $DEV > /dev/null 2>&1 ; then 
+		echo "$0: cleaning up $DEV" >&2
+		ip link del dev $DEV
+	    fi
+	fi
+    done
+
+    local VLANID=
+    for VLANID in $( grep "lxc.network.vlan.id" $LXC_IMAGES_PATH/$SL_NAME/config | awk -F'=' '{print $2}' | sed s/" "// ); do 
+	if [ "$VLANID" ]; then
+
+	    local VLAN=$( ip link show | grep -e "vlan$VLANID" | awk -F':' {'print $2}' | sed s/" "// | awk -F'@' {'print $1'} )
+
+	    if [ $VLAN ] ; then 
+		echo "$0: cleaning up $VLAN" >&2
+		ip link del dev $VLAN
+	    fi
+	fi
+    done
+
+}
+
 lxc_start() {
     local SL_NAME=$( lxc_name "$1" )
 
@@ -479,10 +509,18 @@ lxc_start() {
 	    lxc_create $SL_NAME lxc.$SL_NAME
 	fi
 
-	
 
 	lxc-start -n $SL_NAME -d 
 	sleep 1
+
+	if ! lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	    lxc_cleanup_dev $SL_NAME
+	    lxc_stop $SL_NAME
+	    sleep 1
+	    err $FUNCNAME "FIXME: Failed starting $SL_NAME! Retrying..." soft
+	    lxc-start -n $SL_NAME -d 
+	    sleep 1
+	fi
 	
 	if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 	    
@@ -520,21 +558,8 @@ lxc_start() {
 	    /etc/init.d/network reload
 
 	else
-	    err $FUNCNAME "Failed starting container $SL_NAME" >&2
+	    lxc_cleanup_dev $SL_NAME
 
-	    local DEV=
-	    for DEV in $( grep "lxc.network.veth.pair" $LXC_IMAGES_PATH/$SL_NAME/config | \
-		awk -F'#' '{print $1}' | awk -F'=' '{print $2}' ); do 
-
-		if [$DEV]; then
-		#echo "$0: checking $DEV"  >&2
-
-		    if ip link show dev $DEV > /dev/null 2>&1 ; then 
-			echo "$0: cleaning up $DEV" >&2
-			ip link del dev $DEV
-		    fi
-		fi
-	    done
 	fi
     fi
 }

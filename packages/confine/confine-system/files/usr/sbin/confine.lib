@@ -193,9 +193,9 @@ ip link set $DHCP_IF address $ORIG_MAC && \
 uci show system.@system[0].hostname  >> $DUMMY_REPORT \
 "
 
-    ssh_dummy_container "$DHCP_REQUEST"
+    ssh_dummy_container "$DHCP_REQUEST" >&2
 
-    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=$DHCP_CONTAINER_NR$" >/dev/null || \
+    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=" >/dev/null || \
 	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
 
     cat $HOST_REPORT | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
@@ -343,6 +343,7 @@ EOF
 
     ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
     echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
+    chmod 600 /etc/tinc/confine/server_rsa_key.priv
 
     cat <<EOF > /etc/tinc/confine/hosts/server
 Address = $SERVER_TINC_IP
@@ -376,7 +377,7 @@ confine_node_disable() {
 
     confine_tinc_stop
     
-    confine_sliver_remove all
+    confine_sliver_remove ALL
 }
 
 confine_node_enable() {
@@ -389,7 +390,7 @@ confine_node_enable() {
 
     if ! check_node_state $NODE_STATE quiet,soft ; then
 	
-	confine_sliver_remove all
+	confine_sliver_remove ALL
 	return 1
     fi
 
@@ -403,7 +404,7 @@ confine_node_enable() {
 
     if [ "$NODE_STATE" = "prepared" ] ; then
 
-	confine_sliver_remove all
+	confine_sliver_remove ALL
 
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
 	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
@@ -437,14 +438,14 @@ confine_node_enable() {
 
 	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
 
-	    echo "confine-${VCRD_ID}" > /proc/sys/kernel/hostname
+	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
 
 	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		
 		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		    cp /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
 		
 		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
@@ -466,6 +467,70 @@ confine_node_enable() {
 	    fi
 
 
+	    echo "Configuring wireless... " >&2
+
+	    if [ -f /etc/config/wireless ]; then
+		mv  /etc/config/wireless  /etc/config/wireless.orig
+	    fi
+	    
+	    wifi detect > /etc/config/wifi-detect
+	    cp /etc/config/wifi-detect /etc/config/wireless 
+	    
+	    local WDEVS="$(uci_get_sections wifi-template wifi-device)"
+	    local WDEV
+	    for WDEV in $WDEVS; do
+
+		echo "Configuring wifi-iface $WDEV ... " >&2
+
+		if [ "$(uci_get wifi-template.${WDEV} soft,quiet)" = "wifi-device" ] && \
+		    [ "$(uci_get wireless.${WDEV} soft,quiet)" = "wifi-device" ]; then
+
+		    local WTEST=
+
+#		    WTEST="$(uci_get wifi-template.${WDEV}.macaddr   soft,quiet)" && uci_set wireless.${WDEV}.macaddr="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.channel   soft,quiet)" && uci_set wireless.${WDEV}.channel="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.diversity soft,quiet)" && uci_set wireless.${WDEV}.diversity="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.txantenna soft,quiet)" && uci_set wireless.${WDEV}.txantenna="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.rxantenna soft,quiet)" && uci_set wireless.${WDEV}.rxantenna="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.country   soft,quiet)" && uci_set wireless.${WDEV}.country="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.outdoor   soft,quiet)" && uci_set wireless.${WDEV}.outdoor="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.hwmode    soft,quiet)" && uci_set wireless.${WDEV}.hwmode="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.htmode    soft,quiet)" && uci_set wireless.${WDEV}.htmode="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.txpower   soft,quiet)" && uci_set wireless.${WDEV}.txpower="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.noscan    soft,quiet)" && uci_set wireless.${WDEV}.noscan="$WTEST"
+		    WTEST="$(uci_get wifi-template.${WDEV}.disabled  soft,quiet)" && \
+			uci_set wireless.${WDEV}.disabled="$WTEST" || uci_del wireless.${WDEV}.disabled soft,quiet
+
+
+		    local WTIF="$(uci_get_section_by_option wifi-template wifi-iface device $WDEV)"
+
+		    local WDIF="$(uci_get_section_by_option wireless wifi-iface device $WDEV soft,quiet)"
+
+		    if [ "$WDIF" ]; then
+			
+			WTEST="$(uci_get wifi-template.${WTIF}.network soft,quiet)" && \
+			    uci_set wireless.${WTIF}.network="$WTEST" || uci_del wireless.${WTIF}.network soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.mode soft,quiet)" && \
+			    uci_set wireless.${WTIF}.mode="$WTEST" || uci_del wireless.${WTIF}.mode soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.ssid soft,quiet)" && \
+			    uci_set wireless.${WTIF}.ssid="$WTEST" || uci_del wireless.${WTIF}.ssid soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.bssid soft,quiet)" && \
+			    uci_set wireless.${WTIF}.bssid="$WTEST" || uci_del wireless.${WTIF}.bssid soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.encryption soft,quiet)" && \
+			    uci_set wireless.${WTIF}.encryption="$WTEST" || uci_del wireless.${WTIF}.encryption soft,quiet
+
+		    fi
+
+		fi
+	    done
+
+	    wifi
+
+
 	    echo "Configuring network... " >&2
 
 
@@ -485,7 +550,8 @@ confine_node_enable() {
 	    uci_set network.local.ifname="$NODE_LOCAL_IFNAME dm-local" # NODE_LOCAL_IFNAME MUST be first for MAC
 #	    uci_set network.local.macaddr=$( ip link show dev eth0 | grep "link/ether" | awk '{print $2}' )
 	    uci_set network.local.proto=$NODE_RD_PUBL_IPV4_PROTO
-	    uci_set network.local.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
+
+
 
 
 	    if [ "$NODE_RD_PUBL_IPV4_PROTO" = "static" ] && [ "$NODE_RD_PUBL_IPV4" ]; then
@@ -518,6 +584,11 @@ confine_node_enable() {
 		uci_del network.dflt_route    soft,quiet
 
 	    fi
+
+	    uci_set network.management=alias
+	    uci_set network.management.interface=local
+	    uci_set network.management.proto=static
+	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
 	    uci_set network.recovery1=alias
 	    uci_set network.recovery1.interface=local
@@ -585,7 +656,7 @@ confine_node_enable() {
     fi
 
 
-    confine_sliver_remove all
+    confine_sliver_remove ALL
     err $FUNCNAME "Illegal node state"
 }
 
@@ -703,6 +774,7 @@ confine_sliver_allocate() {
 		local IF_MAC=${MAC_PREFIX16}:${NODE_ID:0:2}:${NODE_ID:2:2}:${CT_NR}:${IF_KEY}
 		local IF_NAME=$(   uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_name   soft,quiet,path=$SRC_DIR )
 		local IF_PARENT=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_parent soft,quiet,path=$SRC_DIR )
+		local IF_ISO_PARENTS="$( uci_get confine.node.rd_if_iso_parents soft,quiet )"
 		
 		if [ "$IF_TYPE" = "internal" ] && [ "$IF_KEY" = "00" ]; then
 
@@ -744,13 +816,14 @@ confine_sliver_allocate() {
 		    fi
 
 
-		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ] ; then
+		elif [ "$IF_TYPE" = "isolated" ] && [ $(( 16#${IF_KEY} )) -ge 2 ] && [ "$IF_PARENT" ]; then
 
-
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    if [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=isolated       path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR,soft,quiet
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    fi
 
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
@@ -906,14 +979,9 @@ confine_sliver_deploy() {
 
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR
 
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/
 
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
-
-	uci_show confine-slice-attributes | \
-	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
-	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
-
+	# Install sliver rootfs:
 
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
 
@@ -934,6 +1002,14 @@ confine_sliver_deploy() {
 	fi
 
 
+	# Customize sliver rootfs:
+
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
+
+	uci_show confine-slice-attributes | \
+	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
+	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
 
 	if echo $FS_URL | grep debian >/dev/null ; then
 	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
@@ -944,6 +1020,30 @@ confine_sliver_deploy() {
 	fi
 
 
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
+#!/bin/sh
+
+echo "Backung up uci-default scripts"
+
+mkdir -p /etc/uci-applied-defaults
+cp /etc/uci-defaults/* /etc/uci-applied-defaults/
+EOF
+
+
+	# set random passwd (FIXME: not working!):
+	local PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
+	cat <<EOF1 > /dev/null # $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/random-passwd.sh
+#!/bin/sh
+echo "Setting random passwd=$PASSWD (disabling telnet, enabling ssh authorized key login)"
+passwd <<EOF2
+$PASSWD
+$PASSWD
+EOF2
+EOF1
+
+
+
+	# Finish sliver deployment:
 
 	uci_set confine-slivers.$SL_ID.state=deployed
 
@@ -1028,7 +1128,7 @@ confine_info() {
     printf "CONFINE node-id=%s node-state=%s \n" \
 	$( uci_get confine.node.id soft,quiet ) \
 	$( uci_get confine.node.state soft,quiet )
-    printf "%-14s %-3s %-10s %-30s \n" slice-id lxc state name
+    printf "%-14s %-3s %-5s %-10s %-30s \n" slice-id lxc pid state name
     echo   "----------------------------------------------------------"
 
     local SLICE_ID=
@@ -1036,12 +1136,14 @@ confine_info() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
+	local SLIVER_NR="$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet )"
+	local SLIVER_STATE="$( uci_get confine-slivers.$SLICE_ID.state soft,quiet )"
+	local LXC_PID="$( lxc-info -n $SLIVER_NR 2>/dev/null | grep pid: | awk '{print $2}' )"
+	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
-	printf "%-14s %-3s %-10s %-30s \n" \
-	    $SLICE_ID \
-	    $( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet ) \
-	    $( uci_get confine-slivers.$SLICE_ID.state soft,quiet        ) \
-	    $( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet      )
+
+	printf "%-14s %-3s %-5s %-10s %-30s \n" \
+	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE $SLIVER_EXP_NAME
 
     done
 }
@@ -1055,9 +1157,13 @@ confine_sliver_remove() {
     echo "$FUNCNAME $# $@" >&2
 
     local SLICE_ID=
-    for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
+    for SLICE_ID in $( ( [ "$SLIVER_ARG" = "ALL" ] || [ "$SLIVER_ARG" = "all" ] ) && \
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
+
+	if [ "$SLIVER_ARG" = "all" ] && [ "$SLICE_ID" = "ffffffffffff" ]; then
+	    continue
+	fi
 
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	

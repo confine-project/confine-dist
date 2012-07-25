@@ -150,6 +150,36 @@ uci_get_sections() {
 
 }
 
+uci_get_section_by_option() {
+
+    local OPT_CONFIG=$1
+    local OPT_TYPE=$2
+    local OPT_SEARCH_TYPE=$3
+    local OPT_SEARCH_VAL=$4
+    local OPT_CMD=${5:-}
+
+    local SEC=
+
+    for SEC in $(uci_get_sections $OPT_CONFIG $OPT_TYPE $OPT_CMD); do
+
+        local VAL="$(uci_get $OPT_CONFIG.$SEC.$OPT_SEARCH_TYPE $OPT_CMD)"
+
+	if [ "$VAL" ]; then
+
+		if [ "$OPT_SEARCH_VAL" = "--" ]; then
+		    echo "$SEC"
+		    return
+                fi
+
+		if [ "$VAL" = "$OPT_SEARCH_VAL" ]; then
+		    echo "$SEC"
+		    return
+                fi
+        fi
+
+    done
+}
+
 
 uci_del() {
     local UCI_ASSIGNEMENT="$1"

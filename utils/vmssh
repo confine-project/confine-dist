@@ -1,0 +1,54 @@
+#!/bin/sh
+
+print_usage () {
+	echo "Usage: `basename $0` [username@][hostname][:port] (default: root@localhost:2222)"
+	echo
+	echo "This scripts is used connect via SSH to a given machine. Because VMs can change SSH keys, authorized_hosts is ignored."
+	echo
+}
+print_packages () {
+	echo "The requested action could not be performed because of missing programs/packages"
+	echo "Required packages are: ssh-client"
+	echo "Suggested packages are: sshpass"
+	echo
+}
+
+DEF_USER=root
+DEF_PASS=confine
+DEF_HOST=localhost
+DEF_PORT=2222
+
+# Help needed
+if [ "x$1" = "x-h" -o "x$1" = "x--help" ]; then
+	print_usage
+	exit 0
+elif [ "$#" -gt 1 ]; then
+	print_usage
+	exit 1
+fi
+
+# Set variables
+unset USER; USER=`echo $1 | cut -d @ -f 1 --only-delimited`
+[ -z "$USER" ] && USER=$DEF_USER
+PASS=$DEF_PASS
+unset HOST; HOST=`echo $1 | cut -d @ -f 2 | cut -d ":" -f 1`
+[ -z "$HOST" ] && HOST=$DEF_HOST
+unset PORT; PORT=`echo $1 | cut -d : -f 2 --only-delimited`
+[ -z "$PORT" ] && PORT=$DEF_PORT
+
+# Check for sshpass and set password
+unset SSHPASS
+if which sshpass >/dev/null; then
+	SSHPASS="sshpass -p $PASS "
+else
+	echo "SSHPASS binary not found. Password will be propted by SSH"
+fi
+
+# Check for ssh and execute command
+if which ssh >/dev/null; then
+	${SSHPASS}ssh -l $USER -p $PORT -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" $HOST
+else
+	print_packages
+	exit 1
+fi
+
