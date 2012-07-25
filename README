@@ -29,6 +29,9 @@ Removes from $(BUILD_DIR) bin/, build_dir/, staging_dir/ and toolchain/ director
 - make distclean
 Removes everything you have compiled and configured -- leaves $(BUILD_DIR) like after a clean checkout
 
+- make mrproper
+Removes everything leaving just the original files
+
 ** Variables:
 
 J = number of process for compilation time
