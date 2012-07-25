@@ -162,5 +162,11 @@ distclean:
 	make -C "$(BUILD_DIR)" distclean
 	$(call copy_config)
 
+mrproper:
+	rm -rf "$(BUILD_DIR)" || true
+	rm -rf "$(OWRT_PKG_DIR)" || true
+	rm -rf "$(DOWNLOAD_DIR)" || true
+	rm -f .prepare || true
+
 help:
 	@cat README
