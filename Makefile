@@ -88,8 +88,9 @@ define update_workspace
 endef
 
 define build_src
-	make -C "$(BUILD_DIR)" $(MAKE_SRC)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC) BRANCH_GIT=$(shell git branch|grep ^*|cut -d " " -f 2) REV_GIT=$(shell git --no-pager log -n 1 --oneline|cut -d " " -f 1)
 endef
+
 
 define post_build
 	mkdir -p "$(IMAGES)"
