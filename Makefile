@@ -88,8 +88,9 @@ define update_workspace
 endef
 
 define build_src
-	make -C "$(BUILD_DIR)" $(MAKE_SRC)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC) BRANCH_GIT=$(shell git branch|grep ^*|cut -d " " -f 2) REV_GIT=$(shell git --no-pager log -n 1 --oneline|cut -d " " -f 1)
 endef
+
 
 define post_build
 	mkdir -p "$(IMAGES)"
@@ -101,10 +102,11 @@ define post_build
 endef
 
 define nightly_build
-	$(eval REV_ID := $(shell git log -n 1 --format=oneline | cut -f1 -d' '))
-	$(eval OWRT_REV_ID := $(shell cd $(BUILD_DIR); git log -n 1 --format=oneline | cut -f1 -d' '))
-	$(eval PACKAGES_REV_ID := $(shell cd $(OWRT_PKG_DIR); git log -n 1 --format=oneline | cut -f1 -d' '))
-	$(eval BUILD_ID := $(REV_ID)-$(OWRT_REV_ID)-$(PACKAGES_REV_ID))
+	$(eval REV_ID := $(shell git log -n 1 --format=format:%h))
+	$(eval OWRT_REV_ID := $(shell cd $(BUILD_DIR); git log -n 1 --format=format:%h))
+	$(eval PACKAGES_REV_ID := $(shell cd $(OWRT_PKG_DIR); git log -n 1 --format=format:%h))
+
+	$(eval BUILD_ID := $(BUILD_NUMBER)-$(REV_ID)-$(OWRT_REV_ID)-$(PACKAGES_REV_ID))
 
 	@echo $(BUILD_ID)
 	
