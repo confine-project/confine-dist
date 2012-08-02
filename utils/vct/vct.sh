@@ -624,7 +624,7 @@ vct_system_init_check(){
     	echo $UDHCPD_COMMAND;
 		local UDHCPD_PID=$( ps aux | grep "$UDHCPD_COMMAND" | grep -v grep | awk '{print $2}' )
 	    
-		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID && sleep 1
+		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID && sleep 1
 		
 
 		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
@@ -748,7 +748,7 @@ vct_system_cleanup() {
 		local UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
 		local UDHCPD_PID=$( ps aux | grep -e "$UDHCPD_COMMAND" | grep -v "grep" | awk '{print $2}' )
 	    
-		[ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID
+		[ ${UDHCPD_PID:-} ] &&  echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID
 		
 	    fi
 
@@ -1355,7 +1355,10 @@ vct_node_customize() {
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
-	    [ "$TINC_PID" ] && vct_sudo kill -1 $TINC_PID
+	    echo >&2
+	    [ "$TINC_PID" ] && \
+		echo "Notify tincd to reload its configuration by sending the process a HUB (-1) signal" >&2 && \
+		vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
