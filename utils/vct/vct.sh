@@ -1094,27 +1094,38 @@ vct_node_ssh() {
 
 	local MAC=$( vct_node_get_mac $VCRD_ID )
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local COUNT=0
 	local COUNT_MAX=60
+	local COUNT=
 
+	COUNT=0
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-		break
+	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && break
 	    
-	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-		echo -n "."
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IPV6 (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
 
-	[ "$COUNT" = 0 ] || \
-	    echo
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IPV6"
 
-	[ "$COUNT" -le $COUNT_MAX ] || \
-	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
-	
+
+	COUNT=0
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    echo > $VCT_KEYS_DIR/known_hosts
+	    ssh $VCT_SSH_OPTIONS root@$IPV6 "exit" && break
+	    sleep 1
+	    
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IPV6"
 
 
 	echo > $VCT_KEYS_DIR/known_hosts
@@ -1146,30 +1157,40 @@ vct_node_scp() {
 
 	local MAC=$( vct_node_get_mac $VCRD_ID )
 	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local COUNT=0
 	local COUNT_MAX=60
+	local COUNT=
 
+	COUNT=0
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-		break
+	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && break
 	    
-	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-		echo -n "."
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IPV6 (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
 
-	[ "$COUNT" = 0 ] || \
-	    echo
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IPV6"
 
-	[ "$COUNT" -le $COUNT_MAX ] || \
-	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
 
+	COUNT=0
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    echo > $VCT_KEYS_DIR/known_hosts
+	    ssh $VCT_SSH_OPTIONS root@$IPV6 "exit" && break
+	    sleep 1
+	    
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IPV6"
 
 	echo > $VCT_KEYS_DIR/known_hosts
-
 	scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IPV6\]:/ )
 
     done
