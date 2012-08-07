@@ -1074,7 +1074,6 @@ vct_node_console() {
 
 
 
-
 vct_node_ssh() {
 
 
@@ -1086,55 +1085,44 @@ vct_node_ssh() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+        local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
-	    err $FUNCNAME "$VCRD_NAME not running"
-	fi
+        if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+            err $FUNCNAME "$VCRD_NAME not running"
+        fi
 
-	local MAC=$( vct_node_get_mac $VCRD_ID )
-	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local COUNT_MAX=60
-	local COUNT=
+        local MAC=$( vct_node_get_mac $VCRD_ID )
+        local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
+        local COUNT=0
+        local COUNT_MAX=60
 
-	COUNT=0
-	while [ "$COUNT" -le $COUNT_MAX ]; do 
+        while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && break
-	    
-	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IPV6 (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
+            ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
+                break
+            
+            [ "$COUNT" = 0 ] && \
+                echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
+                echo -n "."
 
-	    COUNT=$(( $COUNT + 1 ))
-	done
+            COUNT=$(( $COUNT + 1 ))
+        done
 
-	echo >&2
-	# [ "$COUNT" = 0 ] || echo >&2
-	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IPV6"
+        [ "$COUNT" = 0 ] || \
+            echo
 
-
-	COUNT=0
-	while [ "$COUNT" -le $COUNT_MAX ]; do 
-
-	    echo > $VCT_KEYS_DIR/known_hosts
-	    ssh $VCT_SSH_OPTIONS root@$IPV6 "exit" && break
-	    sleep 1
-	    
-	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
-
-	    COUNT=$(( $COUNT + 1 ))
-	done
-	echo >&2
-	# [ "$COUNT" = 0 ] || echo >&2
-	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IPV6"
+        [ "$COUNT" -le $COUNT_MAX ] || \
+            err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
+        
 
 
-	echo > $VCT_KEYS_DIR/known_hosts
+        echo > $VCT_KEYS_DIR/known_hosts
 
-	if [ "$COMMAND" ]; then
-	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
-	else
-	    ssh $VCT_SSH_OPTIONS root@$IPV6
-	fi
+        if [ "$COMMAND" ]; then
+            ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
+        else
+            ssh $VCT_SSH_OPTIONS root@$IPV6
+        fi
 
     done
 }
