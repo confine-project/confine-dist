@@ -840,6 +840,11 @@ confine_sliver_allocate() {
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
 	    uci_del lxc.$CT_NR.rootfs_url
 
+	    if [ "$IF01_TYPE" = "public" ] && [ "$IF01_PROTO" = "dhcp" ]; then 
+		uci_set lxc.$CT_NR.customize=debian-confine-dhcp.sh
+	    fi
+
+
 	else
 
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
