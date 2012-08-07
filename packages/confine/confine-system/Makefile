@@ -91,6 +91,7 @@ define Package/confine-system/install
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
 	$(CP)  ./files/lxc/scripts/openwrt-confine-dhcp.sh $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
+	$(CP)  ./files/lxc/scripts/debian-confine-dhcp.sh  $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/

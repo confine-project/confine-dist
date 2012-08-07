@@ -1,7 +1,4 @@
 
-
-
-
 customize_rootfs() {
     SL_NAME=$1
 
@@ -30,15 +27,13 @@ customize_rootfs() {
 
 auto  pub0
 iface pub0 inet dhcp
-  up /sbin/ip -6 addr add $IPV6_ADDR dev pub0
-  up /sbin/ip -6 route add ::/0 via $IPV6_GW
+
+iface pub0 inet6 static
+address $( echo $IPV6_ADDR | awk -F'/' '{print $1}' )
+netmask $( echo $IPV6_ADDR | awk -F'/' '{print $2}' )
+gateway $IPV6_GW
+
 EOF
-
-
-    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/hostname
-$SL_NAME
-EOF
-
 
 
 }
