@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-39.img.gz"
+ VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-40.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -98,7 +98,7 @@ vct_hello_openwrt() {
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
 #   option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option fs_template_url "http://distro.confine-project.eu/misc/CONFINE-sliver-openwrt-backfire-240612_1246.tar.gz"
+    option fs_template_url "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
     option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
     option exp_name        "hello-openwrt-experiment"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
@@ -112,7 +112,13 @@ config sliver $SLICE_ID
     option if02_parent     eth1     # mandatory for if-types isolated
     option if03_type       isolated # optional
     option if03_name       iso1
-    option if03_parent     wlan0     # mandatory for if-types isolated
+    option if03_parent     eth2     # mandatory for if-types isolated
+    option if04_type       isolated # optional
+    option if04_name       iso2
+    option if04_parent     wlan0     # mandatory for if-types isolated
+    option if05_type       isolated # optional
+    option if05_name       iso3
+    option if05_parent     wlan1     # mandatory for if-types isolated
 EOF
 }
 
@@ -132,6 +138,15 @@ config sliver $SLICE_ID
     option if02_type       isolated # optional
     option if02_name       iso0
     option if02_parent     eth1     # mandatory for if-types isolated
+    option if03_type       isolated # optional
+    option if03_name       iso1
+    option if03_parent     eth2     # mandatory for if-types isolated
+    option if04_type       isolated # optional
+    option if04_name       iso2
+    option if04_parent     wlan0     # mandatory for if-types isolated
+    option if05_type       isolated # optional
+    option if05_name       iso3
+    option if05_parent     wlan1     # mandatory for if-types isolated
 EOF
 }
 
