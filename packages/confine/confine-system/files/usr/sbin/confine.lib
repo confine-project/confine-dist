@@ -523,6 +523,18 @@ confine_node_enable() {
 			WTEST="$(uci_get wifi-template.${WTIF}.encryption soft,quiet)" && \
 			    uci_set wireless.${WTIF}.encryption="$WTEST" || uci_del wireless.${WTIF}.encryption soft,quiet
 
+			WTEST="$(uci_get wifi-template.${WTIF}.key soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key="$WTEST" || uci_del wireless.${WTIF}.key soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key1 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key1="$WTEST" || uci_del wireless.${WTIF}.key1 soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key2 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key2="$WTEST" || uci_del wireless.${WTIF}.key2 soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key3 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key3="$WTEST" || uci_del wireless.${WTIF}.key3 soft,quiet
+
 		    fi
 
 		fi
