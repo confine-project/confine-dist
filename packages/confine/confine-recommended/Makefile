@@ -34,6 +34,7 @@ define Package/confine-recommended
   URL:=http://confine-project.eu
   DEPENDS:= \
 	+confine-system \
+	+oonf-dlep +oonf-dlep-plugin-nl80211listener +oonf-dlep-plugin-layer2viewer +oonf-dlep-plugin-service \
 	+bash +nano +less +fdisk +vim \
 	+iputils-arping +iputils-clockdiff +iputils-ping +iputils-tracepath \
 	+radvd \
