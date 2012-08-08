@@ -210,9 +210,10 @@ lxc_create() {
 
     mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs
 
+    local SL_HOSTNAME="$( uci_get lxc.$SL_NAME.hostname soft,quiet )"
 
     cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/config
-lxc.utsname = $SL_NAME
+lxc.utsname = ${SL_HOSTNAME:-$SL_NAME}
 lxc.tty = 4
 lxc.pts = 1024
 

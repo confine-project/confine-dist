@@ -86,10 +86,12 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/dropbear
 	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
+	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
 	$(CP)  ./files/lxc/scripts/openwrt-confine-dhcp.sh $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
+	$(CP)  ./files/lxc/scripts/debian-confine-dhcp.sh  $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/

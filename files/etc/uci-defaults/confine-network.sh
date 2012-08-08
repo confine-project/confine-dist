@@ -24,6 +24,4 @@ uci set network.recovery2.ifname=br-local
 uci set network.recovery2.proto=static
 uci set network.recovery2.ip6addr=fdbd:e804:6aa9:0002:$( confine.lib eui64_from_link eth0 soft )/64
 
-uci commit
-
-
+uci commit network

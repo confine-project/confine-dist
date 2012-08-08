@@ -852,6 +852,11 @@ confine_sliver_allocate() {
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
 	    uci_del lxc.$CT_NR.rootfs_url
 
+	    if [ "$IF01_TYPE" = "public" ] && [ "$IF01_PROTO" = "dhcp" ]; then 
+		uci_set lxc.$CT_NR.customize=debian-confine-dhcp.sh
+	    fi
+
+
 	else
 
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
@@ -863,6 +868,7 @@ confine_sliver_allocate() {
 
 	fi
 
+	uci_set lxc.$CT_NR.hostname=${SL_ID}_${NODE_ID}
 	uci_set lxc.$CT_NR.tag=confine-sliver-$SL_ID
 
 	local IF_KEY=
@@ -903,8 +909,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
 		    [ $IF_PROTO ] && uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$IF_PROTO
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 		    if [ "$IF_PROTO" = "static" ] ; then
 			uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4

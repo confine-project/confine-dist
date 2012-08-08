@@ -75,4 +75,10 @@ config 'alias' 'public0_ipv6'
 
 EOF
 
+
+cp $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/uhttpd $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/uhttpd.orig
+uci_set uhttpd.main.listen_http='0.0.0.0:80 [::]:80'    path=$LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config
+uci_set uhttpd.main.listen_https='0.0.0.0:443 [::]:443' path=$LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config
+
+
 }
