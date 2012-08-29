@@ -25,7 +25,6 @@ fi
 
 # MAIN_PID=$BASHPID
 
-VCT_NODE_MAC_DB=./vct.nodes
 UCI_DEFAULT_PATH=$VCT_UCI_DIR
 ERR_LOG_TAG='VCT'
 . ./lxc.functions

@@ -1,5 +1,13 @@
-noce-id   mac                 comments:
+# This file is ignored in favor of vct.nodes.local 
+# Use it only for documenting the used NODE_IDs: 
 
-f09c      00:0d:b9:24:b4:9c   alix (for testing in Berlin)
-f001      00:0d:b9:24:b5:00   alix (for testing in Berlin)
-de01      00:03:1d:0b:15:31   commell (for testing in Wachtberg)
+#node-id  mac                 	       		comments:
+
+f09c      00:0d:b9:24:b4:9c			alix (for testing in Berlin)
+f001      00:0d:b9:24:b5:00   			alix (for testing in Berlin)
+
+de01      00:03:1d:0b:15:31   			commell (for testing in Wachtberg)
+
+f101	  00:01:2E:2D:89:2B|10.228.201.72       Zotac Lab 104 UPC
+f102	  00:0D:B9:26:9D:AC|10.228.204.6        Alix C6 roof
+f103	  00:01:2E:39:9A:FA|10.228.201.81       Zotac Lab 104 UPC (black one)

@@ -61,6 +61,8 @@ VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG -c $VCT_TINC_DIR/confine -n confine"
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
+VCT_NODE_MAC_DB=./vct.nodes.local
+
 
 #################################################
 
