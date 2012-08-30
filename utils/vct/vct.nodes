@@ -8,6 +8,10 @@ f001      00:0d:b9:24:b5:00   			alix (for testing in Berlin)
 
 de01      00:03:1d:0b:15:31   			commell (for testing in Wachtberg)
 
+# Each following entry includes not only the MAC, but also the IPv4 address of
+# the local interface of a research device *not in the local network*.  The IP
+# adress must be reachable from the server and it will be used by VCT as a
+# recovery addresses for node configuration.
 f101	  00:01:2E:2D:89:2B|10.228.201.72       Zotac Lab 104 UPC
 f102	  00:0D:B9:26:9D:AC|10.228.204.6        Alix C6 roof
 f103	  00:01:2E:39:9A:FA|10.228.201.81       Zotac Lab 104 UPC (black one)
