@@ -22,8 +22,13 @@ customize_rootfs() {
     local IPV6_ADDR="$(uci_get confine-slivers.$MY_SLICE.if01_ipv6)"
     local IPV6_GW="$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):$MY_NODE::2"
 
-    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/network/interfaces
+    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/network/interfaces
 
+auto lo
+iface lo inet loopback
+
+#auto eth0
+#iface eth0 inet dhcp
 
 auto  pub0
 iface pub0 inet dhcp
