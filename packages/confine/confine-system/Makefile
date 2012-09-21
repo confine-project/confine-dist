@@ -97,6 +97,7 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slice-attributes $(1)/etc/config/
+	$(CP)  ./files/etc/confine-ebtables.lst            $(1)/etc/
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help

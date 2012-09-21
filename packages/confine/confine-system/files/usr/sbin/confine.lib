@@ -1072,6 +1072,77 @@ EOF1
 }
 
 
+
+
+
+confine_sliver_fw_stop() {
+
+    local SL_ID=$( check_slice_id $1 )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+
+    local IF_KEY=
+
+    for IF_KEY in $IF_KEYS; do
+
+	local IF_PAIR=$(    uci_get lxc.$CT_NR.if${IF_KEY}_pair     soft,quiet )
+
+	if [ "$IF_PAIR" ]; then
+
+	    local EBARGS=
+
+	    ebtables -L FORWARD | grep $IF_PAIR | while read EBARGS; do ebtables -D FORWARD $EBARGS ; done
+	fi
+    done
+}
+
+confine_sliver_fw_restart() {
+
+    local SL_ID=$( check_slice_id $1 )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+
+    confine_sliver_fw_stop $SL_ID
+
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+
+    local IF_KEY=
+
+    for IF_KEY in $IF_KEYS; do
+
+	local IF_TYPE=$(    uci_get lxc.$CT_NR.if${IF_KEY}_type     soft,quiet )
+	local IF_NETCONF=$( uci_get lxc.$CT_NR.if${IF_KEY}_netconf  soft,quiet )
+
+	if [ "$IF_TYPE" == "veth" ] || [ "$IF_NETCONF" ]; then
+	    echo
+	    local IF_PAIR=$(    uci_get lxc.$CT_NR.if${IF_KEY}_pair )
+
+	    local IF_MAC=$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_mac )
+	    local IF_IPV4=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 )
+	    local IF_IPV6=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv6 soft,quiet )
+
+	    # set default policy ...
+	    ebtables -I FORWARD -i $IF_PAIR -j DROP
+
+	    # enable white list ...
+	    local EBTARG=
+	    local EBTCMD=
+	    cat /etc/confine-ebtables.lst | awk -F'#' '{print $1}' | grep -e "^ *-p" | while read EBTARG; do
+		EBTCMD="ebtables -I FORWARD -i $IF_PAIR $EBTARG"
+		echo "$EBTCMD"
+		$EBTCMD
+	    done
+
+	    # set general rules ...
+	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP
+	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src ! $IF_IPV4 -j DROP
+	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src 0.0.0.0/0 --ip-proto udp --ip-sport 68 --ip-dport 67 -j ACCEPT
+
+	fi
+
+    done
+}
+
 confine_sliver_start() {
 
     # echo "$FUNCNAME $# $@" >&2
@@ -1087,6 +1158,8 @@ confine_sliver_start() {
 	[ -f $LXC_IMAGES_PATH/$CT_NR/config ] ; then
 
 	uci_set confine-slivers.$SL_ID.state=starting
+
+	confine_sliver_fw_restart $SL_ID
 
 	lxc.lib lxc_start $CT_NR
 
@@ -1122,6 +1195,8 @@ confine_sliver_stop() {
 	    if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 		lxc.lib lxc_stop $CT_NR
 	    fi
+
+	    confine_sliver_fw_stop $SL_ID
 	    
 	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
 		uci_set confine-slivers.$SL_ID.state=deployed
