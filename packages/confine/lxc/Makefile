@@ -29,6 +29,8 @@ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 #PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
 #PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_SOURCE_SUBDIR)
 
+PKG_FIXUP:=autoreconf
+
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/kernel.mk
@@ -61,20 +63,6 @@ endef
 define Build/Configure
        $(call Build/Configure/Default,--with-linuxdir=$(LINUX_DIR))
 endef
-#define Build/Configure
-#        (cd $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/$(strip $(3)); \
-#	(./autogen.sh); \
-#        if [ -x $(CONFIGURE_CMD) ]; then \
-#                $(call replace_script,$(PKG_BUILD_DIR)/$(3),config.guess) \
-#                $(call replace_script,$(PKG_BUILD_DIR)/$(3),config.sub) \
-#                $(CONFIGURE_VARS) \
-#                $(2) \
-#                $(CONFIGURE_CMD) \
-#                $(CONFIGURE_ARGS) \
-#                $(1); \
-#        fi; \
-#        )
-#endef
 
 define Package/lxc/install
 
