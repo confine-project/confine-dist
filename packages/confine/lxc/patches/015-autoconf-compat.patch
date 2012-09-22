@@ -1,0 +1,32 @@
+Index: lxc-0.7.5/src/lxc/Makefile.am
+===================================================================
+--- lxc-0.7.5.orig/src/lxc/Makefile.am	2012-03-02 00:12:46.000000000 +0100
++++ lxc-0.7.5/src/lxc/Makefile.am	2012-09-22 22:06:55.418976576 +0200
+@@ -1,3 +1,4 @@
++programfilesdir=$(pkglibdir)
+ pkginclude_HEADERS = \
+ 		start.h \
+ 		console.h \
+@@ -90,7 +91,7 @@
+ 	lxc-restart \
+ 	lxc-kill
+ 
+-pkglib_PROGRAMS = \
++programfiles_PROGRAMS = \
+ 	lxc-init
+ 
+ AM_LDFLAGS=-Wl,-E -Wl,-rpath -Wl,$(libdir)
+Index: lxc-0.7.5/src/lxc/Makefile.in
+===================================================================
+--- lxc-0.7.5.orig/src/lxc/Makefile.in	2012-03-02 00:12:53.000000000 +0100
++++ lxc-0.7.5/src/lxc/Makefile.in	2012-09-22 22:07:22.003173647 +0200
+@@ -43,7 +43,8 @@
+ 	lxc-freeze$(EXEEXT) lxc-info$(EXEEXT) lxc-cgroup$(EXEEXT) \
+ 	lxc-unfreeze$(EXEEXT) lxc-checkpoint$(EXEEXT) \
+ 	lxc-restart$(EXEEXT) lxc-kill$(EXEEXT)
+-pkglib_PROGRAMS = lxc-init$(EXEEXT)
++programfilesdir=$(pkglibdir)
++programfiles_PROGRAMS = lxc-init$(EXEEXT)
+ subdir = src/lxc
+ DIST_COMMON = $(pkginclude_HEADERS) $(srcdir)/Makefile.am \
+ 	$(srcdir)/Makefile.in $(srcdir)/lxc-checkconfig.in \
