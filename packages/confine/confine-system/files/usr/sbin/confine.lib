@@ -1118,7 +1118,7 @@ confine_sliver_fw_restart() {
 	    local IF_PAIR=$(    uci_get lxc.$CT_NR.if${IF_KEY}_pair )
 
 	    local IF_MAC=$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_mac )
-	    local IF_IPV4=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 )
+	    local IF_IPV4=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 soft,quiet )
 	    local IF_IPV6=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv6 soft,quiet )
 
 	    # set default policy ...
@@ -1134,8 +1134,8 @@ confine_sliver_fw_restart() {
 	    done
 
 	    # set general rules ...
-	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP
-	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src ! $IF_IPV4 -j DROP
+	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP	    
+	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 $( [ "$IF_IPV4" ] && echo "--ip-src ! $IF_IPV4") -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src 0.0.0.0/0 --ip-proto udp --ip-sport 68 --ip-dport 67 -j ACCEPT
 
 	fi
