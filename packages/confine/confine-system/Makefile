@@ -35,24 +35,65 @@ define Package/confine-system
   DEPENDS:= \
 	+bash \
 	+lxc \
-	+awk \
-	+ip \
-	+iptables \
-	+kmod-dummy \
+	+gawk \
+	+ip +tc +iw \
+	+ebtables \
 	+tinc \
+	+file \
+	+losetup \
+	+px5g \
+	+time \
+	\
 	+dropbearconvert \
-	+openssh-keygen \
-	+e2fsprogs \
+	+openssh-keygen +openssl-util \
+	\
+	+lua \
+	+luci \
+	+luci-app-diag-core \
+	+luci-app-firewall \
+	+luci-i18n-english \
+	+luci-lib-core \
+	+luci-lib-ipkg \
+	+luci-lib-json \
+	+luci-lib-lmo \
+	+luci-lib-nixio \
+	+luci-lib-sys \
+	+luci-lib-web \
+	+luci-mod-admin-core \
+	+luci-mod-admin-full \
+	+luci-mod-rpc \
+	+luci-proto-core \
+	+luci-proto-ppp \
+	+luci-sgi-cgi \
+	+luci-sgi-uhttpd \
+	+luci-ssl \
+	+luci-theme-base \
+	+luci-theme-openwrt \
+	\
+	+uclibcxx \
+	+uhttpd \
+	+uhttpd-mod-lua \
+	+uhttpd-mod-tls \
+	+uhttpd-mod-tls_cyassl \
+	\
+	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
+	\
+	+kmod-dummy \
 	+kmod-fs-ext4 \
-	+kmod-fs-vfat \
+	\
+	+kmod-cfg80211 +kmod-mac80211 \
+	+kmod-ath5k +kmod-ath9k \
+	+kmod-ath9k-common +kmod-ath9k-htc
 
 endef
 
 define optional
+  IGNORE_DEPENDS:= \
+	+kmod-b43 \
+
+  IGNORE_DEPENDS:= \
 	@TARGET_x86 \
 	+@BUSYBOX_CONFIG_FOLD \
-	+ebtables \
-	+tinc \
 
 endef
 

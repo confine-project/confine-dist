@@ -36,16 +36,36 @@ define Package/lxc
   TITLE:=LXC userspace tools
   URL:=http://lxc.sourceforge.net/
 
-  DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
-            +ip +coreutils +coreutils-rm \
-            +perl +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys \
-            +kmod-veth +kmod-macvlan +kmod-bridge
+  DEPENDS:= \
+	+libcap2 +bash +ip +veth +swconfig \
+	\
+        +kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
+	+kmod-ipv6 \
+	\
+	+coreutils +coreutils-rm \
+	+coreutils-chroot +coreutils-sha1sum \
+	+bzip2 +gzip +tar \
+	\
+        +perl +perlbase-complete +perlbase-base +perlbase-essential \
+	+perlbase-getcwd +perlbase-getopt +perlbase-sys \
+	+perlbase-fcntl +perlbase-file +perlbase-xsloader \
+	\
+
 
 
 # TODO:
 # remove bash dependencie, ensure availability of 
 # $BASHPID (needed by /etc/init.d/lxc), getopt (full version), ...
 # 
+
+endef
+
+define optional
+	+@BUSYBOX_CONFIG_GETOPT \
+	+@BUSYBOX_CONFIG_BLOCKDEV \
+	+@BUSYBOX_CONFIG_FEATURE_GETOPT_LONG \
+	+@BUSYBOX_CONFIG_GETOPT \
+	+@BUSYBOX_CONFIG_SCRIPT \
 
 endef
 

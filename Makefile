@@ -33,11 +33,23 @@ OWRT_FEEDS = feeds.conf
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
+
+#TARGET values: x86, ar71xx, realview
+TARGET ?= x86
+SUBTARGET = lxc_host
+PROFILE ?= Default
+PARTSIZE ?= 900
+MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
+PACKAGES ?= confine-system confine-recommended
+
 CONFIG = $(BUILD_DIR)/.config
-KCONFIG = $(BUILD_DIR)/target/linux/x86/config-3.3
+KCONF = target/linux/$(TARGET)/config-3.3
+KCONFIG = $(BUILD_DIR)/$(KCONF)
+
+
 IMAGES = images
 NIGHTLY_IMAGES_DIR ?= www
-IMAGE = openwrt-x86-generic-combined
+IMAGE = openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
@@ -61,10 +73,24 @@ define update_feeds
 	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
 endef
 
-define copy_config
-	cp -f "$(CONFIG_DIR)/owrt_config" $(CONFIG)
-	cp -f "$(CONFIG_DIR)/kernel_config" $(KCONFIG)
-	(cd "$(BUILD_DIR)" && make defconfig)
+
+
+
+define create_configs
+	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
+	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
+	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
+	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
+		echo "CONFIG_TARGET_$(TARGET)=y" > $(CONFIG) && \
+		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) )
+	@( echo "$(TARGET)" | grep -q -e "^x86$$" && [ "$(PROFILE)" ] && \
+		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
+	@( [ "$(PARTSIZE)" ] && \
+		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
+	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
+	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
+	@make -C "$(BUILD_DIR)" defconfig > /dev/null
 endef
 
 define menuconfig_owrt
@@ -83,8 +109,8 @@ endef
 
 define update_workspace
 	git checkout $(CONFINE_VERSION) && git pull origin $(CONFINE_VERSION)
-	(cd "$(BUILD_DIR)" && git pull && git checkout $(CONFINE_VERSION))
-	(cd "$(OWRT_PKG_DIR)" && git pull && git checkout $(CONFINE_VERSION))
+	(cd "$(BUILD_DIR)" git checkout $(CONFINE_VERSION) && git pull )
+	(cd "$(OWRT_PKG_DIR)" && git checkout $(CONFINE_VERSION) && git pull )
 endef
 
 define build_src
@@ -140,12 +166,12 @@ prepare: .prepared
 	$(call prepare_workspace)
 	$(call update_workspace)
 	$(call update_feeds)
-	$(call copy_config)
+	$(call create_configs)
 	@touch .prepared
 
 sync: prepare 
 	$(call update_feeds)
-	$(call copy_config)
+	$(call create_configs)
 
 update: prepare
 	$(call update_workspace)
@@ -156,6 +182,10 @@ menuconfig: prepare
 kernel_menuconfig: prepare
 	$(call kmenuconfig_owrt)
 
+confclean: prepare
+	$(call create_configs)
+
+
 clean:
 	make -C "$(BUILD_DIR)" clean
 
@@ -164,7 +194,7 @@ dirclean:
 
 distclean:
 	make -C "$(BUILD_DIR)" distclean
-	$(call copy_config)
+	$(call create_configs)
 
 mrproper:
 	rm -rf "$(BUILD_DIR)" || true
