@@ -1,9 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-#PKG_VERSION:=2012-06-15
-#PKG_REV:=1afce5f94242d97344c17e008278c171c88398bb
-PKG_VERSION:=2012-10-19
+PKG_VERSION:=2012-10-22
 PKG_REV:=d8f9b60b99e335e865bc3f8d6dedbab757a48ff2#
 PKG_RELEASE:=$(PKG_REV)
 
@@ -38,7 +36,7 @@ endef
 define Package/oonf-dlep
 	$(call Package/oonf-dlep/template)
 	TITLE:=DLEP-agent (executable for client and service) 
-	DEPENDS:=+oonf-core-api +oonf-tools-api +ldconfig
+	DEPENDS:=+oonf-core-api +oonf-tools-api +oonf-plugin-cfgio-file +oonf-plugin-cfgparser-compact +ldconfig
 endef
 
 define Package/oonf-dlep-plugin-client
