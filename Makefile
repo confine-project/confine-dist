@@ -17,11 +17,11 @@
 #
 
 ifdef DEV
-OWRT_GIT = gitosis@git.confine-project.eu:confine/openwrt.git
-OWRT_PKG_GIT = gitosis@git.confine-project.eu:confine/packages.git
+OWRT_GIT ?= gitosis@git.confine-project.eu:confine/openwrt.git
+OWRT_PKG_GIT ?= gitosis@git.confine-project.eu:confine/packages.git
 else
-OWRT_GIT = http://git.confine-project.eu/confine/openwrt.git
-OWRT_PKG_GIT = http://git.confine-project.eu/confine/packages.git
+OWRT_GIT ?= http://git.confine-project.eu/confine/openwrt.git
+OWRT_PKG_GIT ?= http://git.confine-project.eu/confine/packages.git
 endif
 
 TIMESTAMP = $(shell date +%d%m%y_%H%M)
@@ -162,7 +162,6 @@ prepare: .prepared
 
 .prepared:
 	@echo "Using $(IMAGE_TYPE)."
-	@echo "Developer mode enabled"
 	$(call prepare_workspace)
 	$(call update_workspace)
 	$(call update_feeds)
