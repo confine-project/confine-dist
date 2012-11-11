@@ -36,8 +36,8 @@ DOWNLOAD_DIR = dl
 
 #TARGET values: x86, ar71xx, realview
 TARGET ?= x86
-SUBTARGET = lxc_host
-PROFILE ?= Default
+SUBTARGET ?= generic
+#PROFILE ?= Default
 PARTSIZE ?= 900
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
@@ -49,7 +49,7 @@ KCONFIG = $(BUILD_DIR)/$(KCONF)
 
 IMAGES = images
 NIGHTLY_IMAGES_DIR ?= www
-IMAGE = openwrt-$(TARGET)-$(SUBTARGET)-combined
+IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
@@ -75,15 +75,21 @@ endef
 
 
 
-
 define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
-	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
+	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
+		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
+		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
+		echo "# CONFIG_SAMSUNG_LAPTOP is not set" >> $(KCONF) && \
+		echo "# CONFIG_INTEL_OAKTRAIL is not set" >> $(KCONF) )
 	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
 	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
-		echo "CONFIG_TARGET_$(TARGET)=y" > $(CONFIG) && \
-		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) )
-	@( echo "$(TARGET)" | grep -q -e "^x86$$" && [ "$(PROFILE)" ] && \
+		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
+		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
+		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) )
+	@( [ "$(SUBTARGET)" ] && \
+		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
+	@( [ "$(PROFILE)" ] && \
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
 	@( [ "$(PARTSIZE)" ] && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
