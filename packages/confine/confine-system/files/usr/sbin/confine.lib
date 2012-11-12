@@ -245,40 +245,45 @@ confine_tinc_setup() {
     echo "$FUNCNAME $@" >&2
 
     local VCRD_ID=$1
+    local VCRD_ID_DEC=$(( 16#${VCRD_ID} ))
     local SERVER_MGMT_IPV6_PREFIX48=$2
-    local SERVER_TINC_IP=$3
-    local SERVER_TINC_PORT=$4
-    local SERVER_TINC_KEY="$5"
 
     confine_tinc_stop
 
-    mkdir -p /etc/tinc/confine/
-    rm -rf   /etc/tinc/confine/*
-    mkdir    /etc/tinc/confine/hosts
-    
-    cat <<EOF > /etc/tinc/confine/tinc.conf
-Name = node_x$VCRD_ID
-ConnectTo = server
-EOF
+    mkdir -p /etc/tinc/confine/hosts
 
-    cat <<EOF > /etc/tinc/confine/hosts/node_x$VCRD_ID
+    if ! [ -f /etc/tinc/confine/rsa_key.priv ]; then
+        cp /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
+    fi
+
+    ssh-keygen -e -m PEM -f /etc/tinc/confine/rsa_key.priv > /etc/tinc/confine/rsa_key.pub
+
+    if ! [ -f /etc/tinc/confine/hosts/node_$VCRD_ID_DEC ]; then
+	cat <<EOF > /etc/tinc/confine/hosts/node_$VCRD_ID_DEC
 Subnet = $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
-$( cat /etc/dropbear/openssh_rsa_host_key.pub )
+$( cat /etc/tinc/confine/rsa_key.pub )
+EOF
+    fi
+
+    local SERVER_CONFS=$(ls /etc/tinc/confine/hosts/ | grep -v node_$VCRD_ID_DEC)
+    local SERVER_CONF=
+    cat <<EOF > /etc/tinc/confine/tinc.conf
+Name = node_$VCRD_ID_DEC
+$( for SERVER_CONF in $SERVER_CONFS; do echo "ConnectTo = $SERVER_CONF"; done )
 EOF
 
-    ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
 
-    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.pub
+#    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.pub
 #    chmod 600 /etc/tinc/confine/server_rsa_key.pub
-
-    cat <<EOF > /etc/tinc/confine/hosts/server
-Address = $SERVER_TINC_IP
-Port = $SERVER_TINC_PORT
-Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
-$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.pub )
-EOF
-
-    rm /etc/tinc/confine/server_rsa_key.pub
+#
+#    cat <<EOF > /etc/tinc/confine/hosts/server
+#Address = $SERVER_TINC_IP
+#Port = $SERVER_TINC_PORT
+#Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+#$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.pub )
+#EOF
+#
+#    rm /etc/tinc/confine/server_rsa_key.pub
 
     cat <<EOF > /etc/tinc/confine/tinc-up
 #!/bin/sh
@@ -336,14 +341,11 @@ confine_node_enable() {
 
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
 	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
-	local SERVER_TINC_IP=$(            uci_get confine.server.tinc_ip                       soft )
-	local SERVER_TINC_PORT=$(          uci_get confine.server.tinc_port                     soft )
-	local SERVER_TINC_KEY="$(          uci_get confine.server.tinc_pubkey                   soft )"
 
-	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname         soft )
+	local NODE_LOCAL_IFNAME=$(         uci_get confine.node.local_ifname                    soft )
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
 	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48  soft )
-	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
+#	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
 	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine.node.rd_public_ipv4_proto            soft )
 	local NODE_RD_PUBL_IPV4=$(         uci_get confine.node.rd_public_ipv4                  soft,quiet )
 	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine.node.rd_public_ipv4_gw               soft,quiet )
@@ -353,14 +355,10 @@ confine_node_enable() {
 	if true && \
 	    [ "$VCRD_ID" ] && \
 	    [ "$SERVER_MGMT_PUBKEY" ] && \
-	    [ "$SERVER_TINC_IP" ] && \
-	    [ "$SERVER_TINC_PORT" ] && \
-	    [ "$SERVER_TINC_KEY" ] && \
 	    [ "$SERVER_MGMT_IPV6_PREFIX48" ] && \
 	    [ "$NODE_LOCAL_IFNAME" ] && \
 	    [ "$NODE_PRIV_IPV4_PREFIX24" ] && \
 	    [ "$NODE_PRIV_IPV6_PREFIX48" ] && \
-	    [ "$NODE_DBG_IPV6_PREFIX48" ] && \
 	    [ "$NODE_RD_PUBL_IPV4_PROTO" ] && \
 	    true ; then
 
@@ -384,17 +382,14 @@ confine_node_enable() {
 		dropbearconvert dropbear openssh /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/openssh_rsa_host_key 
 	    fi
 
-	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
+#	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
 
 		dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep ssh-rsa > /etc/dropbear/dropbear_rsa_host_key.pub
-
 		ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub > /etc/dropbear/openssh_rsa_host_key.pub
 		
-		uci_set confine.node.rd_pubkey="$( cat /etc/dropbear/dropbear_rsa_host_key.pub )"
+		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 # $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
 
-		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
-
-	    fi
+#	    fi
 
 
 	    echo "Configuring wireless... " >&2
@@ -532,12 +527,12 @@ confine_node_enable() {
 	    uci_set network.management.proto=static
 	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
-	    uci_set network.recovery1=interface
-	    uci_set network.recovery1.ifname=br-local
-	    uci_set network.recovery1.proto=static
-	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
-	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
-	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
+#	    uci_set network.recovery1=interface
+#	    uci_set network.recovery1.ifname=br-local
+#	    uci_set network.recovery1.proto=static
+#	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
+#	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
+#	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
 
 	    uci_set network.recovery2=interface
 	    uci_set network.recovery2.ifname=br-local

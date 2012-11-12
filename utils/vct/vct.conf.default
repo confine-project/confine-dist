@@ -80,6 +80,7 @@ VCT_SERVER_TINC_PORT=655
 #VCT_SERVER_TINC_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
 
 VCT_NODE_CN_URL="http://community.net/node/xxxxx"
+VCT_NODE_LOCAL_IFNAME="eth0"
 VCT_NODE_ISOLATED_PARENTS="eth1 eth2 wlan0 wlan1"   # 
 
 VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 

@@ -80,7 +80,7 @@ define Package/confine-recommended
 	+tcpdump \
 	+netcat \
 	+nmap +lsof \
-	+wget +horst \
+	+horst \
 	+ipv6calc \
 	+bmon +bwm \
 	\

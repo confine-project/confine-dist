@@ -1295,6 +1295,7 @@ vct_node_customize() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
+	local VCRD_ID_DEC=$(( 16#${VCRD_ID} ))
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 	local PREP_ROOT=$VCT_VIRT_DIR/node_prepare/$VCRD_NAME-$( date +%Y%m%d-%H%M%S )-$BASHPID
 	local PREP_UCI=$PREP_ROOT/etc/config
@@ -1346,17 +1347,39 @@ vct_node_customize() {
 	uci_set confine.server=server                                                            path=$PREP_UCI
 	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
 	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
-	uci_set confine.server.tinc_ip=$VCT_SERVER_TINC_IP                                       path=$PREP_UCI
-	uci_set confine.server.tinc_port=$VCT_SERVER_TINC_PORT                                   path=$PREP_UCI
-	uci_set confine.server.tinc_pubkey="$( ssh-keygen -yf $VCT_KEYS_DIR/tinc/rsa_key.priv )" path=$PREP_UCI
+
+	mkdir -p $PREP_ROOT/etc/tinc/confine/hosts/
+	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/server
+Address = $VCT_SERVER_TINC_IP
+Port = $VCT_SERVER_TINC_PORT
+Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+$( cat $VCT_KEYS_DIR/tinc/rsa_key.pub )
+EOF
+
+	tincd -c $PREP_ROOT/etc/tinc/confine/ -K <<EOF
+# first  interactive enter acknowledges rsa_key.priv
+# second interactive enter acknowledges rsa_key.pub
+EOF
+
+	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC
+Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
+$( cat $PREP_ROOT/etc/tinc/confine/rsa_key.pub )
+EOF
+
+	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/confine/hosts/
+
+	# this is optional:
+	# mkdir -p $PREP_ROOT/etc/dropbear
+	# ssh-keygen  -N "" -C "root@rd$VCRD_ID" -f $PREP_ROOT/etc/dropbear/openssh_rsa_host_key
+
 
 	uci_set confine.node=node                                                                path=$PREP_UCI
 	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
-#       uci_set confine.node.rd_pubkey=""                                                        path=$PREP_UCI
 	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
 	uci_set confine.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16                              path=$PREP_UCI
 	uci_set confine.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24                  path=$PREP_UCI
 
+	uci_set confine.node.local_ifname=$VCT_NODE_LOCAL_IFNAME                                 path=$PREP_UCI
 	uci_set confine.node.public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL                       path=$PREP_UCI
 	uci_set confine.node.rd_public_ipv4_proto=$VCT_NODE_RD_PUBLIC_IPV4_PROTO                 path=$PREP_UCI
 	if [ "$VCT_NODE_RD_PUBLIC_IPV4_PROTO" = "static" ] && [ "$VCT_NODE_PUBLIC_IPV4_PREFIX16" ] ; then
@@ -1391,13 +1414,13 @@ vct_node_customize() {
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
-	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
+#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
 	    echo >&2
 	    [ "$TINC_PID" ] && \
-		echo "Notify tincd to reload its configuration by sending the process a HUB (-1) signal" >&2 && \
+		echo "Notify tincd to reload its configuration by sending SIGHUP (-1) signal" >&2 && \
 		vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then

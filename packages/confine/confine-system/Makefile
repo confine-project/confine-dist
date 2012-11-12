@@ -46,8 +46,11 @@ define Package/confine-system
 	\
 	+dropbearconvert \
 	+openssh-keygen +openssl-util \
+	+wget \
 	\
 	+lua \
+	+luasignal \
+	+luasocket \
 	+luci \
 	+luci-app-diag-core \
 	+luci-app-firewall \
@@ -125,6 +128,11 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/dropbear
+	$(INSTALL_DIR) $(1)/www/confine
+	$(INSTALL_DIR) $(1)/www/confine/api
+	$(INSTALL_DIR) $(1)/www/confine/api/node
+	$(INSTALL_DIR) $(1)/www/confine/api/slivers
+	$(INSTALL_DIR) $(1)/www/confine/api/templates
 	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
@@ -142,6 +150,11 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
+	$(INSTALL_DIR) $(1)/usr/lib/
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
+	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
+
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
