@@ -267,14 +267,15 @@ $( cat /etc/dropbear/openssh_rsa_host_key.pub )
 EOF
 
     ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
-    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
-    chmod 600 /etc/tinc/confine/server_rsa_key.priv
+
+    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.pub
+    chmod 600 /etc/tinc/confine/server_rsa_key.pub
 
     cat <<EOF > /etc/tinc/confine/hosts/server
 Address = $SERVER_TINC_IP
 Port = $SERVER_TINC_PORT
 Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
-$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.priv )
+$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.pub )
 EOF
 
     cat <<EOF > /etc/tinc/confine/tinc-up
