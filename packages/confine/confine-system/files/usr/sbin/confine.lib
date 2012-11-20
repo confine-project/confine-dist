@@ -323,9 +323,8 @@ EOF
 
     cat <<EOF > /etc/tinc/confine/hosts/node_x$VCRD_ID
 Subnet = $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
+$( cat /etc/dropbear/openssh_rsa_host_key.pub )
 EOF
-
-    ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub >> /etc/tinc/confine/hosts/node_x$VCRD_ID
 
     ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
     echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
@@ -445,6 +444,8 @@ confine_node_enable() {
 	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
 
 		dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep ssh-rsa > /etc/dropbear/dropbear_rsa_host_key.pub
+
+		ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub > /etc/dropbear/openssh_rsa_host_key.pub
 		
 		uci_set confine.node.rd_pubkey="$( cat /etc/dropbear/dropbear_rsa_host_key.pub )"
 
