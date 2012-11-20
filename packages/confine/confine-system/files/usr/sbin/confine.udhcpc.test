@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$ip" ]; then
+	echo "result: interface=$interface router=$router dns=$dns serverid=$serverid ip=$ip lease=$lease"
+fi
+
+
+

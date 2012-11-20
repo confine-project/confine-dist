@@ -166,6 +166,7 @@ confine_allocate_dhcp_public_ipv4() {
 
     echo "$FUNCNAME $@" >&2
 
+    local DHCP_IF="test-dhcp"
     local DHCP_MAC=$1
     local OPT_CMD=${2:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
@@ -175,35 +176,20 @@ confine_allocate_dhcp_public_ipv4() {
 
     [ "$PROTO_IPS" = "dhcp" ] || \
 	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
+
+
+    ip link show $DHCP_IF > /dev/null || \
+	ip link add link br-local dev $DHCP_IF type macvlan
     
-    local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.sliver_nr )
-    local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
-    local ORIG_MAC=$(          uci_get confine-slivers.ffffffffffff.if01_mac     )
-    local DUMMY_REPORT=/tmp/confine-$( date +%s )-$BASHPID-dhcp-report
-    local HOST_REPORT=/lxc/images/$DHCP_CONTAINER_NR/rootfs/$DUMMY_REPORT
-    local DHCP_REQUEST="\
-date  > $DUMMY_REPORT && \
-ip link set $DHCP_IF down && \
-ip link set $DHCP_IF address $DHCP_MAC && \
-udhcpc -i $DHCP_IF  >> $DUMMY_REPORT && \
-ip addr show dev $DHCP_IF >> $DUMMY_REPORT && \
-echo COMPLETED  >> $DUMMY_REPORT ; \
-ip link set $DHCP_IF down && \
-ip link set $DHCP_IF address $ORIG_MAC && \
-uci show system.@system[0].hostname  >> $DUMMY_REPORT \
-"
+    ip link set $DHCP_IF down
+    ip link set $DHCP_IF address $DHCP_MAC
+    ip link set $DHCP_IF up
 
-    ssh_dummy_container "$DHCP_REQUEST" >&2
+    local DHCP_RESULT="$( udhcpc -fq -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
+    local DHCP_IP=$( echo $DHCP_RESULT | awk -F'ip=' '{print $2}' | awk '{print $1}' )
 
-    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=" >/dev/null || \
-	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
-
-    cat $HOST_REPORT | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
-	{ err $FUNCNAME "Failed faking DHCP_MAC=$DHCP_MAC" $CMD_SOFT; return 1; }
-
-    local DHCP_IP=
-    DHCP_IP=$( cat $HOST_REPORT | grep -e "^udhcpc: ifconfig $DHCP_IF" | awk '{print $4}' )
-    DHCP_IP=$( cat $HOST_REPORT | grep -e "inet $DHCP_IP" | grep "scope global $DHCP_IF$" | awk '{print $2}' )
+    ip link set $DHCP_IF down
+    ip link del link br-local dev $DHCP_IF type macvlan
 
     [ $DHCP_IP ] || \
 	{ err $FUNCNAME "Failed obtaining dhcp address" $CMD_SOFT; return 1; }
