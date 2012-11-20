@@ -8,7 +8,7 @@ set -u
 CONFINE_RPC_DIR=/var/run/confine/rpc
 
 CONFINE_CONTAINER_NR_MIN_DEC=1
-CONFINE_CONTAINER_NR_MAX_DEC=125 # there are only 126 private IPs.  126 is the RD itself, 125 will be the dummy
+CONFINE_CONTAINER_NR_MAX_DEC=125 # there are only 126 private IPs.  126 is the RD itself
 
 CONFINE_VNET_PREFIX="slv"
 
@@ -100,66 +100,6 @@ confine_allocate_container() {
 }
 
 
-setup_dummy_container() {
-    
-    echo "$FUNCNAME $# $@" >&2
-    
-    confine_system_check
-
-    local NODE_ID=$( uci_get confine.node.id )
-    local DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state soft,quiet )
-
-    if ! [ "$DUMMY_STATE" ] ; then
-
-	confine_sliver_allocate ffffffffffff <<EOF || err $FUNCNAME "Failed allocating dummy"
-config sliver ffffffffffff
-    option user_pubkey     "$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep rsa )"
-    option exp_name        "confine-dummy"
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto none
-EOF
-
-	uci_set lxc.7d.remount='bin lib sbin usr'
-        uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "allocated" ] ; then
-
-	confine_sliver_deploy ffffffffffff <<EOF || err $FUNCNAME "Failed deploying dummy"
-config sliver ffffffffffff_$NODE_ID
-EOF
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "deployed" ] ; then
-
-	confine_sliver_start ffffffffffff || err $FUNCNAME "Failed starting dummy"
-    fi
-}
-
-
-ssh_dummy_container() {
-
-#    echo "$FUNCNAME $@" >&2
-    
-    local COMMAND="${1:-}"
-    local DUMMY_IP=$( uci_get confine-slivers.ffffffffffff.if00_ipv4 | awk -F'/' '{print $1}' )
-
-    if [ "$COMMAND" ]; then
-	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP ". /etc/profile; $@"
-    else
-	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP
-
-    fi
-}
 
 
 confine_allocate_dhcp_public_ipv4() {
@@ -646,8 +586,6 @@ confine_node_enable() {
 	
 	uci_set confine.node.state=started
 
-	setup_dummy_container
-	
 	confine.lib confine_info
 
 	return 0
@@ -1240,7 +1178,7 @@ confine_sliver_remove() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
-	if [ "$SLIVER_ARG" = "all" ] && [ "$SLICE_ID" = "ffffffffffff" ]; then
+	if [ "$SLIVER_ARG" = "all" ]; then
 	    continue
 	fi
 
