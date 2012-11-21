@@ -205,7 +205,7 @@ mrproper:
 	rm -rf "$(BUILD_DIR)" || true
 	rm -rf "$(OWRT_PKG_DIR)" || true
 	rm -rf "$(DOWNLOAD_DIR)" || true
-	rm -f .prepare || true
+	rm -f .prepared || true
 
 help:
 	@cat README
