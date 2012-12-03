@@ -129,11 +129,6 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/dropbear
-	$(INSTALL_DIR) $(1)/www/confine
-	$(INSTALL_DIR) $(1)/www/confine/api
-	$(INSTALL_DIR) $(1)/www/confine/api/node
-	$(INSTALL_DIR) $(1)/www/confine/api/slivers
-	$(INSTALL_DIR) $(1)/www/confine/api/templates
 	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
