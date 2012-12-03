@@ -1335,17 +1335,17 @@ vct_node_customize() {
 
 	touch $PREP_UCI/confine-defaults
 	uci_set confine-defaults.defaults=defaults                                               path=$PREP_UCI
-	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48     path=$PREP_UCI
-	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48   path=$PREP_UCI
+#	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48     path=$PREP_UCI
+#	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48   path=$PREP_UCI
 
 	touch $PREP_UCI/confine
 	uci_set confine.testbed=testbed                                                          path=$PREP_UCI
 	uci_set confine.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48               path=$PREP_UCI
-	uci_set confine.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16                      path=$PREP_UCI
-	uci_set confine.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24          path=$PREP_UCI
+#	uci_set confine.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16                      path=$PREP_UCI
+#	uci_set confine.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24          path=$PREP_UCI
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
-	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
+#	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
 	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
 
 	mkdir -p $PREP_ROOT/etc/tinc/confine/hosts/
@@ -1375,7 +1375,7 @@ EOF
 
 	uci_set confine.node=node                                                                path=$PREP_UCI
 	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
-	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
+#	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
 	uci_set confine.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16                              path=$PREP_UCI
 	uci_set confine.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24                  path=$PREP_UCI
 

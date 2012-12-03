@@ -356,7 +356,6 @@ confine_node_enable() {
 
 	if true && \
 	    [ "$VCRD_ID" ] && \
-	    [ "$SERVER_MGMT_PUBKEY" ] && \
 	    [ "$SERVER_MGMT_IPV6_PREFIX48" ] && \
 	    [ "$NODE_LOCAL_IFNAME" ] && \
 	    [ "$NODE_PRIV_IPV4_PREFIX24" ] && \
