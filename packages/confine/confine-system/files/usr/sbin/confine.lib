@@ -225,13 +225,14 @@ confine_tinc_stop() {
 
 	kill $TINC_PID
 
-	echo -n "wait till tinc cleaned up"
+	echo -n "wait till tinc cleaned up "
 	while [ $TINC_CNT -le $TINC_MAX ]; do
 	    sleep 1
 	    [ -x /proc/$TINC_PID ] || break
 	    TINC_CNT=$(( TINC_CNT + 1 ))
 	    echo -n "."
 	done
+	
 	echo
 
 	[ -x /proc/$TINC_PID ] && kill -9 $TINC_PID && \
@@ -253,6 +254,7 @@ confine_tinc_setup() {
     mkdir -p /etc/tinc/confine/hosts
 
     if ! [ -f /etc/tinc/confine/rsa_key.priv ]; then
+	 echo "no /etc/tinc/confine/rsa_key.priv" >&2
         cp /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
     fi
 
@@ -371,7 +373,7 @@ confine_node_enable() {
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		
 		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    cp /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		    mv /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
 		
 		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
