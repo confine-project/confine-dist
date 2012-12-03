@@ -23,6 +23,7 @@ local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=
 local json_pretty_print_tool   = "python -mjson.tool"
 
 
+null  = json.null
 
 
 function file_put( data, file, dir )
@@ -67,7 +68,7 @@ function file_get( file )
 	end
 	
 	local src = ltn12.source.file(fd)
-	local jsd = json.Decoder()
+	local jsd = json.Decoder(true)
 	
 	ltn12.pump.all(src, jsd:sink())
 
@@ -106,8 +107,8 @@ function http_get(url, base_uri, cert_file, cache)
 		assert(fd, "Failed to execute %s" %{ cmd })
 	
 		local src = ltn12.source.file(fd)
-		local jsd = json.Decoder()
-	
+		local jsd = json.Decoder(true)
+
 		ltn12.pump.all(src, jsd:sink())
 		local result = tree.copy_recursive_rebase_keys(jsd:get())
 		
@@ -135,7 +136,8 @@ function http_post(path, base_uri, data)
 	assert(fd, "Failed to execute %s" %{ cmd })
 
 	local src = ltn12.source.file(fd)
-	local jsd = json.Decoder()
+	local jsd = json.Decoder(true)
+
 
 	ltn12.pump.all(src, jsd:sink())
 

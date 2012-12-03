@@ -16,9 +16,12 @@ local data   = require "confine.data"
 local uci    = require "confine.uci"
 local tinc   = require "confine.tinc"
 local sliver = require "confine.sliver"
-
 local tools  = require "confine.tools"
-local dbg = tools.dbg
+
+local dbg    = tools.dbg
+local null   = data.null
+
+
 
 --table.foreach(sig, print)
 
@@ -213,7 +216,8 @@ local function get_system_conf()
 	sys_conf = conf
 
 	conf.id                    = tonumber((uci.getd("confine", "node", "id") or "x"), 16)
-	conf.uuid                  = ""
+	conf.uuid                  = null
+	conf.cert		   = null  -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
 	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
 
@@ -340,7 +344,7 @@ local function get_local_node_sliver_pub_ipv4 ()
 --	util.dumptable(sys_conf.uci.slivers)
 
 	local sliver_pub_ipv4 = sys_conf.sliver_pub_ipv4
-	local sliver_pub_ipv4_range = ""
+	local sliver_pub_ipv4_range = null
 	local sliver_pub_ipv4_avail = sys_conf.sl_pub_ipv4_total
 	
 	if sys_conf.sliver_pub_ipv4 == "static" and type(sys_conf.sl_pub_ipv4_addrs) == "string" then
@@ -385,7 +389,7 @@ local function get_local_node( cached_node )
 	node.id                    = sys_conf.id
 	node.uuid                  = sys_conf.uuid
 	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),RSA_HEADER,RSA_TRAILER)
-	node.cert                  = "" -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
+	node.cert                  = sys_conf.cert
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	node.local_iface           = sys_conf.local_iface
@@ -490,9 +494,9 @@ local function get_server_node()
 	
 	local node = data.http_get("/nodes/%d" % sys_conf.id, sys_conf.server_base_uri ,cert_file, cache)
 	assert(node, "Unable to retrieve node.id=%s" %sys_conf.id)
-	
+
 	get_local_group(node, cert_file, cache)
-			
+
 	node.local_slivers = { }
 	
 	local sliver_idx, sliver_uri
@@ -507,14 +511,14 @@ local function get_server_node()
 		assert(slice_obj and slice_id, "Unable to retrieve referenced slice_url=%s" %sliver_obj.slice.uri )
 		sliver_obj.local_slice = slice_obj
 
-		if sliver_obj.template and sliver_obj.template.uri then
+		if type(sliver_obj.template)=="table" and sliver_obj.template.uri then
 			
 			local template_obj = data.http_get(sliver_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			assert(template_obj, "Unable to retrieve referenced template_url=%s" %sliver_obj.template.uri)
 
 			sliver_obj.local_template = template_obj
 			
-		elseif slice_obj.template and slice_obj.template.uri then
+		elseif type(slice_obj.template)=="table" and slice_obj.template.uri then
 			
 			local template_obj = data.http_get(slice_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			assert(template_obj, "Unable to retrieve referenced template_url=%s" %slice_obj.template.uri)
@@ -527,7 +531,7 @@ local function get_server_node()
 	end
 	
 	luci.util.dumptable(node)
-		
+
 	return node
 end
 
@@ -535,19 +539,17 @@ end
 
 
 local function upd_node_rest_conf( node )
-	
 
 	data.file_put(tree.filter(node_rules, node), "index.html", node_rest_node_dir)	
 	
 	pcall(nixio.fs.remover, node_rest_templates_dir)
 	data.file_put(get_local_templates(node), nil, node_rest_templates_dir)
-	
 
 	pcall(nixio.fs.remover, node_rest_slivers_dir)
 	data.file_put(tree.filter(filter_slivers_out_rules, node.local_slivers), nil, node_rest_slivers_dir)
-	
-	
+
 	local base = get_local_base( node )
+
 	data.file_put(base, "index.html", node_rest_base_dir)
 
 end
