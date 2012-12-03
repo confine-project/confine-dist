@@ -118,7 +118,7 @@ confine_allocate_dhcp_public_ipv4() {
 	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
 
 
-    ip link show $DHCP_IF > /dev/null || \
+    ip link show $DHCP_IF > /dev/null 2>&1 || \
 	ip link add link br-local dev $DHCP_IF type macvlan
     
     ip link set $DHCP_IF down
