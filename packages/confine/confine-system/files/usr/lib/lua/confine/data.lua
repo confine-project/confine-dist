@@ -15,6 +15,7 @@ local ltn12  = require "luci.ltn12"
 local http   = require "luci.http.protocol"
 local tools  = require "confine.tools"
 local tree   = require "confine.tree"
+
 local dbg    = tools.dbg
 
 local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O- %q"
@@ -22,8 +23,17 @@ local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=
 
 local json_pretty_print_tool   = "python -mjson.tool"
 
+null = json.null
 
-null  = json.null
+function val2string(val)
+	if val == nil then
+		return "ERROR"
+	elseif val==null then
+		return "null"
+	else
+		return tostring(val)
+	end
+end
 
 
 function file_put( data, file, dir )

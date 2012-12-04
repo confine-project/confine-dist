@@ -3,23 +3,25 @@
 -- SERVER_URI=nil eg:"https://controller.confine-project.eu/api"
 -- COUNT=0
 
-local util   = require "luci.util"
-local nixio  = require "nixio"
-local lmo    = require "lmo"
-local socket = require "socket"
-local sig    = require "signal"
-local lsys   = require "luci.sys"
+local util    = require "luci.util"
+local nixio   = require "nixio"
+local lmo     = require "lmo"
+local socket  = require "socket"
+local sig     = require "signal"
+local lsys    = require "luci.sys"
 
 
-local tree   = require "confine.tree"
-local data   = require "confine.data"
-local uci    = require "confine.uci"
-local tinc   = require "confine.tinc"
-local sliver = require "confine.sliver"
-local tools  = require "confine.tools"
+local tree    = require "confine.tree"
+local data    = require "confine.data"
+local uci     = require "confine.uci"
+local tinc    = require "confine.tinc"
+local sliver  = require "confine.sliver"
+local ssh     = require "confine.ssh"
+local tools   = require "confine.tools"
 
-local dbg    = tools.dbg
-local null   = data.null
+local dbg     = tools.dbg
+
+local null    = data.null
 
 
 
@@ -107,8 +109,10 @@ local node_rules = {}
 	table.insert(node_rules, {["/sliver_mac_prefix"]		= "CB_SET_SYS+SLIVERS"})	
 	
 	
+	table.insert(node_rules, {["/local_group"]			= "CB_NOP"})
+	table.insert(node_rules, {["/local_group/[^/]+"]		= "CB_SET_LOCAL_GROUP"})
 	table.insert(node_rules, {["/group"]				= "CB_NOP"})
-	table.insert(node_rules, {["/group/uri"]			= "CB_NOP"})
+	table.insert(node_rules, {["/group/uri"]			= "CB_SET_GROUP"})
 	
 	table.insert(node_rules, {["/boot_sn"] 				= "CB_BOOT_SN"})
 	table.insert(node_rules, {["/set_state"]			= "CB_COPY"})
@@ -417,11 +421,11 @@ local function get_local_node( cached_node )
 	
 	node.tinc		   = tinc.get(sys_conf, cached_node.tinc)
 	
-	node.group                 = cached_node.group  or {}
 	node.local_group           = cached_node.local_group  or {}
+	node.group                 = {} --always recreated based on local_group
 	
-	node.slivers               = cached_node.slivers  or {}
 	node.local_slivers	   = cached_node.local_slivers  or {}
+	node.slivers               = {} --always recreated based on local_slivers
 	
 	return node
 end
@@ -530,7 +534,7 @@ local function get_server_node()
 		
 	end
 	
-	luci.util.dumptable(node)
+	tree.dump(node.local_group)
 
 	return node
 end
@@ -582,21 +586,20 @@ end
 
 
 
+
 local function cb(sys_conf, action, task, cb_tasks, out_node, path, key, oldval, newval )
 
 	local finval ="???"
 
 	dbg("%s %-22s %-40s %s => %s", action, task, path..key,
-	(oldval and tostring(oldval) or ""):gsub("\n",""):sub(1,30),
-	(newval and tostring(newval) or ""):gsub("\n",""):sub(1,30))
+	data.val2string(oldval):gsub("\n",""):sub(1,30), data.val2string(newval):gsub("\n",""):sub(1,30))
 
 	if cb_tasks[task] then
 		
 		finval = cb_tasks[task](sys_conf, action, out_node, path, key, oldval, newval)
 		
 		if task ~= "CB_NOP" and task ~= "CB_COPY" then			
-			dbg("%s %-22s %-40s   ===> %s", action, task, path..key,
-			    (finval and tostring(finval) or "ERROR"):gsub("\n",""):sub(1,30))
+			dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
 		end
 		
 	else

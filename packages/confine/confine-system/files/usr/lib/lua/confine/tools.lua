@@ -4,10 +4,11 @@
 
 ]]--
 
---- CONFINE data io library.
+--- CONFINE tools library.
 module( "confine.tools", package.seeall )
 
 local lucifs = require "luci.fs"
+
 
 function dbg(fmt, ...)
 	local t = nixio.times()

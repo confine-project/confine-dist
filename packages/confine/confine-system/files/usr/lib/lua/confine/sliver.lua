@@ -4,7 +4,7 @@
 
 ]]--
 
---- CONFINE Tree traversal library.
+--- CONFINE sliver library.
 module( "confine.sliver", package.seeall )
 
 
@@ -16,4 +16,3 @@ local dbg    = tools.dbg
 function cb_remove_slivers( sys_conf, action, out_node, path, key, oldval, newval )
 	dbg("cb_remove_slivers()... (TBD)")
 end
-
