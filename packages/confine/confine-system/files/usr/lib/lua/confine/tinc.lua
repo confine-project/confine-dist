@@ -31,7 +31,7 @@ function get_connects (sys_conf)
 			
 		if file ~= node_name then
 			
-			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..file )			
+			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..file )
 			
 			local subnet = content and tools.subfind(content,"Subnet","\n")
 			

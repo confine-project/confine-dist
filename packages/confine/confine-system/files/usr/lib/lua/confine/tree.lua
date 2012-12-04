@@ -57,6 +57,11 @@ function get_key(obj, def)
 			local base_key,index_key = get_url_keys(obj.uri)
 			return index_key
 			
+		elseif obj.user and obj.user.uri then
+			
+			local base_key,index_key = get_url_keys(obj.user.uri)
+			return index_key
+			
 		elseif obj.name then
 			return obj.name
 		
@@ -126,7 +131,6 @@ function filter(rules, tree, new_tree, path)
 	
 		local pattern = util.keys(pv)[1]
 		local task    = pv[pattern]
-				
 
 		local k,v
 		for k,v in pairs(tree) do
@@ -148,14 +152,12 @@ end
 
 function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 
-
 	local tmp = {}
 	local changed = false
 
 	if not path then path = "/" end
-	
-	
-	local pk, pv
+		
+	local pk,pv
 	for pk,pv in ipairs(rules) do
 	
 		local pattern = util.keys(pv)[1]
@@ -183,7 +185,7 @@ function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 		end
 	
 		local new_key, new_obj
-		for new_key, new_obj in pairs(new) do
+		for new_key, new_obj in pairs(new or {}) do
 			if type(task) == "string" and (path..new_key):match("^%s$" % pattern) then
 				if tmp[new_key] == nil then
 					--dbg("%s %s (%s; %s) got added", curpath, v[1], k, tostring(v[2]))
