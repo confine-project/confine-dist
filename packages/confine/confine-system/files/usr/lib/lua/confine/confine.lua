@@ -75,7 +75,7 @@ end
 
 local function upd_node_rest_conf( sys_conf, node )
 
-	data.file_put(tree.filter(rules.node_rules, node), "index.html", node_rest_node_dir)	
+	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", node_rest_node_dir)	
 	
 	pcall(nixio.fs.remover, node_rest_templates_dir)
 	data.file_put(get_local_templates(sys_conf, node), nil, node_rest_templates_dir)
@@ -97,29 +97,26 @@ end
 
 local function cb(sys_conf, action, task, cb_tasks, out_node, path, key, oldval, newval )
 
-	local finval ="???"
-
 	dbg("%s %-22s %-40s %s => %s", action, task, path..key,
 		data.val2string(oldval or null):gsub("\n",""):sub(1,30),
 		data.val2string(newval or null):gsub("\n",""):sub(1,30))
 
 	if cb_tasks[task] then
 		
-		finval = cb_tasks[task](sys_conf, action, out_node, path, key, oldval, newval)
+		local finval = cb_tasks[task](sys_conf, action, out_node, path, key, oldval, newval)
 		
-		if task ~= "CB_NOP" and task ~= "CB_COPY" then			
-			dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
+		if finval ~= nil then
+			
+			if task ~= "CB_NOP" and task ~= "CB_COPY" then			
+				dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
+			end
+		else
+			node.set_node_state( out_node, node.STATE.setup )
 		end
 		
 	else
 		dbg("cb() undefined cb_task=%s", task)
-	end
-	
-	if not finval then
-		node.set_node_state( out_node, node.STATE.setup )
-	end
-
-	
+	end	
 	
 --	assert(sliver_obj.local_template.local_arch == own_node_arch,
 --       "Sliver_arch=%q does not match local_arch=%q!"
@@ -165,7 +162,7 @@ while true do
 			--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
 		
 			dbg("comparing states...")
-			tree.process(cb, sys_conf, rules.dflt_cb_tasks, local_node, rules.node_rules, local_node, server_node )
+			tree.process(cb, sys_conf, rules.dflt_cb_tasks, local_node, rules.node_in_rules, local_node, server_node )
 		else
 			dbg("ERROR: "..tostring(server_node))
 		end

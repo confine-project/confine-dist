@@ -102,8 +102,9 @@ function get_node_local_group(sys_conf)
 				
 			else
 				del_ssh_keys(sys_conf)
-				group.user_roles = {}
-				break
+				return data.null
+				--group.user_roles = {}
+				--break
 			end
 		end
 	end

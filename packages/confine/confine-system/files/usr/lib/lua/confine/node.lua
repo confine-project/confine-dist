@@ -142,7 +142,7 @@ function get_local_node( sys_conf, cached_node )
 	node.tinc		   = tinc.get(sys_conf, cached_node.tinc)
 	
 	node.local_group           = ssh.get_node_local_group(sys_conf)
-	node.group                 = ssh.get_node_group(sys_conf, node.local_group)
+	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
 	
 	node.local_slivers	   = cached_node.local_slivers  or {}
 	node.slivers               = {} --always recreated based on local_slivers

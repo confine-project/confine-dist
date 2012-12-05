@@ -13,6 +13,7 @@ local tools  = require "confine.tools"
 local data   = require "confine.data"
 local dbg    = tools.dbg
 
+
 function get_url_keys( url )
 	local api_first, api_last = url:find("/api")
 	local full_key = api_last and url:sub(api_last+1) or url
@@ -270,5 +271,26 @@ function set_path_val ( action, tree, path, key, oldval, newval)
 		assert( false )
 	end
 	
-	return newval or ""
+	return newval or data.null
+end
+
+
+function get_path_val ( tree, path, key)
+
+	assert( type(tree)=="table" and type(path)=="string" and (type(key)=="number" or type(key)=="string") ,"")
+
+	if path ~= "/" then
+
+		local root_key = tools.subfind(path,"^/","/"):gsub("/","")
+		assert(root_key)
+		return get_path_val ( tree[root_key], path:gsub("^/"..root_key,""), key)
+
+	elseif tree[key] then
+		
+		return tree[key]
+	
+	else
+		
+		return data.null
+	end
 end

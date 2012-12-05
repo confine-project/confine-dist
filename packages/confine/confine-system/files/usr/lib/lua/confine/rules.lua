@@ -19,71 +19,129 @@ local node    = require "confine.node"
 local system  = require "confine.system"
 
 
+local tmp_rules
 
+node_in_rules = {}
+tmp_rules = node_in_rules
+	table.insert(tmp_rules, {["/description"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/properties"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/properties/[^/]+"]			= "CB_COPY"})
+--	table.insert(tmp_rules, {["/properties/[^/]+/[^/]+"]		= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/cn/app_url"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn/cndb_cached_on"]			= "CB_COPY"})
 
-node_rules = {}
-	table.insert(node_rules, {["/description"]			= "CB_COPY"})
-	table.insert(node_rules, {["/properties"]			= "CB_NOP"})
-	table.insert(node_rules, {["/properties/[^/]+"]			= "CB_COPY"})
---	table.insert(node_rules, {["/properties/[^/]+/[^/]+"]		= "CB_COPY"})
-	table.insert(node_rules, {["/cn"]				= "CB_NOP"})
-	table.insert(node_rules, {["/cn/app_url"]			= "CB_COPY"})
-	table.insert(node_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
-	table.insert(node_rules, {["/cn/cndb_cached_on"]		= "CB_COPY"})
+	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/uuid"]				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/pubkey"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/cert"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/arch"]				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/local_iface"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv6"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv4"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv4_range"]		= "CB_SETUP"})
 
-	table.insert(node_rules, {["/uri"]				= "CB_NOP"})
-	table.insert(node_rules, {["/id"] 				= "CB_SETUP"})
-	table.insert(node_rules, {["/uuid"]				= "CB_SETUP"})
-	table.insert(node_rules, {["/pubkey"] 				= "CB_SETUP"})
-	table.insert(node_rules, {["/cert"] 				= "CB_SETUP"})
-	table.insert(node_rules, {["/arch"]				= "CB_SETUP"})
-	table.insert(node_rules, {["/local_iface"]			= "CB_SETUP"})
-	table.insert(node_rules, {["/sliver_pub_ipv6"]			= "CB_SETUP"})
-	table.insert(node_rules, {["/sliver_pub_ipv4"]			= "CB_SETUP"})
-	table.insert(node_rules, {["/sliver_pub_ipv4_range"]		= "CB_SETUP"})
+	table.insert(tmp_rules, {["/tinc"] 				= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/name"] 			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/tinc/pubkey"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/tinc/island"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/tinc/island/uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/tinc/connect_to"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_RECONF_TINC"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/port"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/pubkey"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/name"] 	= "CB_NOP"})
 
-	table.insert(node_rules, {["/tinc"] 				= "CB_NOP"})
-	table.insert(node_rules, {["/tinc/name"] 			= "CB_SETUP"})
-	table.insert(node_rules, {["/tinc/pubkey"]			= "CB_SETUP"})
-	table.insert(node_rules, {["/tinc/island"]			= "CB_COPY"})
-	table.insert(node_rules, {["/tinc/island/uri"]			= "CB_COPY"})
-	table.insert(node_rules, {["/tinc/connect_to"]			= "CB_NOP"})
-	table.insert(node_rules, {["/tinc/connect_to/[^/]+"]		= "CB_RECONF_TINC"})
-	table.insert(node_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})
-	table.insert(node_rules, {["/tinc/connect_to/[^/]+/port"] 	= "CB_NOP"})
-	table.insert(node_rules, {["/tinc/connect_to/[^/]+/pubkey"] 	= "CB_NOP"})
-	table.insert(node_rules, {["/tinc/connect_to/[^/]+/name"] 	= "CB_NOP"})
-
-	table.insert(node_rules, {["/priv_ipv4_prefix"]			= "CB_SET_SYS+REBOOT"})
-	table.insert(node_rules, {["/direct_ifaces/[^/]+"]		= "CB_NOP"})
-	table.insert(node_rules, {["/direct_ifaces"]			= "CB_SET_SYS+SLIVERS"})
-	table.insert(node_rules, {["/sliver_mac_prefix"]		= "CB_SET_SYS+SLIVERS"})	
+	table.insert(tmp_rules, {["/priv_ipv4_prefix"]			= "CB_SET_SYS+REBOOT"})
+	table.insert(tmp_rules, {["/direct_ifaces/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/direct_ifaces"]			= "CB_SET_SYS+SLIVERS"})
+	table.insert(tmp_rules, {["/sliver_mac_prefix"]			= "CB_SET_SYS+SLIVERS"})	
 	
 	
-	table.insert(node_rules, {["/local_group"]						= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles"]					= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+"]		 		= "CB_SET_LOCAL_GROUP_ROLE"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+/is_technician"]		= "CB_NOP"})
---	table.insert(node_rules, {["/local_group/user_roles/[^/]+/user"]	  		= "CB_NOP"})
---	table.insert(node_rules, {["/local_group/user_roles/[^/]+/user/uri"]			= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+/local_user"] 	   		= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+/local_user/is_active"]	= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+/local_user/auth_tokens"]	= "CB_NOP"})
-	table.insert(node_rules, {["/local_group/user_roles/[^/]+/local_user/auth_tokens/[^/]+"]= "CB_NOP"})
-	table.insert(node_rules, {["/group"]							= "CB_NOP"})
-	table.insert(node_rules, {["/group/uri"]						= "CB_SET_GROUP"})
+	table.insert(tmp_rules, {["/local_group"]						= "CB_GET_LOCAL_GROUP"})
+	table.insert(tmp_rules, {["/local_group/user_roles"]					= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+"]		 		= "CB_SET_LOCAL_GROUP_ROLE"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/is_technician"]		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/user"]		  		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/user/uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/local_user"] 	   		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/local_user/is_active"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/local_user/auth_tokens"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/local_user/auth_tokens/[^/]+"]	= "CB_NOP"})
 	
-	table.insert(node_rules, {["/boot_sn"] 				= "CB_BOOT_SN"})
-	table.insert(node_rules, {["/set_state"]			= "CB_COPY"})
-	table.insert(node_rules, {["/state"]				= "CB_SET_STATE"})
-	table.insert(node_rules, {["/soft_version"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/group"]				= "CB_SET_GROUP"})
+	table.insert(tmp_rules, {["/group/uri"]				= "CB_NOP"})
 	
-	table.insert(node_rules, {["/slivers"]				= "CB_NOP"})
-	table.insert(node_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
-	table.insert(node_rules, {["/slivers/[^/]+/uri"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_BOOT_SN"})
+	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
+	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
 
-	table.insert(node_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
-	table.insert(node_rules, {["/dbg_iteration"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/dbg_iteration"]			= "CB_NOP"})
+
+
+
+node_out_filter = {}
+tmp_rules = node_out_filter
+	table.insert(tmp_rules, {["/description"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/properties"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/properties/[^/]+"]			= "CB_COPY"})
+--	table.insert(tmp_rules, {["/properties/[^/]+/[^/]+"]		= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/cn/app_url"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/cn/cndb_cached_on"]			= "CB_COPY"})
+
+	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/uuid"]				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/pubkey"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/cert"] 				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/arch"]				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/local_iface"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv6"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv4"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/sliver_pub_ipv4_range"]		= "CB_SETUP"})
+
+	table.insert(tmp_rules, {["/tinc"] 				= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/name"] 			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/tinc/pubkey"]			= "CB_SETUP"})
+	table.insert(tmp_rules, {["/tinc/island"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/tinc/island/uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/tinc/connect_to"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_RECONF_TINC"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/port"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/pubkey"] 	= "CB_NOP"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/name"] 	= "CB_NOP"})
+
+	table.insert(tmp_rules, {["/priv_ipv4_prefix"]			= "CB_SET_SYS+REBOOT"})
+	table.insert(tmp_rules, {["/direct_ifaces/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/direct_ifaces"]			= "CB_SET_SYS+SLIVERS"})
+	table.insert(tmp_rules, {["/sliver_mac_prefix"]			= "CB_SET_SYS+SLIVERS"})	
+	
+	table.insert(tmp_rules, {["/group"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/group/uri"]				= "CB_SET_GROUP"})
+	
+	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_BOOT_SN"})
+	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
+	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
+
+	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/dbg_iteration"]			= "CB_NOP"})
 
 
 --local node_rules = {
@@ -120,18 +178,6 @@ node_rules = {}
 --}
 
 
-node_out_rules = {
-	--["/"] = {
-	--  "uri", "id", "uuid", "pubkey", "cert", "description", "arch", "local_iface",
-	--  "priv_ipv4_prefix", "sliver_mac_prefix", "sliver_pub_ipv6",
-	--  "sliver_pub_ipv4", "sliver_pub_ipv4_range", "sliver_pub_ipv4_avail",
-	--  "soft_version", "boot_sn", "set_state", "state",
-	--  "direct_ifaces", "properties", "cn", "tinc", "admin", "slivers" },
-	--["/description"] = "ALL",
-	--["/tinc"] = "ALL",
-	--["/tinc/connect_to"] = "ALL",
-	--["/tinc/connect_to/[^/]+"] = "ALL",
-}
 
 slivers_out_rules = {
 ----	["/"] = {"[%d]+[-][%d]+"},
@@ -178,11 +224,20 @@ dflt_cb_tasks = {
 					return tinc.cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
 				end,
 
+	["CB_GET_LOCAL_GROUP"]= function( sys_conf, action, out_node, path, key, oldval, newval )
+					out_node.local_group = ssh.get_node_local_group(sys_conf)
+					return out_node.local_group
+				end,
 	["CB_SET_LOCAL_GROUP_ROLE"]= function( sys_conf, action, out_node, path, key, oldval, newval )
 					return ssh.cb_set_local_group_role( sys_conf, action, out_node, path, key, oldval, newval )
 				end,
 	["CB_SET_GROUP"]    	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					return ssh.cb_set_group( sys_conf, action, out_node, path, key, oldval, newval )
+					if type(out_node.local_group)=="table" and out_node.local_group.user_roles then
+						return tree.set_path_val( action, out_node, path, key, oldval, newval)
+					else
+						out_node.group = null
+						return out_node.group
+					end
 				end,
 				
 	["CB_SET_SYS+REBOOT"]	= function( sys_conf, action, out_node, path, key, oldval, newval )
