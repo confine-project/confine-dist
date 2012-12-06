@@ -8,7 +8,6 @@
 --- CONFINE processing rules.
 module( "confine.rules", package.seeall )
 
-local nixio   = require "nixio"
 
 local tree    = require "confine.tree"
 local tools   = require "confine.tools"
@@ -34,7 +33,7 @@ tmp_rules = node_in_rules
 
 	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
-	table.insert(tmp_rules, {["/uuid"]				= "CB_SETUP"})
+	table.insert(tmp_rules, {["/uuid"]				= "CB_SET_UUID"})
 	table.insert(tmp_rules, {["/pubkey"] 				= "CB_SETUP"})
 	table.insert(tmp_rules, {["/cert"] 				= "CB_SETUP"})
 	table.insert(tmp_rules, {["/arch"]				= "CB_SETUP"})
@@ -75,7 +74,7 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/group"]				= "CB_SET_GROUP"})
 	table.insert(tmp_rules, {["/group/uri"]				= "CB_NOP"})
 	
-	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_BOOT_SN"})
+	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_SET_BOOT_SN"})
 	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
 	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
 	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
@@ -85,7 +84,6 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
 
 	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
-	table.insert(tmp_rules, {["/dbg_iteration"]			= "CB_NOP"})
 
 
 
@@ -141,7 +139,6 @@ tmp_rules = node_out_filter
 	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
 
 	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
---	table.insert(tmp_rules, {["/dbg_iteration"]			= "CB_NOP"})
 
 
 --local node_rules = {
@@ -193,30 +190,30 @@ slivers_out_rules = {
 
 dflt_cb_tasks = {
 	["CB_NOP"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					return oldval or ""
+					return oldval or null
 				end,
 	["CB_FAILURE"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					node.set_node_state( out_node, node.STATE.failure )
+					node.set_node_state( sys_conf, out_node, node.STATE.failure )
 					return oldval
 				end,
 	["CB_SETUP"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					node.set_node_state( out_node, node.STATE.setup )
+					node.set_node_state( sys_conf, out_node, node.STATE.setup )
 					return oldval
 				end,
 	["CB_SET_STATE"]      	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					return node.set_node_state( out_node, out_node.set_state )
+					return node.set_node_state( sys_conf, out_node, out_node.set_state )
 				end,
 	["CB_COPY"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
 					return tree.set_path_val( action, out_node, path, key, oldval, newval)
 				end,
-	["CB_BOOT_SN"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
-					if key == "boot_sn" and system.set_system_conf( sys_conf, key, newval) then
-						dbg("rebooting...")
-						tools.sleep(2)
-						os.execute("reboot")
-						nixio.kill(nixio.getpid(),sig.SIGKILL)
-					else
-						node.set_node_state( out_node, node.STATE.safe )
+	["CB_SET_BOOT_SN"]     	= function( sys_conf, action, out_node, path, key, oldval, newval )
+					if path=="/" and key=="boot_sn" and system.set_system_conf( sys_conf, key, newval) then
+						system.reboot()
+					end
+				end,
+	["CB_SET_UUID"]     	= function( sys_conf, action, out_node, path, key, oldval, newval )
+					if path=="/" and key=="uuid" and system.set_system_conf( sys_conf, key, newval) then
+						return tree.set_path_val( action, out_node, path, key, oldval, newval)
 					end
 				end,
 				

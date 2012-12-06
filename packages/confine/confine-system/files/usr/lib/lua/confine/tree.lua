@@ -25,17 +25,24 @@ function get_url_keys( url )
 end
 
 
-function dump( tree, maxdepth, spaces )
+function as_string( tree, maxdepth, spaces )
 --	luci.util.dumptable(obj):gsub("%s"%tostring(data.null),"null")
 	if not spaces then spaces = "" end
-
+	local result = ""
 	local k,v
 	for k,v in pairs(tree) do
-		print(spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or""))
+			
+		result = spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
+		
 		if type(v) == "table" then
-			dump(v, maxdepth, spaces.."    ")
+			result = result .. as_string(v, maxdepth, spaces.."    ")
 		end
 	end
+	return result
+end
+
+function dump( tree, maxdepth, spaces )
+	print( as_string( tree, maxdepth, spaces) )
 end
 
 function get_key(obj, def)

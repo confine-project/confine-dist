@@ -84,8 +84,6 @@ function get_node_local_group(sys_conf)
 			
 			if tonumber(id) and user_key and user_key:find("^%s"%SSH_HEADER) then
 				
-				dbg("got confine key")
-				
 				if not group.user_roles[id] then
 					group.user_roles[id] = {}
 					group.user_roles[id].local_user = {}
@@ -113,13 +111,13 @@ function get_node_local_group(sys_conf)
 	return group
 end
 
-function get_node_group(sys_conf, local_group)
-	local group = {}
-	if local_group.id then
-		group.uri = sys_conf.server_base_uri.."/groups/"..local_group.id
-	end
-	return group
-end
+--function get_node_group(sys_conf, local_group)
+--	local group = {}
+--	if local_group.id then
+--		group.uri = sys_conf.server_base_uri.."/groups/"..local_group.id
+--	end
+--	return group
+--end
 
 
 
@@ -190,10 +188,10 @@ function cb_set_local_group_role( sys_conf, action, out_node, path, user_id, old
 end
 
 
-function cb_set_group( sys_conf, action, out_node, path, key, oldval, newval )
-	
-	out_node.group.uri = get_node_group(sys_conf, out_node.local_group)
-	
-	return out_node.group
-end
+--function cb_set_group( sys_conf, action, out_node, path, key, oldval, newval )
+--	
+--	out_node.group.uri = get_node_group(sys_conf, out_node.local_group)
+--	
+--	return out_node.group
+--end
 

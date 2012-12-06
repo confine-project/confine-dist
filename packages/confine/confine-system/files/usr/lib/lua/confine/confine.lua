@@ -31,20 +31,12 @@ local require_server_cert = false
 local require_node_cert   = false
 
 
-local node_cache_file          = "/tmp/confine.cache"
-	
-local node_www_dir             = "/www/confine"
-local node_rest_confine_dir    = "/tmp/confine"
-local node_rest_base_dir       = node_rest_confine_dir.."/api/"
-local node_rest_node_dir       = node_rest_confine_dir.."/api/node/"
-local node_rest_slivers_dir    = node_rest_confine_dir.."/api/slivers/"
-local node_rest_templates_dir  = node_rest_confine_dir.."/api/templates/"
 
 local RSA_HEADER               = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
 local RSA_TRAILER              = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
 
 
-local count = tonumber(lsys.getenv("COUNT")) or 0
+--local count = tonumber(lsys.getenv("COUNT")) or 0
 
 
 
@@ -75,17 +67,17 @@ end
 
 local function upd_node_rest_conf( sys_conf, node )
 
-	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", node_rest_node_dir)	
+	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", system.rest_node_dir)	
 	
-	pcall(nixio.fs.remover, node_rest_templates_dir)
-	data.file_put(get_local_templates(sys_conf, node), nil, node_rest_templates_dir)
+	pcall(nixio.fs.remover, system.rest_templates_dir)
+	data.file_put(get_local_templates(sys_conf, node), nil, system.rest_templates_dir)
 
-	pcall(nixio.fs.remover, node_rest_slivers_dir)
-	data.file_put(tree.filter(rules.slivers_out_rules, node.local_slivers), nil, node_rest_slivers_dir)
+	pcall(nixio.fs.remover, system.rest_slivers_dir)
+	data.file_put(tree.filter(rules.slivers_out_rules, node.local_slivers), nil, system.rest_slivers_dir)
 
 	local base = get_local_base( sys_conf, node )
 
-	data.file_put(base, "index.html", node_rest_base_dir)
+	data.file_put(base, "index.html", system.rest_base_dir)
 
 end
 
@@ -105,13 +97,12 @@ local function cb(sys_conf, action, task, cb_tasks, out_node, path, key, oldval,
 		
 		local finval = cb_tasks[task](sys_conf, action, out_node, path, key, oldval, newval)
 		
-		if finval ~= nil then
-			
-			if task ~= "CB_NOP" and task ~= "CB_COPY" then			
-				dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
-			end
-		else
-			node.set_node_state( out_node, node.STATE.setup )
+		if task ~= "CB_NOP" and task ~= "CB_COPY" then			
+			dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
+		end
+
+		if finval == nil then
+			node.set_node_state( sys_conf, out_node, node.STATE.setup )
 		end
 		
 	else
@@ -126,7 +117,69 @@ end
 
 
 
+function main_loop( )
+	local sys_conf
+	local local_node
+	local iteration = 1
+	
+	while true do
+		local success = true
+		local err_msg = nil
 
+		dbg("updating...")
+
+		dbg("getting system conf...")
+		sys_conf = system.get_system_conf(sys_conf, arg)
+		assert(sys_conf)
+		
+		dbg("getting local node...")
+		local_node = node.get_local_node(sys_conf, local_node)
+		assert(local_node)
+
+		dbg("getting server node...")
+		local server_node
+		if( sys_conf.debug ) then
+			server_node = server.get_server_node(sys_conf)
+		else
+			success,server_node = pcall( server.get_server_node, sys_conf )
+			err_msg = (not success) and server_node or nil
+		end
+	
+	
+		if success and server_node then
+			--util.dumptable(server_node)
+			--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
+		
+			dbg("processing input")
+			if( sys_conf.debug ) then
+				tree.process( cb, sys_conf, rules.dflt_cb_tasks, local_node, rules.node_in_rules, local_node, server_node )
+			else
+				success,err_msg = pcall(
+				tree.process, cb, sys_conf, rules.dflt_cb_tasks, local_node, rules.node_in_rules, local_node, server_node )
+			end
+		end
+		
+		if not success then
+			msg = "ERROR: "..((type(err_msg)=="string" and err_msg) or (type(err_msg)=="table" and tree.as_string(err_msg)) or tostring(err_msg) )
+			local_node.error = { message = msg, errors = null }
+		end
+			
+		upd_node_rest_conf( sys_conf, local_node )
+		data.file_put( local_node, system.cache_file )
+		
+		dbg("count=%d i=%d" %{sys_conf.count, iteration})
+		if sys_conf.count==0 or sys_conf.count > iteration then
+			iteration = iteration + 1
+		else
+			break
+		end
+		
+		tools.sleep(sys_conf.interval)
+		if tools.stop then break end
+		
+		dbg("next iteration=%d...",iteration)
+	end	
+end
 
 
 
@@ -138,49 +191,28 @@ math.randomseed( os.time() )
 sig.signal(sig.SIGINT,  tools.handler)
 sig.signal(sig.SIGTERM, tools.handler)
 
-os.remove( node_cache_file )
+os.remove( system.cache_file )
 
-tools.mkdirr( node_rest_confine_dir)
-nixio.fs.symlink( node_rest_confine_dir, node_www_dir )
+tools.mkdirr( system.rest_confine_dir)
+nixio.fs.symlink( system.rest_confine_dir, system.www_dir )
 
-local local_node
 
-while true do
-	dbg("get_system_conf...")
-	local sys_conf = system.get_system_conf()
-	
-	if sys_conf then
-		dbg("updating...")	
-	
-		local_node = node.get_local_node(sys_conf, local_node)
 
-		--local se,server_node= pcall(server.get_server_node(sys_conf)		
-		--if se then
-		local server_node = server.get_server_node(sys_conf)
-		if server_node then
-			--util.dumptable(server_node)
-			--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
-		
-			dbg("comparing states...")
-			tree.process(cb, sys_conf, rules.dflt_cb_tasks, local_node, rules.node_in_rules, local_node, server_node )
-		else
-			dbg("ERROR: "..tostring(server_node))
-		end
-		
-		upd_node_rest_conf( sys_conf, local_node )
-		data.file_put( local_node, node_cache_file )
-	end
-	
-	if count == 1 then
-		break
-	elseif count > 1 then
-		count = count - 1
-	end
-	
-	tools.sleep(5)
-	if tools.stop then break end
 
-	dbg("next iteration=%d...",local_node.dbg_iteration + 1)
-end	
+--local k,o
+--for k,o in ipairs(arg) do
+--	dbg(k..": ".. o)
+--end
+
+main_loop()
 
 dbg("goodbye")
+
+--local k,j
+--for  k,j in pairs({{null},{false},{nil},{0},{""}}) do
+--	local v = j[1]
+--	print("type=%-8s val=%-20s NOTval=%-8s equalNil=%-8s unequalNil=%-8s"
+--	      %{ type(v), tostring(v), tostring(not v), tostring(v==nil), tostring(v~=nil) })
+--end
+
+

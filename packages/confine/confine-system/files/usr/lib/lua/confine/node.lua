@@ -38,23 +38,28 @@ local function get_node_state ( sys_conf, cached_node )
 end
 
 
-function set_node_state( node, val)
+function set_node_state( sys_conf, node, val)
 
-	if (not STATE[val]) then
-		node.state = STATE.failure
-		
-	elseif (val == STATE.setup) then
-		if (node.state ~= STATE.failure) then
+
+	assert( STATE[val], "Illegal node state=%s" %val)
+
+	if (val == STATE.failure) then
+		node.state = val
+		system.set_system_conf(sys_conf, "sys_state", "failure")
+		system.stop()
+	end
+	
+	
+	if node.state ~= STATE.failure then
+	
+		if (val == STATE.setup) then
 			node.state = val
+			
+		elseif (val == STATE.safe or val == STATE.production) then
+			if (node.state == STATE.safe or node.state == STATE.production) then
+				node.state = val
+			end
 		end
-		
-	elseif (val == STATE.safe or val == STATE.production) then
-		if (node.state == STATE.safe or node.state == STATE.production) then
-			node.state = val
-		end
-	else
-		node.state = STATE.failure
-		return false
 	end
 	
 	return node.state
@@ -128,9 +133,6 @@ function get_local_node( sys_conf, cached_node )
 	node.set_state             = cached_node.set_state
 	node.state                 = get_node_state( sys_conf, cached_node )
 	
-	node.dbg_iteration         = (cached_node.dbg_iteration or 0) + 1
-
-
 	node.cn                    = cached_node.cn or {}
 	
 	node.description           = cached_node.description or ""

@@ -8,6 +8,7 @@
 --- CONFINE system abstraction library.
 module( "confine.system", package.seeall )
 
+local nixio   = require "nixio"
 local lsys    = require "luci.sys"
 local uci     = require "confine.uci"
 local tools   = require "confine.tools"
@@ -15,14 +16,51 @@ local data    = require "confine.data"
 local null    = data.null
 
 
-function get_system_conf(sys_conf)
+
+cache_file          = "/tmp/confine.cache"
+	
+www_dir             = "/www/confine"
+rest_confine_dir    = "/tmp/confine"
+rest_base_dir       = rest_confine_dir.."/api/"
+rest_node_dir       = rest_confine_dir.."/api/node/"
+rest_slivers_dir    = rest_confine_dir.."/api/slivers/"
+rest_templates_dir  = rest_confine_dir.."/api/templates/"
+
+
+function stop()
+	pcall(nixio.fs.remover, rest_confine_dir)
+	nixio.kill(nixio.getpid(),sig.SIGKILL)
+end
+
+function reboot()
+	tools.dbg("rebooting...")
+	tools.sleep(2)
+	os.execute("reboot")
+	stop()
+end
+
+
+
+function get_system_conf(sys_conf, arg)
 
 	if uci.dirty( "confine" ) then return false end
 	
 	local conf = sys_conf or {}
+	local flags = {}
+	
+	if arg then
+		local trash
+		flags,trash = tools.parse_flags(arg)
+		assert( not trash, "Illegal flags: ".. tostring(trash) )
+	end
+	
+		
+	conf.debug          	   = conf.debug    or flags["debug"] or false
+	conf.interval 		   = conf.interval or tonumber(flags["interval"] or 5)
+	conf.count		   = conf.count    or tonumber(flags["count"] or 0)
 
 	conf.id                    = tonumber((uci.getd("confine", "node", "id") or "x"), 16)
-	conf.uuid                  = null
+	conf.uuid                  = uci.getd("confine", "node", "uuid") or null
 	conf.cert		   = null  -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
 	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
@@ -75,27 +113,36 @@ function set_system_conf( sys_conf, opt, val)
 	
 	assert(opt and type(opt)=="string" and val, "set_system_conf()")
 	
-	if opt == "boot_sn" then
+	if opt == "boot_sn" and
+		type(val)=="number" and 		
+		uci.set("confine", "node", opt, val) then
 		
-		if type(val)~="number" then return false end
+		return get_system_conf(sys_conf)
 		
-		uci.set("confine", "node", "boot_sn", val)
+	elseif opt == "uuid" and
+		type(val)=="string" and not uci.get("confine", "node", opt) and
+		uci.set("confine", "node", opt, val) then
 		
-	elseif opt == "sys_state" then
+		return get_system_conf(sys_conf)
 		
-		if val~="prepared" or val~="applied" or val~="failure" then return false end
+	elseif opt == "sys_state" and
+		(val=="prepared" or val=="applied" or val=="failure") and
+		uci.set("confine", "node", "state", val) then
 		
-		uci.set("confine", "node", "state", val)
-		
-	elseif opt == "priv_ipv4_prefix" then
-		
-		if type(val)~="string" or not val:gsub(".0/24",""):match("[0-255].[0-255].[0-255]") then
-			return false
+		if val=="failure" then
+			os.exec()
 		end
 		
-		uci.set("confine", "node", "priv_ipv4_prefix24", val:gsub(".0/24","") )
+		return get_system_conf(sys_conf)
 		
-	elseif opt == "direct_ifaces" and type(val) == "table" then
+	elseif opt == "priv_ipv4_prefix" and
+		type(val)=="string" and val:gsub(".0/24",""):match("[0-255].[0-255].[0-255]") and
+		uci.set("confine", "node", "priv_ipv4_prefix24", val:gsub(".0/24","") ) then
+		
+		return get_system_conf(sys_conf)
+		
+	elseif opt == "direct_ifaces" and
+		type(val) == "table" then
 		
 		local devices = lsys.net.devices()
 		
@@ -103,36 +150,37 @@ function set_system_conf( sys_conf, opt, val)
 		for k,v in pairs(val) do
 			if type(v)~="string" or not (v:match("^eth[%d]+$") or v:match("^wlan[%d]+$")) then
 				dbg("set_system_conf() opt=%s val=%s Invalid interface prefix!", opt, tostring(v))
-				return false
+				devices = nil
+				break
 			end
 			
-			if not tools.get_table_by_key_val(devices,v) then
+			if not devices or not tools.get_table_by_key_val(devices,v) then
 				dbg("set_system_conf() opt=%s val=%s Interface does NOT exist on system!",opt,tostring(v))
-				return false
+				devices = nil
+				break
 			end
 		end
 		
-		uci.set("confine", "node", "rd_if_iso_parents", table.concat( val, " ") )
+		if devices and uci.set("confine", "node", "rd_if_iso_parents", table.concat( val, " ") ) then
+			return get_system_conf(sys_conf)
+		end
 		
-	elseif opt == "sliver_mac_prefix" and type(val) == "string" then
+	elseif opt == "sliver_mac_prefix" and
+		type(val) == "string" then
 		
 		local dec = tonumber(val,16) or 0
 		local msb = math.modf(dec / 256)
 		local lsb = dec - (msb*256)
 		
-		if msb > 0 and msb <= 255 and lsb >= 0 and lsb <= 255 then
-			local mac = "%.2x:%.2x"%{msb,lsb}
-			uci.set("confine","node","mac_prefix16", mac)
-		else
-			return false
+		if msb > 0 and msb <= 255 and lsb >= 0 and lsb <= 255 and
+			uci.set("confine","node","mac_prefix16", "%.2x:%.2x"%{msb,lsb}) then
+			
+			return get_system_conf(sys_conf)
 		end
-
-	else
-		
-		assert(false, "set_system_conf(): Invalid opt=%s val=%s", opt, tostring(val))
 	end
+		
+	assert(false, "set_system_conf(): Invalid opt=%s val=%s" %{opt, tostring(val)})
 	
-	return get_system_conf(sys_conf)
 end
 
 
