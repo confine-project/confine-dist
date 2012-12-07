@@ -57,9 +57,6 @@ local function get_local_templates( sys_conf, node )
 	if node.local_slivers then
 		for k,v in pairs(node.local_slivers) do
 	
-			if not templates.k then
-				templates.k = v
-			end
 		end
 	end
 	return templates
@@ -67,17 +64,17 @@ end
 
 local function upd_node_rest_conf( sys_conf, node )
 
-	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", system.rest_node_dir)	
-	
+	local base = get_local_base( sys_conf, node )
+	data.file_put(base, "index.html", system.rest_base_dir)
+
 	pcall(nixio.fs.remover, system.rest_templates_dir)
 	data.file_put(get_local_templates(sys_conf, node), nil, system.rest_templates_dir)
 
+	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", system.rest_node_dir)	
+	
 	pcall(nixio.fs.remover, system.rest_slivers_dir)
 	data.file_put(tree.filter(rules.slivers_out_rules, node.local_slivers), nil, system.rest_slivers_dir)
 
-	local base = get_local_base( sys_conf, node )
-
-	data.file_put(base, "index.html", system.rest_base_dir)
 
 end
 
@@ -159,13 +156,17 @@ function main_loop( )
 			end
 		end
 		
-		if not success then
-			msg = "ERROR: "..((type(err_msg)=="string" and err_msg) or (type(err_msg)=="table" and tree.as_string(err_msg)) or tostring(err_msg) )
-			local_node.error = { message = msg, errors = null }
+		if success then
+			upd_node_rest_conf( sys_conf, local_node )
+			data.file_put( local_node, system.cache_file )
+		else 
+			local msg = "ERROR: "..((type(err_msg)=="string" and err_msg) or (type(err_msg)=="table" and tree.as_string(err_msg)) or tostring(err_msg) )
+			local local_error = { message = msg, errors = null }
+			upd_node_rest_conf( sys_conf, local_error )
+			data.file_put( local_node, system.cache_file )
+			
 		end
 			
-		upd_node_rest_conf( sys_conf, local_node )
-		data.file_put( local_node, system.cache_file )
 		
 		dbg("count=%d i=%d" %{sys_conf.count, iteration})
 		if sys_conf.count==0 or sys_conf.count > iteration then

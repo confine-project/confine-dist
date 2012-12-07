@@ -31,8 +31,8 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/cn/cndb_cached_on"]			= "CB_COPY"})
 
-	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
-	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
+--	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
+--	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
 	table.insert(tmp_rules, {["/uuid"]				= "CB_SET_UUID"})
 	table.insert(tmp_rules, {["/pubkey"] 				= "CB_SETUP"})
 	table.insert(tmp_rules, {["/cert"] 				= "CB_SETUP"})
@@ -77,7 +77,7 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_SET_BOOT_SN"})
 	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
 	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
-	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
 	
 	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
