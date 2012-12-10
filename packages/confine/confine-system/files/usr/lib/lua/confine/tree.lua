@@ -27,15 +27,17 @@ end
 
 function as_string( tree, maxdepth, spaces )
 --	luci.util.dumptable(obj):gsub("%s"%tostring(data.null),"null")
+	if not maxdepth then maxdepth = 10 end
 	if not spaces then spaces = "" end
 	local result = ""
 	local k,v
 	for k,v in pairs(tree) do
 			
-		result = spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
+		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
 		
-		if type(v) == "table" then
-			result = result .. as_string(v, maxdepth, spaces.."    ")
+		if type(v) == "table"  then
+			assert( maxdepth > 1, "maxdepth reached!")
+			result = result .. as_string(v, (maxdepth - 1), spaces.."    ")
 		end
 	end
 	return result

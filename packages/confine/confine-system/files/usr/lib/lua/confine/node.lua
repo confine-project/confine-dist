@@ -13,6 +13,7 @@ local data    = require "confine.data"
 local tools   = require "confine.tools"
 local ssh     = require "confine.ssh"
 local tinc    = require "confine.tinc"
+local sliver  = require "confine.sliver"
 
 local dbg     = tools.dbg
 
@@ -41,24 +42,30 @@ end
 function set_node_state( sys_conf, node, val)
 
 
-	assert( STATE[val], "Illegal node state=%s" %val)
+	assert( STATE[val], "Illegal node state=%s" %{tostring(val)})
 
-	if (val == STATE.failure) then
+	if (val == STATE.failure or node.state == STATE.failure) then
+		sliver.remove_slivers( sys_conf, nil )
 		node.state = val
 		system.set_system_conf(sys_conf, "sys_state", "failure")
 		system.stop()
 	end
 	
 	
-	if node.state ~= STATE.failure then
-	
-		if (val == STATE.setup) then
+	if (val == STATE.setup) then
+		node.state = val
+		sliver.remove_slivers( sys_conf, nil )
+		
+	elseif (val == STATE.safe) then
+		if (node.state == STATE.safe or node.state == STATE.production) then
 			node.state = val
-			
-		elseif (val == STATE.safe or val == STATE.production) then
-			if (node.state == STATE.safe or node.state == STATE.production) then
-				node.state = val
-			end
+			sliver.stop_slivers( sys_conf, nil )
+		end
+
+	elseif (val == STATE.production) then
+		if (node.state == STATE.safe or node.state == STATE.production) then
+			node.state = val
+			sliver.start_slivers( sys_conf, nil )
 		end
 	end
 	

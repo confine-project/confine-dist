@@ -107,7 +107,7 @@ function get_node_local_group(sys_conf)
 		end
 	end
 	
-	tree.dump(group)
+--	tree.dump(group)
 	return group
 end
 

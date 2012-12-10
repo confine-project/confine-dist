@@ -119,12 +119,16 @@ function http_get(url, base_uri, cert_file, cache)
 		local src = ltn12.source.file(fd)
 		local jsd = json.Decoder(true)
 
-		ltn12.pump.all(src, jsd:sink())
-		local result = tree.copy_recursive_rebase_keys(jsd:get())
+		local result = ltn12.pump.all(src, jsd:sink())
+		assert(result, "Failed processing json input from: %s"%{base_uri..base_key..index_key} )
 		
-		--luci.util.dumptable(result)
+		result = jsd:get()
+		
+		result = tree.copy_recursive_rebase_keys(result)
+		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{base_uri..base_key..index_key} )
+--		dbg("http:get(): got rebased:")
+--		tree.dump(result)
 			
-	
 		if cache then
 			if not cache[base_key] then cache[base_key] = {} end
 			cache[base_key][index_key] = result

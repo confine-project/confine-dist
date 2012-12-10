@@ -75,15 +75,17 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/group/uri"]				= "CB_NOP"})
 	
 	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_SET_BOOT_SN"})
-	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
-	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
---	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
 	
 	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
 	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
 
 	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
+--	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
+
 
 
 
@@ -115,7 +117,7 @@ tmp_rules = node_out_filter
 	table.insert(tmp_rules, {["/tinc/island"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/tinc/island/uri"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/tinc/connect_to"]			= "CB_NOP"})
-	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_RECONF_TINC"})
+	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_SET_TINC"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/port"] 	= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/pubkey"] 	= "CB_NOP"})
@@ -140,6 +142,8 @@ tmp_rules = node_out_filter
 
 	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
 
+	table.insert(tmp_rules, {["/message"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/errors"]				= "CB_NOP"})
 
 --local node_rules = {
 --	["/"] = {
@@ -217,7 +221,7 @@ dflt_cb_tasks = {
 					end
 				end,
 				
-	["CB_RECONF_TINC"]    	= function( sys_conf, action, out_node, path, key, oldval, newval )
+	["CB_SET_TINC"]    	= function( sys_conf, action, out_node, path, key, oldval, newval )
 					return tinc.cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
 				end,
 
@@ -246,7 +250,7 @@ dflt_cb_tasks = {
 				end,
 	["CB_SET_SYS+SLIVERS"]	= function( sys_conf, action, out_node, path, key, oldval, newval )
 					if action == "CHG" and system.set_system_conf( sys_conf, key, newval ) then
-						sliver.cb_remove_slivers( sys_conf, action, out_node, path, key, oldval, newval)
+						sliver.remove_slivers( sys_conf, nil )
 						return tree.set_path_val( action, out_node, path, key, oldval, newval)
 					end
 				end

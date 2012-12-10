@@ -161,8 +161,11 @@ function main_loop( )
 			data.file_put( local_node, system.cache_file )
 		else 
 			local msg = "ERROR: "..((type(err_msg)=="string" and err_msg) or (type(err_msg)=="table" and tree.as_string(err_msg)) or tostring(err_msg) )
-			local local_error = { message = msg, errors = null }
-			upd_node_rest_conf( sys_conf, local_error )
+			dbg(msg)
+			
+			node.set_node_state(sys_conf, local_node, node.STATE.setup)
+			
+			upd_node_rest_conf( sys_conf, { message = msg, errors = null } )
 			data.file_put( local_node, system.cache_file )
 			
 		end

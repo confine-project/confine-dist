@@ -91,7 +91,7 @@ function get_server_node(sys_conf)
 		
 	end
 	
-	tree.dump(node.local_group)
+--	tree.dump(node.local_group)
 
 	return node
 end
