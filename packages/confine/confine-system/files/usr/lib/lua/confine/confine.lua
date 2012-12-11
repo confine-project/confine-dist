@@ -73,7 +73,7 @@ local function upd_node_rest_conf( sys_conf, node )
 	data.file_put(tree.filter(rules.node_out_filter, node), "index.html", system.rest_node_dir)	
 	
 	pcall(nixio.fs.remover, system.rest_slivers_dir)
-	data.file_put(tree.filter(rules.slivers_out_rules, node.local_slivers), nil, system.rest_slivers_dir)
+	data.file_put(tree.filter(rules.slivers_out_filter, node.local_slivers), nil, system.rest_slivers_dir)
 
 
 end

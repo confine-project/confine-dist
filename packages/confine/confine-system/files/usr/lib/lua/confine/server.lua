@@ -73,19 +73,16 @@ function get_server_node(sys_conf)
 		sliver_obj.local_slice = slice_obj
 
 		if type(sliver_obj.template)=="table" and sliver_obj.template.uri then
-			
 			local template_obj = data.http_get(sliver_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			assert(template_obj, "Unable to retrieve referenced template_url=%s" %sliver_obj.template.uri)
-
 			sliver_obj.local_template = template_obj
-			
 		elseif type(slice_obj.template)=="table" and slice_obj.template.uri then
-			
 			local template_obj = data.http_get(slice_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			assert(template_obj, "Unable to retrieve referenced template_url=%s" %slice_obj.template.uri)
-
 			sliver_obj.local_template = template_obj
 		end
+		
+		
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		

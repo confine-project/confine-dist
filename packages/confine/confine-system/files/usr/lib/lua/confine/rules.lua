@@ -59,6 +59,10 @@ tmp_rules = node_in_rules
 	table.insert(tmp_rules, {["/direct_ifaces"]			= "CB_SET_SYS+SLIVERS"})
 	table.insert(tmp_rules, {["/sliver_mac_prefix"]			= "CB_SET_SYS+SLIVERS"})	
 	
+	table.insert(tmp_rules, {["/test"]				= "CB_TEST"})
+	table.insert(tmp_rules, {["/test/[^/]+"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/test/[^/]+/[^/]+"]			= "CB_NOP"})
+
 	
 	table.insert(tmp_rules, {["/local_group"]						= "CB_GET_LOCAL_GROUP"})
 	table.insert(tmp_rules, {["/local_group/user_roles"]					= "CB_NOP"})
@@ -76,6 +80,71 @@ tmp_rules = node_in_rules
 	
 	table.insert(tmp_rules, {["/boot_sn"] 				= "CB_SET_BOOT_SN"})
 	
+	
+	table.insert(tmp_rules, {["/local_slivers"]					= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/uri"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/slice"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/slice/uri"]			= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/id"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/name"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/description"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/expires_on"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/instance_sn"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/new_sliver_instance_sn"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/vlan_nr"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/template"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/template/uri"]		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/exp_data_uri"]		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/exp_data_sha256"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/set_state"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/properties"]		= "CB_COPY"})
+	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/group"]							= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/group/uri"]							= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group"]						= "CB_GET_SLIVER_GROUP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles"]					= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+"]		 		= "CB_SET_SLIVER_GROUP_ROLE"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/is_researcher"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user"] 	   		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user/is_active"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user/auth_tokens"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user/auth_tokens/[^/]+"]	= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/node"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/node/uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/description"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/instance_sn"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/template"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/template/uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/exp_data_uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/exp_data_sha256"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/nr"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/name"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/type"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/parent_name"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/properties"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/properties/[^/]+"]		= "CB_COPY"})
+
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/uri"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/name"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/description"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/type"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/arch"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/is_active"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/image_uri"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template/image_sha256"]	= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_exp_data_uri"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_exp_data_sha256"]		= "CB_NOP"})
+	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]				= "CB_NOP"})
+
 	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
 	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
@@ -84,7 +153,6 @@ tmp_rules = node_in_rules
 	
 	table.insert(tmp_rules, {["/set_state"]				= "CB_COPY"})
 	table.insert(tmp_rules, {["/state"]				= "CB_SET_STATE"})
---	table.insert(tmp_rules, {["/soft_version"]			= "CB_NOP"})
 
 
 
@@ -145,54 +213,54 @@ tmp_rules = node_out_filter
 	table.insert(tmp_rules, {["/message"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/errors"]				= "CB_NOP"})
 
---local node_rules = {
---	["/"] = {
-----		"local_slivers",
---		"id", "pubkey", "cert", "local_iface",
---		"priv_ipv4_prefix", "sliver_mac_prefix",
---		"boot_sn", "direct_ifaces", "tinc" },
---	
---	["/tinc"] = {
---		"name", "pubkey", "connect_to" },
---
---	["/tinc/connect_to"] = "ALL",
---	["/tinc/connect_to/[^/]+"] = { "ip_addr", "port", "pubkey", "name" },
-----	["/tinc/connect_to/[%a%d_]+"] = { "ip_addr", "port", "pubkey", "name" },
---
---	["/local_slivers/"] = "ALL",
-----	["/local_slivers/[%d]+[-][%d]+"] = {
---	["/local_slivers/[^/]+"] = {
---		"interfaces", "local_template", "instance_sn", "local_slice" },
---	
-----	["/local_slivers/[%d]+[-][%d]+/local_template"] = {
---	["/local_slivers/[^/]+/local_template"] = {
---		"local_arch", "is_active", "image_uri", "image_sha256" },
---
-----	["/local_slivers/[%d]+[-][%d]+/local_slice"] = {
---	["/local_slivers/[^/]+/local_slice"] = {
---		"instance_sn", "id", "local_users", "new_sliver_instance_sn", "exp_data_uri" },
---
---	["/local_slivers/[^/]+/local_slice/local_users"] = "ALL",
-----	["/local_slivers/[%d]+[-][%d]+/local_slice/local_users/[0-9]+"] = {
---	["/local_slivers/[^/]+/local_slice/local_users/[^/]+"] = {
---		"auth_tokens", "is_active" }
---}
 
 
 
-slivers_out_rules = {
-----	["/"] = {"[%d]+[-][%d]+"},
---	["/[%d]+[-][%d]+"] = {
---	  "uri", "slice", "node", "description", "instance_sn",
---	  "template", "exp_data_uri", "exp_data_sha256", "nr", "state", "errors",
---	  "interfaces", "properties" }
-}
+slivers_out_filter = {}
+tmp_rules = slivers_out_filter
+	table.insert(tmp_rules, {["/local_slivers"]					= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/uri"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/slice"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/slice/uri"]			= "CB_NOP"})	
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/node"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/node/uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/description"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/instance_sn"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/template"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/template/uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_template"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/exp_data_uri"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/exp_data_sha256"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/nr"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/name"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/type"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/parent_name"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/mac_addr"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/ipv4_addr"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/interfaces/[^/]+/ipv6_addr"]	= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/properties"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/properties/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/nr"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]				= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/errors"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/errors/[^/]+"]			= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/errors/[^/]+/member"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/errors/[^/]+/message"]		= "CB_NOP"})
+
 
 
 
 
 
 dflt_cb_tasks = {
+	["CB_TEST"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
+					tools.dbg("cb_test()")
+					tree.dump(newval)
+					return oldval or null
+				end,
 	["CB_NOP"] 	      	= function( sys_conf, action, out_node, path, key, oldval, newval )
 					return oldval or null
 				end,
