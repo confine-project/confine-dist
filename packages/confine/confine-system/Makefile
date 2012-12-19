@@ -45,8 +45,7 @@ define Package/confine-system
 	+px5g \
 	+time \
 	+ntpd \
-	+bock-mount \
-	+sfdisk \
+	+bock-mount +sfdisk +hdparm \
 	\
 	+dropbearconvert \
 	+openssh-keygen +openssl-util \
