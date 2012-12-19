@@ -10,7 +10,9 @@ module( "confine.tree", package.seeall )
 
 local util   = require "luci.util"
 local tools  = require "confine.tools"
+local data   = require "confine.data"
 local dbg    = tools.dbg
+
 
 function get_url_keys( url )
 	local api_first, api_last = url:find("/api")
@@ -22,6 +24,28 @@ function get_url_keys( url )
 	return base_key, index_key
 end
 
+
+function as_string( tree, maxdepth, spaces )
+--	luci.util.dumptable(obj):gsub("%s"%tostring(data.null),"null")
+	if not maxdepth then maxdepth = 10 end
+	if not spaces then spaces = "" end
+	local result = ""
+	local k,v
+	for k,v in pairs(tree) do
+			
+		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
+		
+		if type(v) == "table"  then
+			assert( maxdepth > 1, "maxdepth reached!")
+			result = result .. as_string(v, (maxdepth - 1), spaces.."    ")
+		end
+	end
+	return result
+end
+
+function dump( tree, maxdepth, spaces )
+	print( as_string( tree, maxdepth, spaces) )
+end
 
 function get_key(obj, def)
 
@@ -41,6 +65,11 @@ function get_key(obj, def)
 		elseif obj.uri then
 			
 			local base_key,index_key = get_url_keys(obj.uri)
+			return index_key
+			
+		elseif obj.user and obj.user.uri then
+			
+			local base_key,index_key = get_url_keys(obj.user.uri)
 			return index_key
 			
 		elseif obj.name then
@@ -112,7 +141,6 @@ function filter(rules, tree, new_tree, path)
 	
 		local pattern = util.keys(pv)[1]
 		local task    = pv[pattern]
-				
 
 		local k,v
 		for k,v in pairs(tree) do
@@ -134,14 +162,12 @@ end
 
 function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 
-
 	local tmp = {}
 	local changed = false
 
 	if not path then path = "/" end
-	
-	
-	local pk, pv
+		
+	local pk,pv
 	for pk,pv in ipairs(rules) do
 	
 		local pattern = util.keys(pv)[1]
@@ -159,7 +185,7 @@ function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 		local tmp_key, tmp_obj
 		for tmp_key, tmp_obj in pairs(tmp) do
 			if type(task) == "string" and (path..tmp_key):match("^%s$" % pattern) then
-				if not new[tmp_key] then
+				if new[tmp_key] == nil then
 					--dbg("%s %s (%s; %s) got removed", curpath, v[1], k, tostring(v[2]))
 					cb(sys_conf, "DEL", task, cb_tasks, out, path, tmp_key, tmp_obj, nil)
 					tmp[tmp_key] = nil
@@ -169,9 +195,9 @@ function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 		end
 	
 		local new_key, new_obj
-		for new_key, new_obj in pairs(new) do
+		for new_key, new_obj in pairs(new or {}) do
 			if type(task) == "string" and (path..new_key):match("^%s$" % pattern) then
-				if not tmp[new_key] then
+				if tmp[new_key] == nil then
 					--dbg("%s %s (%s; %s) got added", curpath, v[1], k, tostring(v[2]))
 					cb(sys_conf, "ADD", task, cb_tasks, out, path, new_key, nil, new_obj)
 					tmp[new_key] = new_obj
@@ -196,7 +222,8 @@ function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
 					end
 					
 				else
-					assert( new_obj )
+					assert( new_obj ~= nil, "No new_obj for path=%q tmp_key=%q, tmp_obj=%q"
+						%{path, tostring(tmp_key), tostring(tmp_obj)} )
 
 					if tmp_obj ~= new_obj then
 						--dbg("%s %s (%s; %s => %s) got changed",
@@ -253,5 +280,26 @@ function set_path_val ( action, tree, path, key, oldval, newval)
 		assert( false )
 	end
 	
-	return newval or ""
+	return newval or data.null
+end
+
+
+function get_path_val ( tree, path, key)
+
+	assert( type(tree)=="table" and type(path)=="string" and (type(key)=="number" or type(key)=="string") ,"")
+
+	if path ~= "/" then
+
+		local root_key = tools.subfind(path,"^/","/"):gsub("/","")
+		assert(root_key)
+		return get_path_val ( tree[root_key], path:gsub("^/"..root_key,""), key)
+
+	elseif tree[key] then
+		
+		return tree[key]
+	
+	else
+		
+		return data.null
+	end
 end

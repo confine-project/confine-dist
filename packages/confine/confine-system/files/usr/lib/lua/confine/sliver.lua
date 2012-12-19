@@ -4,7 +4,7 @@
 
 ]]--
 
---- CONFINE Tree traversal library.
+--- CONFINE sliver library.
 module( "confine.sliver", package.seeall )
 
 
@@ -13,7 +13,18 @@ local tools  = require "confine.tools"
 local dbg    = tools.dbg
 
 
-function cb_remove_slivers( sys_conf, action, out_node, path, key, oldval, newval )
-	dbg("cb_remove_slivers()... (TBD)")
+
+function stop_slivers( sys_conf, sliver )
+	dbg("stop_slivers() sliver=%s... (TBD)" %tostring(sliver))
 end
 
+
+function remove_slivers( sys_conf, sliver)
+	stop_slivers( sys_conf, sliver )
+	dbg("remove_slivers() sliver=%s... (TBD)" %tostring(sliver))
+end
+
+function start_slivers( sys_conf, sliver)
+	stop_slivers( sys_conf, sliver )
+	dbg("start_slivers() sliver=%s... (TBD)" %tostring(sliver))
+end

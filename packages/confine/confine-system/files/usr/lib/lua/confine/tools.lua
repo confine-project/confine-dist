@@ -4,10 +4,14 @@
 
 ]]--
 
---- CONFINE data io library.
+--- CONFINE tools library.
 module( "confine.tools", package.seeall )
 
 local lucifs = require "luci.fs"
+local socket  = require "socket"
+local nixio   = require "nixio"
+
+
 
 function dbg(fmt, ...)
 	local t = nixio.times()
@@ -15,6 +19,59 @@ function dbg(fmt, ...)
 	                              t.utime + t.stime + t.cutime + t.cstime))
 	io.stdout:write(string.format(fmt, ...))
 	io.stdout:write("\n")
+end
+
+stop = false
+
+local function handler(signo)
+	nixio.signal(nixio.const.SIGINT,  "ign")
+	nixio.signal(nixio.const.SIGTERM, "ign")
+	dbg("going to stop now...")
+	stop = true
+end
+
+--- Extract flags from an arguments list.
+-- Given string arguments, extract flag arguments into a flags set.
+-- For example, given "foo", "--tux=beep", "--bla", "bar", "--baz",
+-- it would return the following:
+-- {["bla"] = true, ["tux"] = "beep", ["baz"] = true}, "foo", "bar".
+function parse_flags(args)
+--   local args = {...}
+   local flags = {}
+   for i = #args, 1, -1 do
+      local flag = args[i]:match("^%-%-(.*)")
+      if flag then
+         local var,val = flag:match("([a-z_%-]*)=(.*)")
+         if val then
+            flags[var] = val
+         else
+            flags[flag] = true
+         end
+         table.remove(args, i)
+      end
+   end
+   return flags, unpack(args)
+end
+
+
+function sleep(sec)
+	local interval=1
+	if stop then
+		return
+	else
+		dbg("sleeping for %s seconds...", sec)
+	end
+		
+	while sec>0 do
+		if stop then return end
+		if sec > interval then
+			sec = sec - interval
+		else
+			interval = sec
+			sec = 0
+		end
+		socket.select(nil, nil, interval)
+	end
 end
 
 
@@ -116,7 +173,13 @@ end
 
 function subfindex( str, start_pattern, end_pattern )
 	local res,i,j = subfind(str, start_pattern, end_pattern)
+	
 	if res then
-		return res:gsub( "^%s"%start_pattern,""):gsub("%s$"%end_pattern,""), (i+(start_pattern:len())), (j-(end_pattern:len()))
+		if end_pattern then		
+			return res:gsub( "^%s"%start_pattern,""):gsub("%s$"%end_pattern,""),
+				(i+(start_pattern:len())), (j-(end_pattern:len()))
+		else
+			return res:gsub( "^%s"%start_pattern,""), (i+(start_pattern:len())), j
+		end
 	end
 end
