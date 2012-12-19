@@ -146,11 +146,12 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
+	$(CP)  ./files/usr/sbin/confine.disk-parted    	   $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
 	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
-
+	
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
