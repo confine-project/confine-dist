@@ -58,7 +58,9 @@ CONFINE_VERSION ?= testing
 
 define prepare_workspace
 	git clone $(OWRT_GIT) "$(BUILD_DIR)"
+	cd $(BUILD_DIR) && git checkout $(CONFINE_VERSION)
 	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
+	cd $(OWRT_PKG_DIR) && git checkout $(CONFINE_VERSION)
 	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
 	rm -f $(BUILD_DIR)/dl || true
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
@@ -72,8 +74,6 @@ define update_feeds
 	"$(BUILD_DIR)/$(1)/scripts/feeds" update -a
 	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
 endef
-
-
 
 define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
@@ -109,7 +109,7 @@ endef
 define kmenuconfig_owrt
 	make -C "$(BUILD_DIR)" kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
+	[ -f $(KCONFIG) ] && cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
