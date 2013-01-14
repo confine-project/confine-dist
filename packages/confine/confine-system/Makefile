@@ -148,7 +148,7 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
-	$(CP)  ./files/usr/sbin/confine.disk-parted    	   $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine

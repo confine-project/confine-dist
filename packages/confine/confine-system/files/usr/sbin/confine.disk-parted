@@ -143,17 +143,18 @@ echo -e "\n==> Writing fstab and enabling block-mount\n"
 write_fstab
 
 echo -e "\n==> Trying to force kernel re-read partition table\n"
-echo 1 > /sys/block/sda/device/rescan 2>/dev/null
-echo 1 > /sys/block/sdb/device/rescan 2>/dev/null
-hdparm -z $DISK 2>&1 > /dev/null
+echo 1 > /sys/block/sda/device/rescan 1>/dev/null 2>/dev/null
+hdparm -z $DISK 1>/dev/null 2>/dev/null
 sleep 10
 
-if ! ls ${DISK}4; then
-	echo "\n================================================================================="
+if ! ls ${DISK}4 2>/dev/null; then
+	echo "Warning: it is not possible to re-read partition table!"
+	echo ""
+	echo -e "\n==============================================================="
 	echo " Seem that kernel does not read the new partition table"
 	echo " reboot is needed to be able to format and use partitions"
 	echo " a script has been added to uci-defaults, please reboot"
-	echo "=================================================================================\n"
+	echo -e "===============================================================\n"
 
 	echo "!/bin/sh
 	umount ${DISK}3
