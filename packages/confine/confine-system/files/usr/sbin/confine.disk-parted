@@ -109,6 +109,16 @@ EOF
 }
 
 
+set_lxc_to_home() {
+	echo "Moving LXC directories to /home"
+	mkdir /home/lxc 2>/dev/null
+	mkdir /home/lxc/images /home/lxc/templates
+	mv /lxc/images /lxc/.images.old
+	mv /lxc/templates /lxc/.templates.old
+	ln -s /home/lxc/images /lxc/images
+	ln -s /home/lxc/templates /lxc/templates
+	echo "Done"
+}
 
 echo -e "\n==> Checking system\n"
 checksystem
@@ -142,6 +152,9 @@ EOF
 echo -e "\n==> Writing fstab and enabling block-mount\n"
 write_fstab
 
+echo -e "\n==> Moving current LXC directory to new Home\n"
+set_lxc_to_home
+
 echo -e "\n==> Trying to force kernel re-read partition table\n"
 echo 1 > /sys/block/sda/device/rescan 1>/dev/null 2>/dev/null
 hdparm -z $DISK 1>/dev/null 2>/dev/null
@@ -161,6 +174,11 @@ if ! ls ${DISK}4 2>/dev/null; then
 	umount ${DISK}4
 	$MKFS ${DISK}3
 	$MKFS ${DISK}4
+	mkdir /tmp/disk4
+	mount ${DISK}4 /tmp/disk4
+	mkdir /tmp/disk4/lxc
+	mkdir /tmp/disk4/lxc/templates /tmp/disk4/lxc/images
+	umount /tmp/disk4/
 	reboot
 	" > /etc/uci-defaults/format_partitions.sh
 	exit 0
