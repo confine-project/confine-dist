@@ -1796,12 +1796,9 @@ vct_sliver_ssh() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 	
-	local IP=$( vct_node_get_ip_from_db $VCRD_ID )
-	local IPV6_RESCUE=$( uci_get $VCT_SLICE_DB.${SLIVER}_${VCRD_ID}.if01_ipv6 | awk -F'/' '{print $1}' )
+	local IP=$( uci_get $VCT_SLICE_DB.${SLIVER}_${VCRD_ID}.if01_ipv6 | awk -F'/' '{print $1}' )
 	local COUNT=0
 	local COUNT_MAX=60
-
-	[ -z "$IP" ] && IP=$IPV6_RESCUE
 
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
