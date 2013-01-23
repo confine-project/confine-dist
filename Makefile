@@ -33,11 +33,23 @@ OWRT_FEEDS = feeds.conf
 CONFIG_DIR = configs
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
+
+#TARGET values: x86, ar71xx, realview
+TARGET ?= x86
+SUBTARGET ?= generic
+#PROFILE ?= Default
+PARTSIZE ?= 900
+MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
+PACKAGES ?= confine-system confine-recommended
+
 CONFIG = $(BUILD_DIR)/.config
-KCONFIG = $(BUILD_DIR)/target/linux/x86/config-3.3
+KCONF = target/linux/$(TARGET)/config-3.3
+KCONFIG = $(BUILD_DIR)/$(KCONF)
+
+
 IMAGES = images
 NIGHTLY_IMAGES_DIR ?= www
-IMAGE = openwrt-x86-generic-combined
+IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
@@ -46,7 +58,9 @@ CONFINE_VERSION ?= testing
 
 define prepare_workspace
 	git clone $(OWRT_GIT) "$(BUILD_DIR)"
+	cd $(BUILD_DIR) && git checkout $(CONFINE_VERSION)
 	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
+	cd $(OWRT_PKG_DIR) && git checkout $(CONFINE_VERSION)
 	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
 	rm -f $(BUILD_DIR)/dl || true
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
@@ -61,10 +75,28 @@ define update_feeds
 	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
 endef
 
-define copy_config
-	cp -f "$(CONFIG_DIR)/owrt_config" $(CONFIG)
-	cp -f "$(CONFIG_DIR)/kernel_config" $(KCONFIG)
-	(cd "$(BUILD_DIR)" && make defconfig)
+define create_configs
+	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
+	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
+		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
+		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
+		echo "# CONFIG_SAMSUNG_LAPTOP is not set" >> $(KCONF) && \
+		echo "# CONFIG_INTEL_OAKTRAIL is not set" >> $(KCONF) )
+	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
+	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
+		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
+		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
+		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) )
+	@( [ "$(SUBTARGET)" ] && \
+		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
+	@( [ "$(PROFILE)" ] && \
+		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
+	@( [ "$(PARTSIZE)" ] && \
+		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
+	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
+	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
+	@make -C "$(BUILD_DIR)" defconfig > /dev/null
 endef
 
 define menuconfig_owrt
@@ -77,14 +109,14 @@ endef
 define kmenuconfig_owrt
 	make -C "$(BUILD_DIR)" kernel_menuconfig
 	mkdir -p $(MY_CONFIGS)
-	cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
+	[ -f $(KCONFIG) ] && cp -f $(KCONFIG) $(MY_CONFIGS)/kernel_config
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
 define update_workspace
 	git checkout $(CONFINE_VERSION) && git pull origin $(CONFINE_VERSION)
-	(cd "$(BUILD_DIR)" && git pull && git checkout $(CONFINE_VERSION))
-	(cd "$(OWRT_PKG_DIR)" && git pull && git checkout $(CONFINE_VERSION))
+	(cd "$(BUILD_DIR)" git checkout $(CONFINE_VERSION) && git pull )
+	(cd "$(OWRT_PKG_DIR)" && git checkout $(CONFINE_VERSION) && git pull )
 endef
 
 define build_src
@@ -136,16 +168,15 @@ prepare: .prepared
 
 .prepared:
 	@echo "Using $(IMAGE_TYPE)."
-	@echo "Developer mode enabled"
 	$(call prepare_workspace)
 	$(call update_workspace)
 	$(call update_feeds)
-	$(call copy_config)
+	$(call create_configs)
 	@touch .prepared
 
 sync: prepare 
 	$(call update_feeds)
-	$(call copy_config)
+	$(call create_configs)
 
 update: prepare
 	$(call update_workspace)
@@ -156,6 +187,10 @@ menuconfig: prepare
 kernel_menuconfig: prepare
 	$(call kmenuconfig_owrt)
 
+confclean: prepare
+	$(call create_configs)
+
+
 clean:
 	make -C "$(BUILD_DIR)" clean
 
@@ -164,13 +199,13 @@ dirclean:
 
 distclean:
 	make -C "$(BUILD_DIR)" distclean
-	$(call copy_config)
+	$(call create_configs)
 
 mrproper:
 	rm -rf "$(BUILD_DIR)" || true
 	rm -rf "$(OWRT_PKG_DIR)" || true
 	rm -rf "$(DOWNLOAD_DIR)" || true
-	rm -f .prepare || true
+	rm -f .prepared || true
 
 help:
 	@cat README

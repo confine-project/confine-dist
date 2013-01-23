@@ -10,24 +10,21 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=lxc
 PKG_RELEASE:=2
 
-PKG_SOURCE_URL:=@SF/lxc
-PKG_VERSION:=0.7.5
-PKG_MD5SUM:=cf001ad3f465b17d48dfd623b0011e73
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+#PKG_SOURCE_URL:=@SF/lxc
+#PKG_VERSION:=0.7.5
+#PKG_MD5SUM:=cf001ad3f465b17d48dfd623b0011e73
+#PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
-# PKG_SOURCE_URL:=git://lxc.git.sourceforge.net/gitroot/lxc/lxc
-# PKG_SOURCE_PROTO:=git
-# PKG_REV:=00ad19d4dba5c05401125d4217dc8f4e7fd9403a
-# PKG_VERSION:=r2012062501
+PKG_SOURCE_URL:=git://lxc.git.sourceforge.net/gitroot/lxc/lxc
+PKG_SOURCE_PROTO:=git
+PKG_REV:=60a742e0afd34e02299f64536df35116d68d888d
+PKG_VERSION:=r2012092301
+PKG_SOURCE_VERSION:=$(PKG_REV)
+PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
 
-#PKG_SOURCE_URL:=git://github.com/axn/lxc.git
-#PKG_SOURCE_PROTO:=git
-#PKG_REV:=32fb8a007a95ad4beb9d9d7dade032a50f5da0db
-#PKG_VERSION:=r2012071702
-#PKG_SOURCE_VERSION:=$(PKG_REV)
-#PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-#PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
-#PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_SOURCE_SUBDIR)
+
+PKG_FIXUP:=autoreconf
 
 
 include $(INCLUDE_DIR)/package.mk
@@ -39,10 +36,21 @@ define Package/lxc
   TITLE:=LXC userspace tools
   URL:=http://lxc.sourceforge.net/
 
-  DEPENDS:= +libcap2 +bash +@BUSYBOX_CONFIG_GETOPT \
-            +ip +coreutils +coreutils-rm \
-            +perl +perlbase-complete +perlbase-base +perlbase-getcwd +perlbase-getopt +perlbase-sys \
-            +kmod-veth +kmod-macvlan +kmod-bridge
+  DEPENDS:= \
+	+libcap2 +bash +ip +veth +swconfig \
+	\
+        +kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
+	+kmod-ipv6 \
+	\
+	+coreutils +coreutils-rm \
+	+coreutils-chroot +coreutils-sha1sum \
+	+bzip2 +gzip +tar \
+	\
+        +perl +perlbase-complete +perlbase-base +perlbase-essential \
+	+perlbase-getcwd +perlbase-getopt +perlbase-sys \
+	+perlbase-fcntl +perlbase-file +perlbase-xsloader \
+	\
+
 
 
 # TODO:
@@ -52,29 +60,20 @@ define Package/lxc
 
 endef
 
+define optional
+	+@BUSYBOX_CONFIG_GETOPT \
+	+@BUSYBOX_CONFIG_BLOCKDEV \
+	+@BUSYBOX_CONFIG_FEATURE_GETOPT_LONG \
+	+@BUSYBOX_CONFIG_GETOPT \
+	+@BUSYBOX_CONFIG_SCRIPT \
+
+endef
+
 define Package/lxc/description
 	Userspace tools to manage linux containers
 endef
 
-# CONFIGURE_CMD = ./configure
-
-define Build/Configure
-       $(call Build/Configure/Default,--with-linuxdir=$(LINUX_DIR))
-endef
-#define Build/Configure
-#        (cd $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/$(strip $(3)); \
-#	(./autogen.sh); \
-#        if [ -x $(CONFIGURE_CMD) ]; then \
-#                $(call replace_script,$(PKG_BUILD_DIR)/$(3),config.guess) \
-#                $(call replace_script,$(PKG_BUILD_DIR)/$(3),config.sub) \
-#                $(CONFIGURE_VARS) \
-#                $(2) \
-#                $(CONFIGURE_CMD) \
-#                $(CONFIGURE_ARGS) \
-#                $(1); \
-#        fi; \
-#        )
-#endef
+CONFIGURE_ARGS += --with-linuxdir=$(LINUX_DIR) --disable-apparmor
 
 define Package/lxc/install
 

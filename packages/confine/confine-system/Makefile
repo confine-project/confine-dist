@@ -33,26 +33,73 @@ define Package/confine-system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	+grub2 \
 	+bash \
 	+lxc \
-	+awk \
-	+ip \
-	+iptables \
-	+kmod-dummy \
+	+gawk \
+	+ip +tc +iw \
+	+ebtables \
 	+tinc \
+	+file \
+	+losetup \
+	+px5g \
+	+time \
+	+ntpd \
+	+block-mount +sfdisk +hdparm \
+	\
 	+dropbearconvert \
-	+openssh-keygen \
-	+e2fsprogs \
+	+openssh-keygen +openssl-util \
+	+wget \
+	\
+	+lua \
+	+luasignal \
+	+luasocket \
+	+luci \
+	+luci-app-diag-core \
+	+luci-app-firewall \
+	+luci-i18n-english \
+	+luci-lib-core \
+	+luci-lib-ipkg \
+	+luci-lib-json \
+	+luci-lib-lmo \
+	+luci-lib-nixio \
+	+luci-lib-sys \
+	+luci-lib-web \
+	+luci-mod-admin-core \
+	+luci-mod-admin-full \
+	+luci-mod-rpc \
+	+luci-proto-core \
+	+luci-proto-ppp \
+	+luci-sgi-cgi \
+	+luci-sgi-uhttpd \
+	+luci-ssl \
+	+luci-theme-base \
+	+luci-theme-openwrt \
+	\
+	+uclibcxx \
+	+uhttpd \
+	+uhttpd-mod-lua \
+	+uhttpd-mod-tls \
+	+uhttpd-mod-tls_cyassl \
+	\
+	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
+	\
+	+kmod-dummy \
 	+kmod-fs-ext4 \
-	+kmod-fs-vfat \
+	\
+	+kmod-cfg80211 +kmod-mac80211 \
+	+kmod-ath5k +kmod-ath9k \
+	+kmod-ath9k-common +kmod-ath9k-htc
 
 endef
 
 define optional
+  IGNORE_DEPENDS:= \
+	+kmod-b43 \
+
+  IGNORE_DEPENDS:= \
 	@TARGET_x86 \
 	+@BUSYBOX_CONFIG_FOLD \
-	+ebtables \
-	+tinc \
 
 endef
 
@@ -97,8 +144,16 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slice-attributes $(1)/etc/config/
+	$(CP)  ./files/etc/confine-ebtables.lst            $(1)/etc/
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
+	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
+	$(INSTALL_DIR) $(1)/usr/lib/
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
+	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
+	
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable

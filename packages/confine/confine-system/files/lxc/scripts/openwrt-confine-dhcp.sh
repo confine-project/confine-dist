@@ -48,6 +48,7 @@ tty4::askfirst:/bin/ash --login
 EOF
 
 
+    local IF01_NAME="$(uci_get confine-slivers.$MY_SLICE.if01_name)"
 
     cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/network
 config 'interface' 'loopback'
@@ -57,7 +58,7 @@ config 'interface' 'loopback'
         option 'netmask' '255.0.0.0'
 
 config 'interface' 'public0'
-        option 'ifname'  'pub0'
+        option 'ifname'  "$IF01_NAME"
         option 'proto'   'dhcp'
 
 EOF

@@ -1,0 +1,200 @@
+#!/bin/sh
+# Autor: Pau <p4u@dabax.net>
+# This scripts exepect a partition table such as [sda1][sda2][free]
+# and creates sda3 for overlayFS and sda4 for home
+# sfdisk is needed
+
+OVERLAY_SIZE="20" #in %
+HOME_SIZE="80" #in %
+DISK="/dev/sda"
+SFDISK="sfdisk"
+MKFS="mkfs.ext4"
+TMPFS="64M"
+
+checksystem() {
+	if ! ls ${DISK}2; then 
+		echo "${DISK}2 does not exist, doing nothing"
+		exit 1
+	fi
+	if ! which $SFDISK; then
+		echo "$SFDISK is not installed, doing nothing"
+		exit 1
+	fi
+	
+	if ls ${DISK}3; then
+		echo "${DISK}3 partition exist, doing nothing"
+		exit 1
+	fi
+	
+	
+	if ! opkg list | grep block-mount; then
+		echo "block-mount package is not installed, doing nothing"
+		exit 1
+	fi
+
+	if ! $SFDISK -q -V -L ${DISK}; then
+		echo "CRITICAL, something wrong in the partition table"
+		exit 1
+	fi
+
+	if ! which $MKFS; then
+		echo "mkfs not found, doing nothing"
+		exit 1
+	fi
+}
+
+
+get_info() {
+	total_cylinders=$($SFDISK -R -g  $DISK |  awk '{print $2}')
+	start_cylinder=$(($($SFDISK -R -l $DISK 2>/dev/null | grep ${DISK}2 | tr -d \- | awk '{print $3}')+1))
+	available_cylinders=$(($total_cylinders-$start_cylinder-2))
+	overlay_cylinders=$(($available_cylinders*$OVERLAY_SIZE/100))	
+	home_cylinders=$(($available_cylinders*$HOME_SIZE/100))
+
+	echo -e "\n=> Information of target $DISK\n"
+	echo "-----------------------------"
+	echo "Available: $total_cylinders"
+	echo "Overlay: $overlay_cylinders"
+	echo "Home: $home_cylinders"
+	echo "-----------------------------"
+	
+	[ -z  "$total_cylinders" ] || [ -z "$start_cylinder" ] ||  [ -z "$available_cylinders" ] || \
+	[ -z "$overlay_cylinders" ] || [ -z "$home_cylinders" ] && \
+	{ echo "CRITICAL, cannot get info from disk table"; exit 1; }
+}
+
+
+write_fstab() {
+
+	cat > /etc/config/fstab << EOF
+	#Added by confine system
+	config global automount
+		option from_fstab 1
+		option anon_mount 0
+		
+	config global autoswap
+		option from_fstab 1
+		option anon_swap 0
+		
+	config mount
+		option target	/overlay
+		option device	${DISK}3
+		option fstype	ext4
+		option options	rw,noatime,nodiratime
+		option enabled	1
+		option enabled_fsck 1
+
+	config mount
+		option target	/home
+		option device	${DISK}4
+		option fstype	ext4
+		option options	rw,noatime,nodiratime
+		option enabled	1
+		option enabled_fsck 1
+		
+	config swap
+		option device	/dev/example
+		option enabled	0
+	
+	config mount
+		option target /tmp
+	  	option device tmpfs
+		option fstype tmpfs
+		option options remount,rw,nosuid,nodev,noatime,size=$TMPFS
+		option enabled_fsck 0
+		option enabled 1
+EOF
+	mkdir /overlay /home 2>/dev/null
+	/etc/init.d/fstab enable
+}
+
+
+set_lxc_to_home() {
+	echo "Moving LXC directories to /home"
+	mkdir /home/lxc 2>/dev/null
+	mkdir /home/lxc/images /home/lxc/templates
+	mv /lxc/images /lxc/.images.old
+	mv /lxc/templates /lxc/.templates.old
+	ln -s /home/lxc/images /lxc/images
+	ln -s /home/lxc/templates /lxc/templates
+	echo "Done"
+}
+
+echo -e "\n==> Checking system\n"
+checksystem
+echo -e "\n==> System OK\n"
+
+get_info
+
+echo -e "\n==> Disk information fetched\n"
+echo "-----------------------------"
+echo "total cylinders: $total_cylinders"
+echo "first available cylinder: $start_cylinder"
+#echo "available: $available_cylinders"
+#$overlay_cylinders
+#$home_cylinders
+echo "-----------------------------"
+
+echo -e "\n==> Input for sfdisk\n"
+echo "-----------------------------"
+echo "${DISK}3: $start_cylinder $overlay_cylinders L"
+echo "${DISK}4: $(($start_cylinder+$overlay_cylinders)) $home_cylinders L"
+echo "-----------------------------"
+
+sfdisk -q $DISK -L -N3 --no-reread << EOF
+$start_cylinder $overlay_cylinders L
+EOF
+
+sfdisk -q $DISK -L -N4 --no-reread << EOF
+$(($start_cylinder+$overlay_cylinders)) $home_cylinders L
+EOF
+
+echo -e "\n==> Writing fstab and enabling block-mount\n"
+write_fstab
+
+echo -e "\n==> Moving current LXC directory to new Home\n"
+set_lxc_to_home
+
+echo -e "\n==> Trying to force kernel re-read partition table\n"
+echo 1 > /sys/block/sda/device/rescan 1>/dev/null 2>/dev/null
+hdparm -z $DISK 1>/dev/null 2>/dev/null
+sleep 10
+
+if ! ls ${DISK}4 2>/dev/null; then
+	echo "Warning: it is not possible to re-read partition table!"
+	echo ""
+	echo -e "\n==============================================================="
+	echo " Seem that kernel does not read the new partition table"
+	echo " reboot is needed to be able to format and use partitions"
+	echo " a script has been added to uci-defaults, please reboot"
+	echo -e "===============================================================\n"
+
+	echo "!/bin/sh
+	umount ${DISK}3
+	umount ${DISK}4
+	$MKFS ${DISK}3
+	$MKFS ${DISK}4
+	mkdir /tmp/disk4
+	mount ${DISK}4 /tmp/disk4
+	mkdir /tmp/disk4/lxc
+	mkdir /tmp/disk4/lxc/templates /tmp/disk4/lxc/images
+	umount /tmp/disk4/
+	reboot
+	" > /etc/uci-defaults/format_partitions.sh
+	exit 0
+fi
+
+echo -e "\n==> Formating partitions\n"
+
+umount ${DISK}3
+$MKFS ${DISK}3
+[ $? -ne 0 ] && { echo "CRITICAL, cannot format partiion ${DISK}3"; exit 2; }
+
+umount ${DISK}4
+$MKFS ${DISK}4
+[ $? -ne 0 ] && { echo "CRITICAL, cannot format partiion ${DISK}4"; exit 2; }
+
+echo -e "\n==> Done, time to reboot the machine\n"
+
+exit 0
+
