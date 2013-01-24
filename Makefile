@@ -61,9 +61,9 @@ define prepare_workspace
 	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
 	cd $(OWRT_PKG_DIR) && git checkout $(CONFINE_VERSION)
 	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
-	rm -f $(BUILD_DIR)/dl || true
+	rm -f $(BUILD_DIR)/dl
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
-	rm -rf "$(BUILD_DIR)/files" || true
+	rm -rf "$(BUILD_DIR)/files"
 	ln -s "../$(FILES_DIR)" "$(BUILD_DIR)/files"
 endef
 
@@ -201,10 +201,10 @@ distclean:
 	$(call create_configs)
 
 mrproper:
-	rm -rf "$(BUILD_DIR)" || true
-	rm -rf "$(OWRT_PKG_DIR)" || true
-	rm -rf "$(DOWNLOAD_DIR)" || true
-	rm -f .prepared || true
+	rm -rf "$(BUILD_DIR)"
+	rm -rf "$(OWRT_PKG_DIR)"
+	rm -rf "$(DOWNLOAD_DIR)"
+	rm -f .prepared
 
 help:
 	@cat README
