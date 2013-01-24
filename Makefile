@@ -47,6 +47,8 @@ KCONFIG = $(BUILD_DIR)/$(KCONF)
 
 
 IMAGES = images
+# This is a build sequence number automatically set by Jenkins.
+BUILD_NUMBER ?= unknown
 NIGHTLY_IMAGES_DIR ?= www
 IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
