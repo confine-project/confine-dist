@@ -30,7 +30,6 @@ FILES_DIR = files
 PACKAGE_DIR = packages
 OWRT_PKG_DIR = $(PACKAGE_DIR)/openwrt
 OWRT_FEEDS = feeds.conf
-CONFIG_DIR = configs
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
 

@@ -47,9 +47,6 @@ All files you put inside this directory will be copyied to openwrt root filesyst
 - packages/
 All packages here will be copyied inside package/ openwrt directory. If you add a new package, remember to do "menuconfig" to select it
 
-- configs/
-In the first checkout this configs will be copyied to OpenWRT source tree (owrt_config & kernel_config)
-
 - my_configs/
 When you execute a menuconfig or kernel_menuconfig, the new config files will be copyied here. So if you want to commit the changes just copy them to configs/ dir
  
