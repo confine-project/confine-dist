@@ -60,7 +60,7 @@ OpenWRT source tree
 
 When compilation finishes, you will find the output images inside images/ directory
 
-If you need other kind of images (VMware, VBOX and so on) check inside src/bin/x86/ directory
+If you need other kind of images (VMware, VBOX and so on) check inside src/bin/TARGET/ directory (where TARGET can be e.g. x86)
 
 To copy it in a compact flash or usb stick: dd if=images/IMAGE_FILE of=/dev/sdX
 
