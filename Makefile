@@ -52,7 +52,7 @@ IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
-MAKE_SRC = -j$(J) V=$(V)
+MAKE_SRC_OPTS = -j$(J) V=$(V)
 CONFINE_VERSION ?= testing
 
 define prepare_workspace
@@ -119,7 +119,7 @@ define update_workspace
 endef
 
 define build_src
-	make -C "$(BUILD_DIR)" $(MAKE_SRC)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS)
 endef
 
 
