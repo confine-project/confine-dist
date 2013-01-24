@@ -29,7 +29,7 @@ BUILD_DIR = openwrt
 FILES_DIR = files
 PACKAGE_DIR = packages
 OWRT_PKG_DIR = $(PACKAGE_DIR)/openwrt
-OWRT_FEEDS = feeds.conf
+OWRT_FEEDS = feeds.conf.in
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
 
@@ -68,7 +68,7 @@ define prepare_workspace
 endef
 
 define update_feeds
-	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
+	cat $(OWRT_FEEDS) | sed -e "s|@PACKAGE_DIR@|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
 	@echo "Updating feed $(1)"
 	"$(BUILD_DIR)/$(1)/scripts/feeds" update -a
 	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
