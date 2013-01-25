@@ -14,7 +14,7 @@ local json   = require "luci.json"
 local ltn12  = require "luci.ltn12"
 local http   = require "luci.http.protocol"
 local tools  = require "confine.tools"
-local tree   = require "confine.tree"
+local ctree   = require "confine.tree"
 
 local dbg    = tools.dbg
 
@@ -27,7 +27,7 @@ null = json.null
 
 function val2string(val)
 	if val == nil then
-		return "ERROR"
+		return tostring(val)--"ERROR"
 	elseif val==null then
 		return "null"
 	else
@@ -82,7 +82,7 @@ function file_get( file )
 	
 	ltn12.pump.all(src, jsd:sink())
 
-	return tree.copy_recursive_rebase_keys(jsd:get())
+	return ctree.copy_recursive_rebase_keys(jsd:get())
 
 end
 
@@ -93,11 +93,10 @@ function http_get(url, base_uri, cert_file, cache)
 
 	if not url then return nil end
 	
-	local base_key,index_key = tree.get_url_keys( url )
+	local base_key,index_key = ctree.get_url_keys( url )
 	local cached             = cache and cache[base_key] and cache[base_key][index_key] or false
 	
-	dbg("%6s url=%-60s base_key=%-13s index_key=%s",
-	    cached and "cached" or "wget", base_uri..base_key..index_key, base_key, index_key)
+	dbg("%6s url=%-60s", cached and "cached" or "wget", base_uri..base_key..index_key)
 	
 	if cached then
 		
@@ -124,10 +123,10 @@ function http_get(url, base_uri, cert_file, cache)
 		
 		result = jsd:get()
 		
-		result = tree.copy_recursive_rebase_keys(result)
+		result = ctree.copy_recursive_rebase_keys(result)
 		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{base_uri..base_key..index_key} )
 --		dbg("http:get(): got rebased:")
---		tree.dump(result)
+--		ctree.dump(result)
 			
 		if cache then
 			if not cache[base_key] then cache[base_key] = {} end

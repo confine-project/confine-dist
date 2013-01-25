@@ -1,4 +1,4 @@
---[[
+ --[[
 
 
 
@@ -117,6 +117,24 @@ function mkdirr( path, mode )
 	end
 end
 
+function join_tables( t1, t2 )
+	local tn = {}
+	local k,v
+	for k,v in pairs(t1) do tn[k] = v end
+	for k,v in pairs(t2) do tn[k] = v end
+	return tn
+end
+
+function get_table_items( t )
+	local count = 0
+	local k,v
+	for k,v in pairs(t) do
+		count = count + 1
+		--dbg("get_table_items() c=%s k=%s v=%s", count, k, tostring(v))
+	end
+	--dbg("get_table_items() t=%s c=%s", tostring(t), count)
+	return count
+end
 
 function get_table_by_key_val( t, val, key )
 	

@@ -11,7 +11,7 @@ local nixio  = require "nixio"
 local sig    = require "signal"
 
 local tools  = require "confine.tools"
-local tree   = require "confine.tree"
+local ctree   = require "confine.tree"
 local dbg    = tools.dbg
 
 local RSA_HEADER               = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
@@ -196,18 +196,18 @@ end
 function cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
 	if action == "ADD" and not oldval and type(newval) == "table" then
 		if add_connect( sys_conf, newval) then
-			return tree.set_path_val( action, out_node, path, key, oldval, newval)
+			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
 		end
 	elseif action == "DEL" and type(oldval) == "table" and not newval then
 		if del_connect( sys_conf, oldval) then
-			return tree.set_path_val( action, out_node, path, key, oldval, newval)
+			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
 		end
 	elseif action == "CHG" and type(oldval) == "table" and type(newval) == "table" then
 		if del_connect( sys_conf, oldval) then
 			if add_connect( sys_conf, newval) then
-				return tree.set_path_val( action, out_node, path, key, oldval, newval)
+				return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
 			elseif add_connect( sys_conf, oldval) then
-				dbg("CB_RECONF_TINC: failed! Restored old connect_to name=%s ip=%s",
+				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s",
 				    oldval.name, oldval.ip_addr)
 				return oldval
 			end

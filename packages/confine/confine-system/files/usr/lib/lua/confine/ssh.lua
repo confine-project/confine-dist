@@ -9,9 +9,9 @@
 module( "confine.ssh", package.seeall )
 
 
-local tools  = require "confine.tools"
 local data   = require "confine.data"
 local tree   = require "confine.tree"
+local tools  = require "confine.tools"
 local dbg    = tools.dbg
 
 RSA_HEADER   = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
