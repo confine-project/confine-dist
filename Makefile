@@ -36,6 +36,7 @@ DOWNLOAD_DIR = dl
 #TARGET values: x86, ar71xx, realview
 TARGET ?= x86
 SUBTARGET ?= generic
+# Some targets (not x86) need a profile.
 PROFILE ?=
 PARTSIZE ?= 900
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
