@@ -24,7 +24,7 @@ OWRT_GIT ?= http://git.confine-project.eu/confine/openwrt.git
 OWRT_PKG_GIT ?= http://git.confine-project.eu/confine/packages.git
 endif
 
-TIMESTAMP = $(shell date -u +%Y%m%d%H%M)
+TIMESTAMP = $(shell date -u +%Y%m%d-%H%M)
 BUILD_DIR = openwrt
 FILES_DIR = files
 PACKAGE_DIR = packages
