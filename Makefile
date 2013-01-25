@@ -79,6 +79,7 @@ endef
 
 define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
+# This avoids the configuration process asking for the following options.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
 		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
 		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
