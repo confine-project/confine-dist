@@ -122,6 +122,9 @@ define Build/Compile
 endef
 
 define Package/confine-system/install
+	$(eval BRANCH_GIT := $(shell git branch | grep ^* | cut -d " " -f 2))
+	$(eval REV_GIT := $(shell git --no-pager log -n 1 --oneline | cut -d " " -f 1))
+
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/lxc
