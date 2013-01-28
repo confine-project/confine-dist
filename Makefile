@@ -16,14 +16,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifdef DEV
-OWRT_GIT ?= gitosis@git.confine-project.eu:confine/openwrt.git
-OWRT_PKG_GIT ?= gitosis@git.confine-project.eu:confine/packages.git
-else
-OWRT_GIT ?= http://git.confine-project.eu/confine/openwrt.git
-OWRT_PKG_GIT ?= http://git.confine-project.eu/confine/packages.git
-endif
-
 TIMESTAMP = $(shell date -u +%Y%m%d-%H%M)
 BUILD_DIR = openwrt
 FILES_DIR = files
@@ -59,10 +51,7 @@ MAKE_SRC_OPTS = -j$(J) V=$(V)
 CONFINE_VERSION ?= testing
 
 define prepare_workspace
-	git clone $(OWRT_GIT) "$(BUILD_DIR)"
-	cd $(BUILD_DIR) && git checkout $(CONFINE_VERSION)
-	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
-	cd $(OWRT_PKG_DIR) && git checkout $(CONFINE_VERSION)
+	git submodule update --init
 	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
 	rm -f $(BUILD_DIR)/dl
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
@@ -116,12 +105,6 @@ define kmenuconfig_owrt
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
-define update_workspace
-	git checkout $(CONFINE_VERSION) && git pull origin $(CONFINE_VERSION)
-	(cd "$(BUILD_DIR)" git checkout $(CONFINE_VERSION) && git pull )
-	(cd "$(OWRT_PKG_DIR)" && git checkout $(CONFINE_VERSION) && git pull )
-endef
-
 define build_src
 # BRANCH_GIT and REV_GIT are used by ``confine-system`` package's Makefile.
 	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS) BRANCH_GIT=$(shell git branch|grep ^*|cut -d " " -f 2) REV_GIT=$(shell git --no-pager log -n 1 --oneline|cut -d " " -f 1)
@@ -171,7 +154,6 @@ prepare: .prepared
 .prepared:
 	@echo "Using $(IMAGE_TYPE)."
 	$(call prepare_workspace)
-	$(call update_workspace)
 	$(call update_feeds)
 	$(call create_configs)
 	@touch .prepared
@@ -179,9 +161,6 @@ prepare: .prepared
 sync: prepare 
 	$(call update_feeds)
 	$(call create_configs)
-
-update: prepare
-	$(call update_workspace)
 
 menuconfig: prepare
 	$(call menuconfig_owrt)
