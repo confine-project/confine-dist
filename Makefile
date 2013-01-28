@@ -154,10 +154,7 @@ define nightly_build
 endef
 
 
-all: prepare 
-	@echo "Using $(IMAGE_TYPE)."
-	$(call build_src)
-	$(call post_build)
+all: target
 
 nightly: prepare
 	@echo "Using $(IMAGE_TYPE)."
@@ -165,6 +162,7 @@ nightly: prepare
 	$(call nightly_build)
 
 target: prepare 
+	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call post_build)
 
