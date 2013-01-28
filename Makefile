@@ -181,10 +181,9 @@ distclean:
 	$(call create_configs)
 
 mrproper:
-	rm -rf "$(BUILD_DIR)"
-	rm -rf "$(OWRT_PKG_DIR)"
-	rm -rf "$(DOWNLOAD_DIR)"
 	rm -f .prepared
+	rm -rf "$(DOWNLOAD_DIR)"
+	git submodule foreach 'find . -mindepth 1 -maxdepth 1 | xargs rm -rf'
 
 help:
 	@cat README
