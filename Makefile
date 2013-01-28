@@ -48,7 +48,6 @@ IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
 MAKE_SRC_OPTS = -j$(J) V=$(V)
-CONFINE_VERSION ?= testing
 
 define prepare_workspace
 	git submodule update --init
@@ -130,6 +129,8 @@ define nightly_build
 	$(eval BUILD_ID := $(BUILD_NUMBER)-$(REV_ID)-$(OWRT_REV_ID)-$(PACKAGES_REV_ID))
 
 	@echo $(BUILD_ID)
+
+	$(eval CONFINE_VERSION := $(shell git branch | grep ^* | cut -d " " -f 2))
 
 	mkdir -p "$(NIGHTLY_IMAGES_DIR)"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz"
