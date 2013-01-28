@@ -38,7 +38,6 @@ CONFIG = $(BUILD_DIR)/.config
 KCONF = target/linux/$(TARGET)/config-3.3
 KCONFIG = $(BUILD_DIR)/$(KCONF)
 
-
 IMAGES = images
 # This is a build sequence number automatically set by Jenkins.
 BUILD_NUMBER ?= unknown
@@ -48,6 +47,7 @@ IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
 MAKE_SRC_OPTS = -j$(J) V=$(V)
+
 
 define prepare_workspace
 	git submodule update --init
@@ -90,6 +90,7 @@ define create_configs
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
 endef
 
+
 define menuconfig_owrt
 	make -C "$(BUILD_DIR)" menuconfig
 	mkdir -p "$(MY_CONFIGS)"
@@ -116,7 +117,7 @@ define post_build
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).img.gz" "$(IMAGES)/CONFINE-owrt-current.img.gz"
-	@echo 
+	@echo
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
 
@@ -139,15 +140,15 @@ endef
 
 all: target
 
+target: prepare
+	$(call build_src)
+	$(call post_build)
+
 nightly: prepare
 	$(call build_src)
 	$(call nightly_build)
 
-target: prepare 
-	$(call build_src)
-	$(call post_build)
-
-prepare: .prepared 
+prepare: .prepared
 
 .prepared:
 	@echo "Using $(IMAGE_TYPE)."
@@ -156,9 +157,10 @@ prepare: .prepared
 	$(call create_configs)
 	@touch .prepared
 
-sync: prepare 
+sync: prepare
 	$(call update_feeds)
 	$(call create_configs)
+
 
 menuconfig: prepare
 	$(call menuconfig_owrt)
@@ -184,6 +186,7 @@ mrproper:
 	rm -f .prepared
 	rm -rf "$(DOWNLOAD_DIR)"
 	git submodule foreach 'find . -mindepth 1 -maxdepth 1 | xargs rm -rf'
+
 
 help:
 	@cat README

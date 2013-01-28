@@ -1,8 +1,8 @@
 # CONFINE firmware generator (http://confine-project.eu)
 #
 #    Copyright (C) 2011 Universitat Politecnica de Barcelona (UPC)
-#    
-#    Thiss program is free software: you can redistribute it and/or modify
+#
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -156,7 +156,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
 	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
-	
+
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
