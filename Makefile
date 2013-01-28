@@ -72,9 +72,9 @@ endef
 
 define update_feeds
 	cat $(OWRT_FEEDS) | sed -e "s|@PACKAGE_DIR@|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
-	@echo "Updating feed $(1)"
-	"$(BUILD_DIR)/$(1)/scripts/feeds" update -a
-	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
+	@echo "Updating feeds"
+	"$(BUILD_DIR)/scripts/feeds" update -a
+	"$(BUILD_DIR)/scripts/feeds" install -a
 endef
 
 define create_configs
