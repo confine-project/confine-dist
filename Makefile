@@ -140,12 +140,10 @@ endef
 all: target
 
 nightly: prepare
-	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call nightly_build)
 
 target: prepare 
-	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call post_build)
 
