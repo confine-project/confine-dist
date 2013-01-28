@@ -105,8 +105,7 @@ define kmenuconfig_owrt
 endef
 
 define build_src
-# BRANCH_GIT and REV_GIT are used by ``confine-system`` package's Makefile.
-	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS) BRANCH_GIT=$(shell git branch|grep ^*|cut -d " " -f 2) REV_GIT=$(shell git --no-pager log -n 1 --oneline|cut -d " " -f 1)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS)
 endef
 
 
