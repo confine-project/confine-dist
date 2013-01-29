@@ -67,7 +67,9 @@ endef
 
 define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
-# This avoids the configuration process asking for the following options.
+# This command restores OpenWrt's default configuration and adds answers
+# to some options to avoid the configuration process asking for them.
+# This should be fixed in mainstream soon.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
 		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
 		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
