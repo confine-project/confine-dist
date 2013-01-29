@@ -39,14 +39,14 @@ define Package/lxc
   DEPENDS:= \
 	+libcap2 +bash +ip +veth +swconfig \
 	\
-        +kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
+	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
 	+kmod-ipv6 \
 	\
 	+coreutils +coreutils-rm \
 	+coreutils-chroot +coreutils-sha1sum \
 	+bzip2 +gzip +tar \
 	\
-        +perl +perlbase-complete +perlbase-base +perlbase-essential \
+	+perl +perlbase-complete +perlbase-base +perlbase-essential \
 	+perlbase-getcwd +perlbase-getopt +perlbase-sys \
 	+perlbase-fcntl +perlbase-file +perlbase-xsloader \
 	\
@@ -83,8 +83,8 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/lxc/scripts
 	$(INSTALL_DIR) $(1)/cgroup
 
-	$(INSTALL_DIR) $(1)/usr/bin	
-	$(INSTALL_DIR) $(1)/usr/sbin	
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
