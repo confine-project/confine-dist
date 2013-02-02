@@ -15,8 +15,8 @@ local nixio   = require "nixio"
 
 function dbg(fmt, ...)
 	local t = nixio.times()
-	io.stdout:write(string.format("[%d.%3d] ", os.time(),
-	                              t.utime + t.stime + t.cutime + t.cstime))
+	io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
+	io.stdout:write((debug.getinfo(2).name or "???").."() ")
 	io.stdout:write(string.format(fmt, ...))
 	io.stdout:write("\n")
 end
@@ -151,6 +151,10 @@ function get_table_by_key_val( t, val, key )
 		end
 	end
 	return nil
+end
+
+function fname()
+	return debug.getinfo(2).name.."() "
 end
 
 function str2table( str, pattern )

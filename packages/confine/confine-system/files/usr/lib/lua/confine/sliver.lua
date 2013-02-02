@@ -31,17 +31,17 @@ local tmp_rules
 register_rules = {}
 tmp_rules = register_rules
 	table.insert(tmp_rules, {["/local_slivers"]					= "CB_NOP"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+"]				= "CB_PROCESS_LSLIVER"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/uri"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+"]				= "CB_CONFIG_LSLIVER"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/uri"]				= "CB_COPY"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/instance_sn"]			= "CB_COPY"})
 
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice"]				= "CB_ADD_DEL_EMPTY_TABLE"})--"CB_SET_LSLIVER_LSLICE"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/id"]			= "CB_COPY"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/new_sliver_instance_sn"]	= "CB_COPY"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/instance_sn"]		= "CB_COPY"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/set_state"]			= "CB_COPY"})
+	--table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice"]				= "CB_ADD_DEL_EMPTY_TABLE"})--"CB_SET_LSLIVER_LSLICE"})
+	--table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/id"]			= "CB_COPY"})
+	--table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/new_sliver_instance_sn"]	= "CB_COPY"})
+	--table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/instance_sn"]		= "CB_COPY"})
+	--table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/set_state"]			= "CB_COPY"})
 
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]				= "CB_SET_SLIVER_STATE"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]				= "CB_NOP"})--"CB_SET_SLIVER_STATE"})
 
 
 
@@ -100,17 +100,38 @@ function start_slivers( sys_conf, sliver)
 end
 
 
-function process_local_sliver( sys_conf, action, out_node, path, key, oldval, newval )
+function config_local_sliver( sys_conf, action, out_node, path, key, oldslv, newslv )
+
+	assert( not oldslv or oldslv.state )
+	assert( not newslv or newslv.local_slice)
+
+	if action == "ADD" then
+
+		assert(oldslv == nil)
 	
-	return ctree.add_del_empty_table( action, out_node, path, key, oldval, newval)
+		local ret = ctree.copy_path_val( "ADD", out_node, path, key, nil, { ["state"] = STATE.bad_conf })
+		
+		return ret
+	
+	elseif action == "DEL" then -- the missing trigger
+		
+		
+--		remove_slivers( sys_conf, oldslv )
+		return ctree.copy_path_val( "DEL", out_node, path, key, oldslv, newslv)
+	
+	elseif action == "CHG" then
+		
+--		return ctree.copy_path_val( action, out_node, path, key, oldslv, newslv)
+		return oldslv
+	end
 end
 
 
 local sliver_cb_tasks = tools.join_tables( rules.dflt_cb_tasks, {
 	
-	["CB_PROCESS_LSLIVER"]	= function( sys_conf, action, out_node, path, key, oldval, newval )
-				--	ctree.dump(newval)
-					return process_local_sliver( sys_conf, action, out_node, path, key, oldval, newval )
+	["CB_CONFIG_LSLIVER"]	= function( sys_conf, action, out_node, path, key, oldslv, newslv )
+				--	ctree.dump(newslv)
+					return config_local_sliver( sys_conf, action, out_node, path, key, oldslv, newslv )
 				end
 	
 } )
@@ -118,7 +139,7 @@ local sliver_cb_tasks = tools.join_tables( rules.dflt_cb_tasks, {
 
 function process_local_slivers( sys_conf, action, out_node, path, key, oldval, newval )
 	ctree.process( rules.cb, sys_conf, sliver_cb_tasks, out_node, register_rules, oldval, newval, path..key.."/" )
-	return ctree.get_path_val(out_node, path, key)
+	return ctree.get_path_val(out_node, path..key.."/")
 end
 
 

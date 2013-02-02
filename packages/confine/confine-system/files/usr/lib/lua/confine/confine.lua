@@ -119,19 +119,20 @@ function main_loop( )
 		--util.dumptable(server_node)
 		--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
 	
-
 		dbg("\nprocessing input")
 		if success then
 			if( sys_conf.debug ) then
-				ctree.process( rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
+				ctree.iterate( rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+--				ctree.process( rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
 			else
 				success,err_msg = pcall(
-				ctree.process, rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
+				ctree.iterate, rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+--				ctree.process, rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
 			end
 		end
 		
-		
-		assert(success or err_msg:sub(1,9) == "ERR_RETRY", err_msg)
+		assert(success or err_msg:sub(1,9)=="ERR_RETRY" or err_msg:sub(1,9)=="ERR_SETUP", err_msg)
+
 		
 		dbg("\nupdating node RestAPI")
 		
@@ -140,7 +141,7 @@ function main_loop( )
 			cdata.file_put( local_node, system.cache_file )
 			err_cnt = 0
 			
-		elseif sys_conf.retry_limit==0 or sys_conf.retry_limit > err_cnt then
+		elseif err_msg:sub(1,9)=="ERR_RETRY" and sys_conf.retry_limit==0 or sys_conf.retry_limit > err_cnt then
 			
 			err_cnt = err_cnt + 1
 			dbg("IGNORING ERROR (".."err_cnt="..err_cnt.." retry_limit="..sys_conf.retry_limit.."): "..err_msg)

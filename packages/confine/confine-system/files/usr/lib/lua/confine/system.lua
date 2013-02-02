@@ -76,7 +76,7 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
-	conf.retry_limit           = tonumber(uci.get("confine", "node", "retry_limit") or 0)
+	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"]) or tonumber(uci.get("confine", "node", "retry_limit") or 0)
 
 	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
@@ -100,7 +100,7 @@ function get_system_conf(sys_conf, arg)
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
 	
 
-	conf.direct_ifaces         = tools.str2table(uci.get("confine", "node", "rd_if_iso_parents"),"[%a%d_]+")
+	conf.direct_ifaces         = tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+")
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
 

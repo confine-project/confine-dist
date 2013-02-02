@@ -193,24 +193,59 @@ function add_connect (sys_conf, connect)
 end
 
 
-function cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
-	if action == "ADD" and not oldval and type(newval) == "table" then
-		if add_connect( sys_conf, newval) then
-			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
+--function cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
+--	if action == "ADD" and not oldval and type(newval) == "table" then
+--		if add_connect( sys_conf, newval) then
+--			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
+--		end
+--	elseif action == "DEL" and type(oldval) == "table" and not newval then
+--		if del_connect( sys_conf, oldval) then
+--			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
+--		end
+--	elseif action == "CHG" and type(oldval) == "table" and type(newval) == "table" then
+--		if del_connect( sys_conf, oldval) then
+--			if add_connect( sys_conf, newval) then
+--				return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
+--			elseif add_connect( sys_conf, oldval) then
+--				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s",
+--				    oldval.name, oldval.ip_addr)
+--				return oldval
+--			end
+--		end
+--	end
+--end
+
+
+function cb2_set_tinc( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_tinc" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	assert( type(old)=="table" or type(new)=="table" )
+	
+	if begin and not old and new then
+
+		if add_connect( sys_conf, new) then
+			ctree.set_path_val( otree, path, get_connects(sys_conf)[key])
 		end
-	elseif action == "DEL" and type(oldval) == "table" and not newval then
-		if del_connect( sys_conf, oldval) then
-			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
+		
+	elseif not begin and old and not new then
+
+		if del_connect( sys_conf, old) then
+			ctree.set_path_val(otree,path,nil)
 		end
-	elseif action == "CHG" and type(oldval) == "table" and type(newval) == "table" then
-		if del_connect( sys_conf, oldval) then
-			if add_connect( sys_conf, newval) then
-				return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
-			elseif add_connect( sys_conf, oldval) then
-				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s",
-				    oldval.name, oldval.ip_addr)
-				return oldval
+		
+	elseif not begin and old and new and changed then
+		
+		if del_connect( sys_conf, old) then
+			
+			if add_connect( sys_conf, new) then
+				ctree.set_path_val( otree, path, get_connects(sys_conf)[key] )
+			elseif add_connect( sys_conf, old) then
+				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s", old.name, old.ip_addr)
 			end
+			
 		end
 	end
 end

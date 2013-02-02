@@ -32,6 +32,7 @@ STATE = {
 
 local tmp_rules
 
+
 in_rules = {}
 tmp_rules = in_rules
 	table.insert(tmp_rules, {["/description"]			= "CB_COPY"})
@@ -187,8 +188,8 @@ end
 
 function set_node_state( sys_conf, node, val)
 
-
-	--dbg("set_node_state: old=%s new=%s" %{node.state, val})
+	dbg("set_node_state: old=%s new=%s" %{node.state, val})
+	
 	assert( STATE[val], "set_node_state(): Illegal node state=%s" %{tostring(val)})
 
 	if (val == STATE.failure or node.state == STATE.failure) then
@@ -287,13 +288,13 @@ function get_local_node( sys_conf, cached_node )
 	node.set_state             = cached_node.set_state
 	node.state                 = get_node_state( sys_conf, cached_node )
 	
-	node.cn                    = cached_node.cn or {}
+	node.cn                    = cached_node.cn --or {}
 	
-	node.description           = cached_node.description or ""
+	node.description           = cached_node.description --or ""
 
 	node.direct_ifaces         = sys_conf.direct_ifaces
 	
-	node.properties            = cached_node.properties or {}
+	node.properties            = cached_node.properties --or {}
 	
 	node.tinc		   = tinc.get(sys_conf, cached_node.tinc)
 	
@@ -308,6 +309,103 @@ end
 
 
 
+
+function cb2_set_sys_key_and_reboot( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_set_boot_sn" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	local is_table = type(old)=="table" or type(new)=="table"
+
+	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new) then
+		system.reboot()
+	elseif old ~= new then
+		assert(false, "ERR_SETUP...")
+	end
+end
+
+function cb2_set_sys_key_and_reboot_prepared( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_set_sys_key_and_reboot_prepared" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	local is_table = type(old)=="table" or type(new)=="table"
+
+	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new ) then
+		system.set_system_conf( sys_conf, "sys_state", "prepared" )
+		system.reboot()
+	elseif old ~= new then
+		assert(false, "ERR_SETUP...")
+	end
+end
+
+function cb2_set_sys_and_remove_slivers( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_sys_key_and_remove_slivers" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	local is_table = type(old)=="table" or type(new)=="table"
+	
+	--dbg( "path=%s old=%s new=%s", path,
+	--    (type(old)=="table" and ctree.as_string(old):gsub("\n","") or tostring(old)),
+	--    (type(new)=="table" and ctree.as_string(new):gsub("\n","") or tostring(new)))
+
+	if is_table and begin and ((not old or old==null) and new) then
+
+		ctree.set_path_val(otree,path,{})
+		
+	elseif is_table and not begin and changed and system.set_system_conf( sys_conf, key, new ) then
+
+		sliver.remove_slivers( sys_conf, nil )
+		ctree.set_path_val(otree,path,sys_conf[key])
+		
+	elseif not is_table and old ~= new and system.set_system_conf( sys_conf, key, new ) then
+		
+		sliver.remove_slivers( sys_conf, nil )
+		ctree.set_path_val(otree,path,sys_conf[key])
+		
+	elseif not is_table and old ~= new then
+		
+		assert(false, "ERR_SETUP...")
+	end
+	
+end
+
+function cb2_set_setup( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_setup" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+
+	if old ~= new then
+		set_node_state( sys_conf, otree, STATE.setup )
+		return true
+	end
+end
+
+function cb2_set_state( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_set_state" end
+	set_node_state( sys_conf, otree, otree.set_state )
+end
+
+function cb2_set_uuid( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_set_uuid" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	
+	if old == new then
+		return
+	elseif old == null and path=="/uuid/" and system.set_system_conf( sys_conf, "uuid", new) then
+		ctree.set_path_val( otree, path, new)
+	else
+		set_node_state( sys_conf, otree, STATE.setup )
+		return true
+	end
+end
 
 
 cb_tasks = tools.join_tables( rules.dflt_cb_tasks, {
@@ -378,3 +476,72 @@ cb_tasks = tools.join_tables( rules.dflt_cb_tasks, {
 
 	
 } )
+
+
+
+in_rules2 = {}
+tmp_rules = in_rules2
+	table.insert(tmp_rules, {"/description",			rules.cb2_set})
+	table.insert(tmp_rules, {"/properties",				rules.cb2_set})
+	table.insert(tmp_rules, {"/properties/[^/]+",			rules.cb2_set})
+	table.insert(tmp_rules, {"/properties/[^/]+/[^/]+",		rules.cb2_set})
+	table.insert(tmp_rules, {"/cn",					rules.cb2_set})
+	table.insert(tmp_rules, {"/cn/app_url",				rules.cb2_set})
+	table.insert(tmp_rules, {"/cn/cndb_uri",			rules.cb2_set})
+	table.insert(tmp_rules, {"/cn/cndb_cached_on",			rules.cb2_set})
+
+	table.insert(tmp_rules, {"/uri",				rules.cb2_nop}) --redefined by node
+	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
+	table.insert(tmp_rules, {"/uuid",				cb2_set_uuid})
+	table.insert(tmp_rules, {"/pubkey", 				cb2_set_setup})
+	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
+	table.insert(tmp_rules, {"/arch",				cb2_set_setup})
+	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup})
+	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup})
+
+	table.insert(tmp_rules, {"/tinc", 				rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/name",	 			cb2_set_setup})
+	table.insert(tmp_rules, {"/tinc/pubkey",			cb2_set_setup})
+	table.insert(tmp_rules, {"/tinc/island",			rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/island/uri",			rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/connect_to",			rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+",		tinc.cb2_set_tinc})
+	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/ip_addr", 	rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/port", 	rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/pubkey", 	rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/name", 	rules.cb2_nop}) --handled by set_tinc
+
+	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
+	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
+	table.insert(tmp_rules, {"/direct_ifaces/[^/]+",		rules.cb2_nop})  --handled by direct_ifaces
+	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
+	
+	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_local_group}) --"CB_GET_LOCAL_GROUP"})
+	table.insert(tmp_rules, {"/local_group/uri",						rules.cb2_set})
+	table.insert(tmp_rules, {"/local_group/user_roles",					rules.cb2_nop}) --must exist
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+",		 		ssh.cb2_set_local_group_role})
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/is_technician",			rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/auth_tokens",	rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/auth_tokens/[^/]+",	rules.cb2_nop}) --handled by set_local_group_role
+--	
+	table.insert(tmp_rules, {"/group",				rules.cb2_nop}) --handled by set_local_group
+	table.insert(tmp_rules, {"/group/uri",				rules.cb2_nop}) --handled by set_local_group
+--	
+	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
+	table.insert(tmp_rules, {"/set_state",				rules.cb2_set})
+	table.insert(tmp_rules, {"/state",				cb2_set_state})
+--
+--
+--	table.insert(tmp_rules, {["/local_slivers"]			= "CB_PROCESS_LSLIVERS"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+"]		= "CB_NOP"})
+--	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]		= "CB_NOP"})
+--	
+--	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
+--	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
+--
+--	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
