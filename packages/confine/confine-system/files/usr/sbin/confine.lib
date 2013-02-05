@@ -1053,12 +1053,12 @@ confine_sliver_fw_restart() {
 	    local EBTCMD=
 	    cat /etc/confine-ebtables.lst | awk -F'#' '{print $1}' | grep -e "^ *-p" | while read EBTARG; do
 		EBTCMD="ebtables -I FORWARD -i $IF_PAIR $EBTARG"
-		echo "$EBTCMD"
+		echo "$EBTCMD" >&2
 		$EBTCMD
 	    done
 
 	    # set general rules ...
-	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP	    
+	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP 
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 $( [ "$IF_IPV4" ] && echo "--ip-src ! $IF_IPV4") -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src 0.0.0.0/0 --ip-proto udp --ip-sport 68 --ip-dport 67 -j ACCEPT
 
