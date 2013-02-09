@@ -186,9 +186,9 @@ vct_tinc_setup() {
 
     vct_do mkdir -p $VCT_TINC_DIR
     vct_do rm -rf $VCT_TINC_DIR/* 
-    vct_do mkdir -p $VCT_TINC_DIR/confine/hosts
+    vct_do mkdir -p $VCT_TINC_DIR/vct/hosts
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc.conf
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc.conf
 BindToAddress = 0.0.0.0
 Port = $VCT_SERVER_TINC_PORT
 Name = server
@@ -196,31 +196,31 @@ StrictSubnets = yes
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/hosts/server
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/hosts/server
 Address = $VCT_SERVER_TINC_IP
 Port = $VCT_SERVER_TINC_PORT
 Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
 EOF
 "
     
-    #vct_do tincd -c $VCT_TINC_DIR/confine  -K
-    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/confine/hosts/server"
-    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/confine/rsa_key.priv
+    #vct_do tincd -c $VCT_TINC_DIR/vct  -K
+    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/vct/hosts/server"
+    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/vct/rsa_key.priv
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-up
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc-up
 #!/bin/sh
 ip -6 link set \\\$INTERFACE up mtu 1400
 ip -6 addr add $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-down
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc-down
 #!/bin/sh
 ip -6 addr del $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 ip -6 link set \\\$INTERFACE down
 EOF
 "
-    vct_do chmod a+rx $VCT_TINC_DIR/confine/tinc-{up,down}
+    vct_do chmod a+rx $VCT_TINC_DIR/vct/tinc-{up,down}
     
 }
 
@@ -252,7 +252,7 @@ vct_tinc_stop() {
 	echo  >&2
 	echo  >&2
 	[ -x /proc/$TINC_PID ] && vct_sudo kill -9 $TINC_PID && \
-	    echo "Killing confine tincd the hard way" >&2
+	    echo "Killing vct tincd the hard way" >&2
     fi
 }
 
@@ -352,6 +352,7 @@ vct_system_install_check() {
     local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
     local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
     local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
+    local UPD_TINC=$(    echo "$OPT_CMD" | grep -e "tinc" > /dev/null && echo "tinc," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -491,14 +492,14 @@ EOF
 
     # check tinc configuration:
 
-    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] && vct_do rm -rf $VCT_TINC_DIR
+    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_TINC ] && vct_do rm -rf $VCT_TINC_DIR
 
     if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
 	vct_tinc_setup
     fi
 
-    [ -f $VCT_TINC_DIR/confine/hosts/server ] || \
-	{ err $FUNCNAME "$VCT_TINC_DIR/confine/hosts/server not existing" $CMD_SOFT || return 1 ;}
+    [ -f $VCT_TINC_DIR/vct/hosts/server ] || \
+	{ err $FUNCNAME "$VCT_TINC_DIR/vct/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
 
 
@@ -1356,7 +1357,7 @@ Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
 $( cat $PREP_ROOT/etc/tinc/confine/rsa_key.pub )
 EOF
 
-	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/confine/hosts/
+	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/vct/hosts/
 
 	# this is optional:
 	# mkdir -p $PREP_ROOT/etc/dropbear
@@ -1404,7 +1405,7 @@ EOF
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
-#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
+#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/vct/hosts/
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
@@ -1795,7 +1796,7 @@ vct_sliver_ssh() {
 	    	vct_do_ping $IP > /dev/null && break
 
 	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
+		echo -n "Waiting for $VCRD_ID to listen on $IP (firstboot may take upto 40 secs)" || \
 		echo -n "."
 
 	    COUNT=$(( $COUNT + 1 ))
