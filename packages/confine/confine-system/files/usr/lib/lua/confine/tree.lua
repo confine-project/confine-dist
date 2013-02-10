@@ -479,9 +479,6 @@ end
 
 function iterate(cb, rules, sys_conf, otree, ntree, path, lvl)
 	
-	--otree = otree or {}
-	--ntree = ntree or {}
-	
 	assert(cb and sys_conf and rules and otree and ntree and path)
 	lvl = lvl or 0
 	local up_changed = false
@@ -494,50 +491,48 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, lvl)
 	
 	for pk,pv in ipairs(rules) do
 	
-		--local pattern = util.keys(pv)[1]
-		--local task    = pv[pattern]
 		local pattern = pv[1]
 		local task    = pv[2]
+		local tk, tk_matched
 		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s" %{tostring(pattern), tostring(task)} )
+
+--		dbg( "pk=%s path=%-25s pattern=%s", pk, path, pattern )		
 		
-		
---		if path:match("^%s$" %pattern:gsub( "/[^/]+$","/")) or (path.."xxx"):match("^%s$" %pattern) then
-		
---			dbg( "pk=%s path=%-25s pattern=%s", pk, path, pattern )
+		for tk in pairs( tkeys ) do
 			
-			local tk
-			
-			for tk in pairs( tkeys ) do
+--			dbg( "pk=%s path=%-25s pattern=%s", pk, path..tk, pattern )
 				
---				dbg( "pk=%s path=%-25s pattern=%s", pk, path..tk, pattern )
-					
-				if (path..tk):match("^%s$" %pattern) then
-			
-					local ov = type(ocurr)=="table" and ocurr[tk] or nil
-					local nv = type(ncurr)=="table" and ncurr[tk] or nil
-					local is_table = type(ov)=="table" or type(nv)=="table"
-					
-					--dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
-					--    pk, path, tk, pattern, cb(), task(),
-					--    data.val2string(ov):gsub("\n",""):sub(1,30), data.val2string(nv):gsub("\n",""):sub(1,30))
-					
-					assert( ov or nv )
---					assert( not is_table or type(ov)==type(nv), "path=%s ov=%s  nv=%s" %{path..tk, tostring(ov), tostring(nv)} )
-					
-					if is_table then
-						cb( task, sys_conf, otree, ntree, path..tk.."/", true, false)
-						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", lvl+1)
-						cb( task, sys_conf, otree, ntree, path..tk.."/", false, down_changed)
-					else
-						cb( task, sys_conf, otree, ntree, path..tk.."/")
-					end
-					
-					up_changed = up_changed or down_changed
-					up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
-					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --ntree changed
+			if (path..tk):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
+				
+				tk_matched = true
+		
+				local ov = type(ocurr)=="table" and ocurr[tk] or nil
+				local nv = type(ncurr)=="table" and ncurr[tk] or nil
+				local is_table = type(ov)=="table" or type(nv)=="table"
+
+				--dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
+				--    pk, path, tk, pattern, cb(), task(),
+				--    data.val2string(ov):gsub("\n",""):sub(1,30), data.val2string(nv):gsub("\n",""):sub(1,30))
+				
+				assert( ov or nv )
+				
+				if is_table then
+					cb( task, sys_conf, otree, ntree, path..tk.."/", true, false)
+					local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", lvl+1)
+					cb( task, sys_conf, otree, ntree, path..tk.."/", false, down_changed)
+				else
+					cb( task, sys_conf, otree, ntree, path..tk.."/")
 				end
-			end			
---		end
+				
+				up_changed = up_changed or down_changed
+				up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
+				up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --ntree changed
+			end
+		end
+		
+		--if not tk_matched then
+		--	dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s", lvl, pk, path, pattern)
+		--end
 	end
 
 	return up_changed

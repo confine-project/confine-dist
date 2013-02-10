@@ -28,6 +28,11 @@ function cb2_nop( sys_conf, otree, ntree, path )
 	if not sys_conf then return "cb2_nop" end
 end
 
+function cb2_log( sys_conf, otree, ntree, path )
+	if not sys_conf then return "cb2_nop" end
+	return true
+end
+
 function cb2_set( sys_conf, otree, ntree, path, begin, changed )
 	
 	if not sys_conf then return "cb2_set" end

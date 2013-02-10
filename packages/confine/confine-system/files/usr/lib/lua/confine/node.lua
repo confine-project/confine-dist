@@ -483,8 +483,8 @@ in_rules2 = {}
 tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/description",			rules.cb2_set})
 	table.insert(tmp_rules, {"/properties",				rules.cb2_set})
-	table.insert(tmp_rules, {"/properties/[^/]+",			rules.cb2_set})
-	table.insert(tmp_rules, {"/properties/[^/]+/[^/]+",		rules.cb2_set})
+	table.insert(tmp_rules, {"/properties/*",			rules.cb2_set})
+	table.insert(tmp_rules, {"/properties/*/*",			rules.cb2_set})
 	table.insert(tmp_rules, {"/cn",					rules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				rules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			rules.cb2_set})
@@ -507,26 +507,26 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/tinc/island",			rules.cb2_set})
 	table.insert(tmp_rules, {"/tinc/island/uri",			rules.cb2_set})
 	table.insert(tmp_rules, {"/tinc/connect_to",			rules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+",		tinc.cb2_set_tinc})
-	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/ip_addr", 	rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/port", 	rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/pubkey", 	rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/[^/]+/name", 	rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*",			tinc.cb2_set_tinc})
+	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr", 		rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/port", 		rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey", 		rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/name", 		rules.cb2_nop}) --handled by set_tinc
 
 	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
-	table.insert(tmp_rules, {"/direct_ifaces/[^/]+",		rules.cb2_nop})  --handled by direct_ifaces
+	table.insert(tmp_rules, {"/direct_ifaces/*",			rules.cb2_nop})  --handled by direct_ifaces
 	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
 	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_local_group}) --"CB_GET_LOCAL_GROUP"})
 	table.insert(tmp_rules, {"/local_group/uri",						rules.cb2_set})
 	table.insert(tmp_rules, {"/local_group/user_roles",					rules.cb2_nop}) --must exist
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+",		 		ssh.cb2_set_local_group_role})
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/is_technician",			rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/auth_tokens",	rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/[^/]+/local_user/auth_tokens/[^/]+",	rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_local_group_role})
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		rules.cb2_nop}) --handled by set_local_group_role
 --	
 	table.insert(tmp_rules, {"/group",				rules.cb2_nop}) --handled by set_local_group
 	table.insert(tmp_rules, {"/group/uri",				rules.cb2_nop}) --handled by set_local_group
@@ -537,11 +537,11 @@ tmp_rules = in_rules2
 --
 --
 	table.insert(tmp_rules, {"/local_slivers",			rules.cb2_nop}) --must exist
-	table.insert(tmp_rules, {"/local_slivers/[^/]+",		sliver.cb2_process_lsliver})
---	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]		= "CB_NOP"})
+	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_process_lsliver})
+--	table.insert(tmp_rules, {["/local_slivers/*/state"]		= "CB_NOP"})
 --	
 --	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
---	table.insert(tmp_rules, {["/slivers/[^/]+"]			= "CB_NOP"})
---	table.insert(tmp_rules, {["/slivers/[^/]+/uri"]			= "CB_NOP"})
+--	table.insert(tmp_rules, {["/slivers/*"]				= "CB_NOP"})
+--	table.insert(tmp_rules, {["/slivers/*/uri"]			= "CB_NOP"})
 --
 --	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})

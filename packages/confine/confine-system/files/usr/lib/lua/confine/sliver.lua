@@ -46,25 +46,18 @@ local tmp_rules
 
 local configure_rules = {}
 tmp_rules = configure_rules
-	table.insert(tmp_rules, {"/local_slivers",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+",				crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+/uri",				crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+/instance_sn",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/uri",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/test",				crules.cb2_log})
 
 local allocate_rules = {}
 tmp_rules = allocate_rules
-	table.insert(tmp_rules, {"/local_slivers",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+",				crules.cb2_nop})
 
 local deploy_rules = {}
 tmp_rules = deploy_rules
-	table.insert(tmp_rules, {"/local_slivers",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+",				crules.cb2_nop})
 
 local activate_rules = {}
 tmp_rules = activate_rules
-	table.insert(tmp_rules, {"/local_slivers",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/[^/]+",				crules.cb2_nop})
 
 function cb2_process_lsliver( sys_conf, otree, ntree, path, begin, changed )
 	if not sys_conf then return "cb2_process_lsliver" end
@@ -72,7 +65,7 @@ function cb2_process_lsliver( sys_conf, otree, ntree, path, begin, changed )
 	local slvs = otree.local_slivers
 	local key = ctree.get_path_leaf(path)
 	
-	if begin then return true end
+	if begin then return dbg("------------------------") or true end
 	
 	if otree.state ~= cnode.STATE.production then
 		ntree.local_slivers[key] = nil
