@@ -369,13 +369,14 @@ function set_path_val ( tree, path, val, depth)
 	if path:match("^%s$" %"/[^/]+/") then
 		
 		tree[path_root] = val
+		return val
 	
 	else
 		local path_new = path:sub(path_root:len()+2)
 		
 		assert(path_root and path_new)
 		assert( tree[path_root] and type(tree[path_root])=="table", "key=%s does not exist in tree=%s" %{path_root, tostring(tree)} )
-		set_path_val( tree[path_root], path_new, val, depth+1)
+		return set_path_val( tree[path_root], path_new, val, depth+1)
 	end
 end
 

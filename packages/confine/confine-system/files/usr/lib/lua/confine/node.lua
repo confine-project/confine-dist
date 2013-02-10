@@ -536,8 +536,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/state",				cb2_set_state})
 --
 --
---	table.insert(tmp_rules, {["/local_slivers"]			= "CB_PROCESS_LSLIVERS"})
---	table.insert(tmp_rules, {["/local_slivers/[^/]+"]		= "CB_NOP"})
+	table.insert(tmp_rules, {"/local_slivers",			rules.cb2_nop}) --must exist
+	table.insert(tmp_rules, {"/local_slivers/[^/]+",		sliver.cb2_process_lsliver})
 --	table.insert(tmp_rules, {["/local_slivers/[^/]+/state"]		= "CB_NOP"})
 --	
 --	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
