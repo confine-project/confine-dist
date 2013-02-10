@@ -18,10 +18,13 @@ local dbg    = tools.dbg
 STATE = {
 	["bad_conf"]  	  = "bad_conf",
 	["register"] 	  = "register",
+	["do_alloc"]      = "do_alloc",
 	["fail_alloc"]    = "fail_alloc",
 	["allocate"]	  = "allocate",
+	["do_deploy"]     = "do_deploy",
 	["fail_deploy"]   = "fail_deploy",
 	["instantiate"]	  = "instantiate",
+	["do_start"]      = "do_start",
 	["fail_start"]    = "fail_start",
 	["activate"]      = "activate"
 }
@@ -42,16 +45,47 @@ function start_slivers( sys_conf, sliver)
 end
 
 
+
+
+function cb2_set_state( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_state" end
+
+	local oval = ctree.get_path_val(otree,path)
+	local nval = ctree.get_path_val(ntree,path)
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
+	local key  = ctree.get_path_leaf(path)
+	local is_table = type(old)=="table" or type(new)=="table"
+	
+	if new and STATE[new] and (STATE[new]==STATE.register or STATE[new]==STATE.instantiate or STATE[new]==STATE.activate) then
+		oslv.nxt_state = new
+	else
+		oslv.nxt_state = STATE.bad_conf
+	end
+	
+	dbg( "oslv=%s nslv=%s", tostring(oslv), tostring(nslv))
+end
+
+
 local tmp_rules
 
-local configure_rules = {}
-tmp_rules = configure_rules
+local register_rules = {}
+tmp_rules = register_rules
+	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/test",				crules.cb2_log})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/arch",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_nop})
 
-local allocate_rules = {}
-tmp_rules = allocate_rules
+local alloc_rules = {}
+tmp_rules = alloc_rules
 
 local deploy_rules = {}
 tmp_rules = deploy_rules
@@ -59,8 +93,8 @@ tmp_rules = deploy_rules
 local activate_rules = {}
 tmp_rules = activate_rules
 
-function cb2_process_lsliver( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_process_lsliver" end
+function cb2_set_lsliver( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_lsliver" end
 
 	local slvs = otree.local_slivers
 	local key = ctree.get_path_leaf(path)
@@ -74,24 +108,45 @@ function cb2_process_lsliver( sys_conf, otree, ntree, path, begin, changed )
 	local i,imax = 1,3
 	local prev_state
 	
-	while i==1 or prev_state ~= ((slvs[key] or {}).state) do
+	while i==1 or (slvs[key] and slvs[key].state ~= prev_state ) do
 		
-		local slv = slvs[key]
-		prev_state = (slv or {}).state
+		local slv = slvs[key] or ctree.set_path_val(otree,path,{state=STATE.bad_conf})
+		prev_state = slv.state
 		
-		dbg("processing i=%s sliver=%s (%s) node_state=%s sliver_state=%s", i, key, tostring(slv), otree.state, tostring((slv or {}).state) )
+		dbg("processing i=%s sliver=%s (%s) node_state=%s sliver_state=%s",
+			i, key, tostring(slv), otree.state, tostring((slv or {}).state) )
 		assert( i <= imax )
 		
-		local rules
-		if not slv and i==1 then
+		if slv.state==STATE.bad_conf or slv.state==STATE.register or (slv.state==STATE.fail_alloc and i==1) then
 			
-			slv = ctree.set_path_val(otree,path,{})			
-			rules = configure_rules
+			slv.ctx={failure=false, objective=STATE.register}
+			ctree.iterate( crules.cb2, register_rules, sys_conf, otree, ntree, path )
+			
+			if slv==slvs[key] then
+				if slv.ctx.failure then
+					slv.state = STATE.bad_conf
+				elseif slv.set_state==STATE.instantiate or slv.set_state==activate then
+					slv.state = STATE.do_alloc
+				else
+					slv.state = STATE.register
+				end
+			else
+				assert(not slvs[keys])
+			end
 
-		elseif slv.state==STATE.bad_conf or slv.state==STATE.register or (slv.state==STATE.fail_alloc and i==1) then
+		elseif slv.state==STATE.do_allocate then
 			
-			rules = configure_rules
+			slv.ctx={failure=false, objective=STATE.allocate}
+			ctree.iterate( crules.cb2, alloc_rules, sys_conf, otree, ntree, path )
 			
+			assert( slv==slvs[key] )
+			if slv.ctx.failure then
+				slv.state = STATE.fail_alloc
+			else
+				slv.state = STATE.do_alloc
+			end
+			
+
 		elseif slv.state==STATE.allocate or (slv.state==STATE.fail_deploy or i==1) then
 			
 			rules = allocate_rules
@@ -104,17 +159,8 @@ function cb2_process_lsliver( sys_conf, otree, ntree, path, begin, changed )
 			
 			rules = activate_rules
 
-		elseif slv.state==STATE.fail_alloc or slv.state==STATE.fail_deploy or slv.state==STATE.fail_start then
-			
-			rules = nil
-			
-		else
-			assert( false, "Illegal state=%s" %tostring(slv.state))
 		end
 		
-		if rules then
-			ctree.iterate( crules.cb2, rules, sys_conf, otree, ntree, path )
-		end
 		
 		i = i + 1
 	end

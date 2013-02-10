@@ -1,3 +1,24 @@
+
+
+
+local k,o
+for k,o in ipairs(arg) do
+	dbg(k..": ".. o)
+end
+
+
+local k,j
+for  k,j in pairs({{null},{false},{nil},{0},{""}}) do
+	local v = j[1]
+	print("type=%-8s val=%-20s NOTval=%-8s equalNil=%-8s unequalNil=%-8s"
+	      %{ type(v), tostring(v), tostring(not v), tostring(v==nil), tostring(v~=nil) })
+end
+
+
+
+
+
+
 tmp_rules = {}
 	table.insert(tmp_rules, {["/local_slivers"]					= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+"]				= "CB_NOP"})

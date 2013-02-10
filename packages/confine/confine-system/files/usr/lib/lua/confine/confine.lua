@@ -108,7 +108,7 @@ function main_loop( )
 		assert(local_node)
 		
 		
-		dbg("\ngetting server node...")
+		dbg("getting server node...")
 		local server_node
 		if sys_conf.debug  then
 			server_node = server.get_server_node(sys_conf)
@@ -119,7 +119,7 @@ function main_loop( )
 		--util.dumptable(server_node)
 		--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
 	
-		dbg("\nprocessing input")
+		dbg("processing input")
 		if success then
 			if( sys_conf.debug ) then
 				ctree.iterate( rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
@@ -134,11 +134,11 @@ function main_loop( )
 		assert(success or err_msg:sub(1,9)=="ERR_RETRY" or err_msg:sub(1,9)=="ERR_SETUP", err_msg)
 
 		
-		dbg("\nupdating node RestAPI")
+		dbg("updating node RestAPI")
 		
 		if success then
 			upd_node_rest_conf( sys_conf, local_node )
-			cdata.file_put( local_node, system.cache_file )
+--			cdata.file_put( local_node, system.node_state_file )
 			err_cnt = 0
 			
 		elseif err_msg:sub(1,9)=="ERR_RETRY" and sys_conf.retry_limit==0 or sys_conf.retry_limit > err_cnt then
@@ -152,8 +152,11 @@ function main_loop( )
 			
 			cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
 			upd_node_rest_conf( sys_conf, { message = err_msg, errors = null } )
-			cdata.file_put( local_node, system.cache_file )
+--			cdata.file_put( local_node, system.node_state_file )
 		end
+
+		cdata.file_put( local_node, system.node_state_file )
+		cdata.file_put( server_node, system.server_state_file)
 			
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
@@ -179,28 +182,10 @@ math.randomseed( os.time() )
 sig.signal(sig.SIGINT,  tools.handler)
 sig.signal(sig.SIGTERM, tools.handler)
 
-os.remove( system.cache_file )
-
 tools.mkdirr( system.rest_confine_dir)
 nixio.fs.symlink( system.rest_confine_dir, system.www_dir )
-
-
-
-
---local k,o
---for k,o in ipairs(arg) do
---	dbg(k..": ".. o)
---end
 
 main_loop()
 
 dbg("goodbye")
-
---local k,j
---for  k,j in pairs({{null},{false},{nil},{0},{""}}) do
---	local v = j[1]
---	print("type=%-8s val=%-20s NOTval=%-8s equalNil=%-8s unequalNil=%-8s"
---	      %{ type(v), tostring(v), tostring(not v), tostring(v==nil), tostring(v~=nil) })
---end
-
 

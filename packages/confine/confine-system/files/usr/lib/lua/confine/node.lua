@@ -260,8 +260,6 @@ end
 
 function get_local_node( sys_conf, cached_node )
 
-	--local cached_node = data.file_get( node_cache_file ) or {}
-
 	dbg("------ getting current node ----")
 --	assert((uci.get("confine", "node", "state") == "started"), "Node not in 'started' state")
 	
@@ -518,10 +516,10 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/direct_ifaces/*",			rules.cb2_nop})  --handled by direct_ifaces
 	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
-	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_local_group}) --"CB_GET_LOCAL_GROUP"})
+	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_lgroup}) --"CB_GET_LOCAL_GROUP"})
 	table.insert(tmp_rules, {"/local_group/uri",						rules.cb2_set})
 	table.insert(tmp_rules, {"/local_group/user_roles",					rules.cb2_nop}) --must exist
-	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_local_group_role})
+	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_lgroup_role})
 	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			rules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
@@ -537,7 +535,7 @@ tmp_rules = in_rules2
 --
 --
 	table.insert(tmp_rules, {"/local_slivers",			rules.cb2_nop}) --must exist
-	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_process_lsliver})
+	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_set_lsliver})
 --	table.insert(tmp_rules, {["/local_slivers/*/state"]		= "CB_NOP"})
 --	
 --	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})

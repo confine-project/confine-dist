@@ -86,6 +86,16 @@ function get_server_node(sys_conf)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
+		if not sliver_obj.exp_data_uri or sliver_obj.exp_data_uri==data.null then
+			sliver_obj.exp_data_uri = slice_obj.exp_data_uri
+			sliver_obj.exp_data_sha256 = slice_obj.exp_data_sha256
+		end
+		
+		if not sliver_obj.set_state or sliver_obj.set_state==data.null then
+			sliver_obj.set_state = slice_obj.set_state
+		end
+
+		
 	end
 	
 --	tree.dump(node.local_group)

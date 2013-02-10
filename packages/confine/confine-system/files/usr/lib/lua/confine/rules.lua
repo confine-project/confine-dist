@@ -65,22 +65,22 @@ function cb2( task, sys_conf, otree, ntree, path, begin, changed )
 	assert( type(ntree)=="table" )
 	
 	local oldv = ctree.get_path_val(otree,path)
-	local olds = data.val2string(oldv):gsub("\n",""):sub(1,30)
+	local olds = data.val2string(oldv):gsub("\n",""):sub(1,28)
 	local newv = ctree.get_path_val(ntree,path)
-	local news = data.val2string(newv):gsub("\n",""):sub(1,30)
+	local news = data.val2string(newv):gsub("\n",""):sub(1,28)
 	local is_table = type(oldv)=="table" or type(newv)=="table"
 
 	--if not is_table and (oldv ~= newv) then
-	--	dbg( " %-15s %-45s %s => %s", task(), path, olds, news)
+	--	dbg( " %-15s %-50s %s => %s", task(), path, olds, news)
 	--end
 
 	local report = task( sys_conf, otree, ntree, path, begin, changed )
 	
 	local outv = ctree.get_path_val(otree,path)
-	local outs = data.val2string(outv):sub(1,30)
+	local outs = data.val2string(outv):sub(1,28)
 
 	if oldv ~= outv or (oldv ~= newv and not is_table) or changed or report then
-		dbg( " %s %-15s %-45s %s => %s ==> %s",
+		dbg( " %s %-15s %-50s %s => %s ==> %s",
 		    (is_table and (begin and "BEG" or (changed and "CHG" or "END")) or "VAL"),
 		    task(), path, olds, news, outs)
 	end
@@ -91,15 +91,15 @@ end
 function cb(sys_conf, action, task, cb_tasks, out_node, path, key, oldval, newval )
 
 	dbg("%4s %-22s %-40s %s => %s", action, task, path..key,
-		data.val2string(oldval):gsub("\n",""):sub(1,30),
-		data.val2string(newval):gsub("\n",""):sub(1,30))
+		data.val2string(oldval):gsub("\n",""):sub(1,28),
+		data.val2string(newval):gsub("\n",""):sub(1,28))
 
 	if cb_tasks[task] then
 		
 		local finval = cb_tasks[task](sys_conf, action, out_node, path, key, oldval, newval)
 		
 		if task ~= "CB_NOP" and task ~= "CB_COPY" then			
-			dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,30))
+			dbg("%s %-22s %-40s   ===> %s", action, task, path..key, data.val2string(finval):gsub("\n",""):sub(1,28))
 		end
 
 		--if task ~= "CB_NOP" and finval == nil then

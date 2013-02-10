@@ -18,7 +18,8 @@ local null    = data.null
 
 
 
-cache_file          = "/tmp/confine.cache"
+node_state_file     = "/tmp/confine.node_state"
+server_state_file   = "/tmp/confine.server_state"
 	
 www_dir             = "/www/confine"
 rest_confine_dir    = "/tmp/confine"

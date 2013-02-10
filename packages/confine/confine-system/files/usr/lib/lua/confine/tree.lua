@@ -10,7 +10,7 @@ module( "confine.tree", package.seeall )
 
 local util   = require "luci.util"
 local tools  = require "confine.tools"
-local data   = require "confine.data"
+local cdata   = require "confine.data"
 local dbg    = tools.dbg
 
 
@@ -26,14 +26,14 @@ end
 
 
 function as_string( tree, maxdepth, spaces )
---	luci.util.dumptable(obj):gsub("%s"%tostring(data.null),"null")
+--	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
 	if not maxdepth then maxdepth = 10 end
 	if not spaces then spaces = "" end
 	local result = ""
 	local k,v
 	for k,v in pairs(tree) do
 			
-		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
+		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..cdata.val2string(v)..(type(v)=="string"and'"'or"").."\n"
 		
 		if type(v) == "table"  then
 			assert( maxdepth > 1, "maxdepth reached!")
@@ -280,7 +280,7 @@ function copy_path_val ( action, tree, path, key, oldval, newval, depth)
 		local path_new = path:sub(path_root:len()+2)
 		assert(path_root)
 		--dbg("copy_path_val() depth=%s action=%s tree=%s path=%s key=%s oldval=%s newval=%s",
-		--    depth, action, tostring(tree), path, key, data.val2string(oldval), data.val2string(newval))
+		--    depth, action, tostring(tree), path, key, cdata.val2string(oldval), cdata.val2string(newval))
 		return copy_path_val( action, tree[path_root], path_new, key, oldval, newval, depth+1 )
 		
 	elseif action == "ADD" then
@@ -310,7 +310,7 @@ function copy_path_val ( action, tree, path, key, oldval, newval, depth)
 	end
 	
 	--dbg("copy_path_val() depth=%s action=%s tree=%s path=%s key=%s oldval=%s newval=%s -> %s",
-	--    depth, action, tostring(tree), path, key, data.val2string(oldval), data.val2string(newval), data.val2string(tree[key]))
+	--    depth, action, tostring(tree), path, key, cdata.val2string(oldval), cdata.val2string(newval), cdata.val2string(tree[key]))
 	
 	return tree[key]
 end
@@ -477,7 +477,7 @@ function add_del_empty_table( action, out_node, path, key, oldval, newval)
 end
 
 
-function iterate(cb, rules, sys_conf, otree, ntree, path, lvl)
+function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 	
 	assert(cb and sys_conf and rules and otree and ntree and path)
 	lvl = lvl or 0
@@ -522,16 +522,16 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, lvl)
 	
 					--dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
 					--    pk, path, tk, pattern, cb(), task(),
-					--    data.val2string(ov):gsub("\n",""):sub(1,30), data.val2string(nv):gsub("\n",""):sub(1,30))
+					--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30))
 					
 					assert( ov or nv )
 					
 					if is_table then
-						cb( task, sys_conf, otree, ntree, path..tk.."/", true, false)
-						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", lvl+1)
-						cb( task, sys_conf, otree, ntree, path..tk.."/", false, down_changed)
+						cb( task, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
+						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
+						cb( task, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
 					else
-						cb( task, sys_conf, otree, ntree, path..tk.."/")
+						cb( task, sys_conf, otree, ntree, path..tk.."/", false, false, misc)
 					end
 					
 					up_changed = up_changed or down_changed
@@ -542,7 +542,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, lvl)
 			
 			if unmatched and pattern_key ~= "*" then
 				dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s", lvl, pk, path, pattern, pattern_key)
-				cb( task, sys_conf, otree, ntree, path..pattern_key.."/" )
+				cb( task, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
 				up_changed = up_changed or (get_path_val(otree,path..pattern_key.."/")) --otree changed
 			end
 		end

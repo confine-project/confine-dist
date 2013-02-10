@@ -151,8 +151,8 @@ local function auth_token_to_rsa( auth_tokens )
 	return ssh_tokens
 end
 
-function cb2_set_local_group( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_local_group" end
+function cb2_set_lgroup( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_lgroup" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -167,8 +167,8 @@ function cb2_set_local_group( sys_conf, otree, ntree, path, begin, changed )
 	
 end
 
-function cb2_set_local_group_role( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_local_group_role" end
+function cb2_set_lgroup_role( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_lgroup_role" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
