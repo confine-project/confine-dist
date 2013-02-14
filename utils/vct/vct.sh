@@ -691,16 +691,6 @@ EOF
 	fi
     done
 
-    # check if bridge has disabled features:
-    local PROC_FILE=
-    for PROC_FILE in $(ls /proc/sys/net/bridge); do
-	if ! [ $(cat /proc/sys/net/bridge/$PROC_FILE) = "0" ]; then
-	    [ $CMD_INIT ] && vct_sudo sysctl -w net.bridge.$PROC_FILE=0 > /dev/null
-	    [ $(cat /proc/sys/net/bridge/$PROC_FILE) = "0" ] ||\
-	    { err $FUNCNAME "/proc/sys/net/bridge/$PROC_FILE != 0" $CMD_SOFT || return 1 ;}
-	fi
-    done
-
     # check if tinc management network is running:
     [ $CMD_INIT ] && vct_tinc_stop
     [ $CMD_INIT ] && vct_tinc_start
