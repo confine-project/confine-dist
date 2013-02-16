@@ -1,13 +1,9 @@
 #!/usr/bin/lua
 -- System variables and defaults
 -- SERVER_URI=nil eg:"https://controller.confine-project.eu/api"
--- COUNT=0
 
 local nixio   = require "nixio"
 local sig     = require "signal"
---local lsys    = require "luci.sys"
---local lmo     = require "lmo"
---local util    = require "luci.util"
 
 
 local ctree   = require "confine.tree"
@@ -24,10 +20,6 @@ local dbg     = tools.dbg
 local null    = cdata.null
 
 
-
---table.foreach(sig, print)
-
-
 local require_server_cert = false
 local require_node_cert   = false
 
@@ -35,10 +27,6 @@ local require_node_cert   = false
 
 local RSA_HEADER               = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
 local RSA_TRAILER              = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
-
-
---local count = tonumber(lsys.getenv("COUNT")) or 0
-
 
 
 local function get_local_base( sys_conf, node )
@@ -123,11 +111,9 @@ function main_loop( )
 		if success then
 			if( sys_conf.debug ) then
 				ctree.iterate( rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
---				ctree.process( rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
 			else
 				success,err_msg = pcall(
 				ctree.iterate, rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
---				ctree.process, rules.cb, sys_conf, cnode.cb_tasks, local_node, cnode.in_rules, local_node, server_node, "/" )
 			end
 		end
 		
@@ -178,7 +164,6 @@ end
 
 math.randomseed( os.time() )
 
---for k in pairs(sig) do print(k) end
 sig.signal(sig.SIGINT,  tools.handler)
 sig.signal(sig.SIGTERM, tools.handler)
 
