@@ -89,7 +89,7 @@ end
 
 
 
-function http_get(url, base_uri, cert_file, cache)
+function http_get_keys_as_table(url, base_uri, cert_file, cache)
 
 	if not url then return nil end
 	

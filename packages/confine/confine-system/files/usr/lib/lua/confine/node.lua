@@ -15,7 +15,7 @@ local ctree    = require "confine.tree"
 local ssh     = require "confine.ssh"
 local tinc    = require "confine.tinc"
 local sliver  = require "confine.sliver"
-local rules   = require "confine.rules"
+local crules   = require "confine.rules"
 local system  = require "confine.system"
 
 local dbg     = tools.dbg
@@ -232,8 +232,8 @@ end
 
 
 
-function cb2_set_sys_key_and_reboot( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_set_boot_sn" end
+function cb2_set_sys_key_and_reboot( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_boot_sn" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -247,8 +247,8 @@ function cb2_set_sys_key_and_reboot( sys_conf, otree, ntree, path )
 	end
 end
 
-function cb2_set_sys_key_and_reboot_prepared( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_set_sys_key_and_reboot_prepared" end
+function cb2_set_sys_key_and_reboot_prepared( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_sys_key_and_reboot_prepared" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -263,8 +263,8 @@ function cb2_set_sys_key_and_reboot_prepared( sys_conf, otree, ntree, path )
 	end
 end
 
-function cb2_set_sys_and_remove_slivers( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_sys_key_and_remove_slivers" end
+function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_sys_key_and_remove_slivers" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -296,8 +296,8 @@ function cb2_set_sys_and_remove_slivers( sys_conf, otree, ntree, path, begin, ch
 	
 end
 
-function cb2_set_setup( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_setup" end
+function cb2_set_setup( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_setup" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -308,13 +308,13 @@ function cb2_set_setup( sys_conf, otree, ntree, path )
 	end
 end
 
-function cb2_set_state( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_set_state" end
+function cb2_set_state( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_state" end
 	set_node_state( sys_conf, otree, otree.set_state )
 end
 
-function cb2_set_uuid( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_set_uuid" end
+function cb2_set_uuid( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_uuid" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -334,16 +334,16 @@ end
 
 in_rules2 = {}
 tmp_rules = in_rules2
-	table.insert(tmp_rules, {"/description",			rules.cb2_set})
-	table.insert(tmp_rules, {"/properties",				rules.cb2_set})
-	table.insert(tmp_rules, {"/properties/*",			rules.cb2_set})
-	table.insert(tmp_rules, {"/properties/*/*",			rules.cb2_set})
-	table.insert(tmp_rules, {"/cn",					rules.cb2_set})
-	table.insert(tmp_rules, {"/cn/app_url",				rules.cb2_set})
-	table.insert(tmp_rules, {"/cn/cndb_uri",			rules.cb2_set})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on",			rules.cb2_set})
+	table.insert(tmp_rules, {"/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/properties/*/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
+	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
+	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/cn/cndb_cached_on",			crules.cb2_set})
 
-	table.insert(tmp_rules, {"/uri",				rules.cb2_nop}) --redefined by node
+	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
 	table.insert(tmp_rules, {"/uuid",				cb2_set_uuid})
 	table.insert(tmp_rules, {"/pubkey", 				cb2_set_setup})
@@ -354,41 +354,41 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup})
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup})
 
-	table.insert(tmp_rules, {"/tinc", 				rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc", 				crules.cb2_set})
 	table.insert(tmp_rules, {"/tinc/name",	 			cb2_set_setup})
 	table.insert(tmp_rules, {"/tinc/pubkey",			cb2_set_setup})
-	table.insert(tmp_rules, {"/tinc/island",			rules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/island/uri",			rules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/connect_to",			rules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/island",			crules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/island/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/tinc/connect_to",			crules.cb2_set})
 	table.insert(tmp_rules, {"/tinc/connect_to/*",			tinc.cb2_set_tinc})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr", 		rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/port", 		rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey", 		rules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/name", 		rules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr", 		crules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/port", 		crules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey", 		crules.cb2_nop}) --handled by set_tinc
+	table.insert(tmp_rules, {"/tinc/connect_to/*/name", 		crules.cb2_nop}) --handled by set_tinc
 
 	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
-	table.insert(tmp_rules, {"/direct_ifaces/*",			rules.cb2_nop})  --handled by direct_ifaces
+	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
 	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
 	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_lgroup}) --"CB_GET_LOCAL_GROUP"})
-	table.insert(tmp_rules, {"/local_group/uri",						rules.cb2_set})
-	table.insert(tmp_rules, {"/local_group/user_roles",					rules.cb2_nop}) --must exist
+	table.insert(tmp_rules, {"/local_group/uri",						crules.cb2_set})
+	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_lgroup_role})
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		rules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		rules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		crules.cb2_nop}) --handled by set_local_group_role
 --	
-	table.insert(tmp_rules, {"/group",				rules.cb2_nop}) --handled by set_local_group
-	table.insert(tmp_rules, {"/group/uri",				rules.cb2_nop}) --handled by set_local_group
+	table.insert(tmp_rules, {"/group",				crules.cb2_nop}) --handled by set_local_group
+	table.insert(tmp_rules, {"/group/uri",				crules.cb2_nop}) --handled by set_local_group
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
-	table.insert(tmp_rules, {"/set_state",				rules.cb2_set})
+	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})
 	table.insert(tmp_rules, {"/state",				cb2_set_state})
 --
-	table.insert(tmp_rules, {"/local_slivers",			rules.cb2_nop}) --must exist
+	table.insert(tmp_rules, {"/local_slivers",			crules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_set_lsliver})
 	
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers

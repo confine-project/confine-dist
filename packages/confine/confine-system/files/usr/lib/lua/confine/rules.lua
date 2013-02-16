@@ -19,18 +19,18 @@ local null    = data.null
 
 
 
-function cb2_nop( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_nop" end
+function cb2_nop( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_nop" end
 end
 
-function cb2_log( sys_conf, otree, ntree, path )
-	if not sys_conf then return "cb2_nop" end
+function cb2_log( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_nop" end
 	return true
 end
 
-function cb2_set( sys_conf, otree, ntree, path, begin, changed )
+function cb2_set( rules, sys_conf, otree, ntree, path, begin, changed )
 	
-	if not sys_conf then return "cb2_set" end
+	if not rules then return "cb2_set" end
 	
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -52,9 +52,9 @@ function cb2_set( sys_conf, otree, ntree, path, begin, changed )
 	
 end
 
-function cb2( task, sys_conf, otree, ntree, path, begin, changed )
+function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
 	
-	if not sys_conf then return "cb2" end
+	if not rules then return "cb2" end
 	
 	assert( type(otree)=="table" )
 	assert( type(ntree)=="table" )
@@ -69,7 +69,7 @@ function cb2( task, sys_conf, otree, ntree, path, begin, changed )
 	--	dbg( " %-15s %-50s %s => %s", task(), path, olds, news)
 	--end
 
-	local report = task( sys_conf, otree, ntree, path, begin, changed )
+	local report = task( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 	local outv = ctree.get_path_val(otree,path)
 	local outs = data.val2string(outv):sub(1,28)

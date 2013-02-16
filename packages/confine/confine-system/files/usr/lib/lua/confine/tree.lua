@@ -31,7 +31,7 @@ function as_string( tree, maxdepth, spaces )
 	if not spaces then spaces = "" end
 	local result = ""
 	local k,v
-	for k,v in pairs(tree) do
+	for k,v in pairs(tree or {}) do
 			
 		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..cdata.val2string(v)..(type(v)=="string"and'"'or"").."\n"
 		
@@ -261,10 +261,10 @@ function filter(rules, itree, otree, path)
 				local v = get_path_val(itree, path..k)
 				
 				if type(v) == "table" then
-					set_path_val(otree, path..k.."/", {})
+					get_path_val(otree, path)[k] = {}
 					filter(rules, itree, otree, path..k.."/")
 				else
-					set_path_val(otree, path..k, v )
+					get_path_val(otree, path)[k] = v
 				end
 				
 			end
@@ -326,11 +326,11 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					assert( ov or nv )
 					
 					if is_table then
-						cb( task, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
 						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
-						cb( task, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
 					else
-						cb( task, sys_conf, otree, ntree, path..tk.."/", false, false, misc)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc)
 					end
 					
 					up_changed = up_changed or down_changed
@@ -341,7 +341,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 			
 			if unmatched and pattern_key ~= "*" then
 				dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s", lvl, pk, path, pattern, pattern_key)
-				cb( task, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
+				cb( task, rules, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
 				up_changed = up_changed or (get_path_val(otree,path..pattern_key.."/")) --otree changed
 			end
 		end

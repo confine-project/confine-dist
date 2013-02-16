@@ -7,6 +7,7 @@
 --- CONFINE sliver library.
 module( "confine.sliver", package.seeall )
 
+local nixio  = require "nixio"
 
 local util   = require "luci.util"
 local tools  = require "confine.tools"
@@ -15,18 +16,34 @@ local crules   = require "confine.rules"
 local cnode   = require "confine.node"
 local dbg    = tools.dbg
 
-STATE = {
-	["register"] 	  = "register",
-	["do_alloc"]      = "do_alloc",
-	["fail_alloc"]    = "fail_alloc",
-	["allocate"]	  = "allocate",
-	["do_deploy"]     = "do_deploy",
-	["fail_deploy"]   = "fail_deploy",
-	["instantiate"]	  = "instantiate",
-	["do_start"]      = "do_start",
-	["fail_start"]    = "fail_start",
-	["activate"]      = "activate"
+NODE = {
+	["registered"] 	 = "registered",
+	["allocating"]   = "allocating",
+	["fail_alloc"]   = "fail_alloc",
+	["allocated"]	 = "allocated",
+	["deploying"]    = "deploying",
+	["fail_deploy"]  = "fail_deploy",
+	["deployed"]	 = "deployed",
+	["starting"]     = "starting",
+	["fail_start"]   = "fail_start",
+	["started"]      = "started"
 }
+
+SERVER = {
+	["register"] 	 = "register",
+	["deploy"]	 = "deploy",
+	["start"]        = "start"
+}
+
+
+local register_rules = {}
+local alloc_rules = {}
+local dealloc_rules = {}
+local deploy_rules = {}
+local undeploy_rules = {}
+local start_rules = {}
+local stop_rules = {}
+
 
 
 function stop_slivers( sys_conf, sliver )
@@ -45,9 +62,23 @@ end
 
 
 
+function add_lsliver_error( otree, path, msg, val )
+	assert(otree, path, message)
 
-function cb2_set_state( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_state" end
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+
+	oslv.errors = oslv.errors or {}
+
+	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
+	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/")
+	
+	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..tostring(val) })
+	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), tostring(val)
+end
+
+
+function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_state" end
 
 	local oval = ctree.get_path_val(otree,path)
 	local nval = ctree.get_path_val(ntree,path)
@@ -56,50 +87,64 @@ function cb2_set_state( sys_conf, otree, ntree, path, begin, changed )
 	local key  = ctree.get_path_leaf(path)
 	local is_table = type(oval)=="table" or type(nval)=="table"
 	
-	if nval and STATE[nval] and (STATE[nval]==STATE.register or STATE[nval]==STATE.instantiate or STATE[nval]==STATE.activate) then
+	
+	if not nval or SERVER[nval] then
 		ctree.set_path_val(otree, path, nval)
+		
+		if not (oslv.state==NODE.registered or oslv.state==NODE.fail_alloc) then
+			dbg( add_lsliver_error(otree, path, "yet unsupported transition from state="..oslv.state, nval))
+		end
+		
 	else
-		dbg("Illegal value path=%s val=%s", path, nval)
-		oslv.ctx.failure = true
+		dbg( add_lsliver_error(otree, path, "Illegal", nval))
 	end
 	
 	dbg( "oslv=%s nslv=%s", tostring(oslv), tostring(nslv))
 end
 
 
-function cb2_set_sliver_uri( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_sliver_uri" end
+function cb2_set_sliver_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_sliver_uri" end
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
 	
 	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..slv_key)
 end
 
-function cb2_set_node_uri( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_node_uri" end
+function cb2_set_node_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_node_uri" end
 
 	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/node")
 end
 
 
-function cb2_set_instance_sn( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_sliver_uri" end
+function cb2_set_instance_sn( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_instance_sn" end
 
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
 	
-	if nval and tonumber(nval) and (not oval or tonumber(nval) >= tonumber(oval)) then
-		ctree.set_path_val(otree, path, nval)
+	if nval and type(nval)=="number" then
+		if nval~=oval then
+			ctree.set_path_val(otree, path, nval)
+		end
 	else
-		dbg("Illegal value path=%s val=%s", path, nval)
-		oslv.ctx.failure = true
+		dbg( add_lsliver_error(otree, path, "Illegal "..type(nval), nval))
 	end
 end
 
 
+
+
+function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_get_exp_data" end
+	
+	
+end
+
 local tmp_rules
 
-local register_rules = {}
+
 tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_set_sliver_uri})
@@ -111,7 +156,8 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_get_exp_data})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/arch",		crules.cb2_nop})
@@ -125,154 +171,186 @@ tmp_rules = register_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/uri",					rules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",					crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",	 			ssh.cb2_set_lgroup_role})
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			rules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		rules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		rules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens",	rules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens/*",	rules.cb2_nop}) --handled by set_local_group_role
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			crules.cb2_nop}) --handled by set_local_group_role
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens",	crules.cb2_nop}) --handled by set_local_group_role
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens/*",	crules.cb2_nop}) --handled by set_local_group_role
 ----
 
 
-local alloc_rules = {}
-tmp_rules = alloc_rules
 
-local dealloc_rules = {}
+tmp_rules = alloc_rules
+	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+
 tmp_rules = dealloc_rules
 
-local deploy_rules = {}
 tmp_rules = deploy_rules
+	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 
-local undeploy_rules = {}
 tmp_rules = undeploy_rules
 
-local start_rules = {}
 tmp_rules = start_rules
+	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 
-local stop_rules = {}
 tmp_rules = stop_rules
 
 
+local slv_iterate_args
 
-function cb2_set_lsliver( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_lsliver" end
+local function slv_iterate( rules, start_state, success_state, error_state )
+
+	assert( type(rules)=="table")
+	assert( type(NODE[  start_state])=="string")
+	assert( type(NODE[success_state])=="string")
+	assert( type(NODE[  error_state])=="string" or not error_state )
+	
+	local a = slv_iterate_args
+
+	assert (type(a.cb)=="function")
+	assert (type(a.sys_conf=="table"))
+	assert (type(a.otree)=="table")
+	assert (type(a.ntree)=="table")
+	assert (type(a.path)=="string")
+
+	local oslvs = a.otree.local_slivers
+	local key = ctree.get_path_leaf(a.path)
+	local oslv = oslvs[key]
+	
+	local ret = ctree.iterate( a.cb, rules, a.sys_conf, a.otree, a.ntree, a.path )
+	
+	assert( oslv==oslvs[key])
+	assert( error_state or not oslv.errors )
+	
+	if oslv.errors then
+		oslv.state = error_state
+	else
+		oslv.state = success_state
+	end
+	
+	return ret
+end
+
+
+function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_lsliver" end
 	if begin then return dbg("------------------------") or true end
 
 	local nslvs = ntree.local_slivers
 	local oslvs = otree.local_slivers
-	local key = ctree.get_path_leaf(path)	
+	local key = ctree.get_path_leaf(path)
+	
+	slv_iterate_args = { cb=crules.cb2, sys_conf=sys_conf, otree=otree, ntree=ntree, path=path }
 	
 	if otree.state ~= cnode.STATE.production then
 		nslvs[key] = nil
 	end
+	
+	if oslvs[key] then
+		oslvs[key].errors = nil
+	end
 		
-	local i,imax = 1,3
+	local i,imax = 1,8
 	local prev_state
 	
-	while (nslvs[key] or oslvs[key]) and (i==1 or (oslvs[key] and oslvs[key].state ~= prev_state)) do
+	while (nslvs[key] or oslvs[key]) --[[and (i==1 or (oslvs[key] and oslvs[key].state ~= prev_state))--]] do
 
 		local nslv = nslvs[key]
-		local oslv = oslvs[key] or ctree.set_path_val(otree,path,{state=STATE.register --[[, local_template={}, local_slice={ local_group={ user_roles={}}} --]] })
-		prev_state = oslv.state
+		local oslv = oslvs[key] or ctree.set_path_val(otree,path,{state=NODE.registered })
 		
-		dbg("processing i=%s sliver=%s (%s) node_state=%s sliver_state=%s",
-			i, key, tostring(oslv), otree.state, tostring((oslv or {}).state) )
+		--prev_state = oslv.state
+		
+		dbg("processing i=%s sliver=%s node_state=%s server_sliver_state=%s node_sliver_state=%s err=%s",
+			i, key, otree.state, tostring((nslv or {}).set_state), tostring(oslv.state), ctree.as_string(oslv.errors) )
+		
 		assert( i <= imax )
 		
-		if (oslv.state==STATE.register or (oslv.state==STATE.fail_alloc and i==1)) then
+		if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1)) then
 			
-			oslv.ctx={failure=false, objective=STATE.register}
-			ctree.iterate( crules.cb2, register_rules, sys_conf, otree, ntree, path )
+			slv_iterate( register_rules, NODE.registered, NODE.registered, NODE.registered)
 			
-			if oslv==oslvs[key] then
+			if not oslv.errors and (oslv.set_state==SERVER.deploy or oslv.set_state==SERVER.start) then
 				
-				if not oslv.ctx.failure and (oslv.set_state==STATE.instantiate or oslv.set_state==activate) then
-					
-					oslv.state = STATE.do_alloc
-					
-				elseif not nslv then
-					
-					oslvs[key] = nil
-				else
-					oslv.state = STATE.register
-				end
+				oslv.state = NODE.allocating
+						
+			elseif not nslv then
+				
+				oslvs[key] = nil
+				break
 			else
-				assert(not oslvs[keys])
+				break
 			end
 
-		elseif (oslv.state==STATE.do_allocate) then
-			
-			oslv.ctx={failure=false, objective=STATE.allocate}
-			ctree.iterate( crules.cb2, alloc_rules, sys_conf, otree, ntree, path )
-			
-			assert( oslv==oslvs[key] )
-			if oslv.ctx.failure then
-				oslv.state = STATE.fail_alloc
-			else
-				oslv.state = STATE.allocate
-			end
-			
 
-		elseif (oslv.state==STATE.allocate or (oslv.state==STATE.fail_deploy and i==1)) and 
+
+		elseif (oslv.state==NODE.allocating) then
+			
+			assert( not oslv.errors )
+
+			slv_iterate( alloc_rules, NODE.allocating, NODE.allocated, NODE.fail_alloc)
+			
+			if oslv.errors then
+				slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
+			end
+
+		elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and 
 			(not nslv or
-			 nslv.instance_sn > oslv.instance_sn or nslv.set_state==STATE.register) then
+			 nslv.instance_sn > oslv.instance_sn or nslv.set_state==SERVER.register) then
 			
-			oslv.ctx={failure=false, objective=STATE.register}
-			ctree.iterate( crules.cb2, dealloc_rules, sys_conf, otree, ntree, path )
+			slv_iterate( dealloc_rules, NODE.allocated, NODE.registered, nil)
 			
-			assert( oslv==oslvs[key] and not oslv.ctx.failure)
-			oslv.state = STATE.register
 
-		elseif (oslv.state==STATE.allocate or (oslv.state==STATE.fail_deploy and i==1)) and
-			(nslv.set_state==STATE.instantiate or nslv.set_state==STATE.activate) then
+		elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and
+			(nslv.set_state==SERVER.deploy or nslv.set_state==SERVER.start) then
 			
-			oslv.ctx={failure=false, objective=STATE.instantiate}
-			ctree.iterate( crules.cb2, deploy_rules, sys_conf, otree, ntree, path )
+			oslv.state = NODE.deploying
+
+
+
+		elseif (oslv.state==NODE.deploying) then
 			
-			assert( oslv==oslvs[key] )
-			if oslv.ctx.failure then
-				oslv.state = STATE.fail_deploy
-			else
-				oslv.state = STATE.instantiate
+			assert( not oslv.errors)
+			
+			slv_iterate( deploy_rules, NODE.deploying, NODE.deployed, NODE.fail_deploy)
+			
+			if oslv.errors then
+				slv_iterate( undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
 			end
 
-			
-			
-		elseif (oslv.state==STATE.instantiate or (oslv.state==STATE.fail_start and i==1)) and
+		elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 			(not nslv or
-			 nslv.instance_sn > oslv.instance_sn or nslv.local_slice.instance_sn > oslv.local_slice.instance_sn or
-			 nslv.set_state==STATE.register) then
+			 nslv.instance_sn ~= oslv.instance_sn or nslv.local_slice.instance_sn ~= oslv.local_slice.instance_sn or
+			 nslv.set_state==SERVER.register) then
 			
-			oslv.ctx={failure=false, objective=STATE.allocate}
-			ctree.iterate( crules.cb2, undeploy_rules, sys_conf, otree, ntree, path )
+			slv_iterate( undeploy_rules, NODE.deployed, NODE.allocated, nil)
 			
-			assert( oslv==oslvs[key] and not oslv.ctx.failure)
-			oslv.state = STATE.allocate
+		elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
+			(nslv.set_state==SERVER.start) then
+			
+			oslv.state = NODE.starting
 
-		elseif oslv.state==STATE.instantiate or (oslv.state==STATE.fail_start or i==1) and
-			(nslv.set_state==STATE.activate) then
+
+
+		elseif (oslv.state==NODE.starting) then
 			
-			oslv.ctx={failure=false, objective=STATE.activate}
-			ctree.iterate( crules.cb2, start_rules, sys_conf, otree, ntree, path )
+			assert( not oslv.errors)
 			
-			assert( oslv==oslvs[key] )
-			if oslv.ctx.failure then
-				oslv.state = STATE.fail_start
-			else
-				oslv.state = STATE.activate
+			slv_iterate(start_rules, NODE.starting, NODE.started, NODE.fail_start)
+			
+			if oslv.errors then
+				slv_iterate(stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
+				break
 			end
-
 			
-		elseif (oslv.state==STATE.activate) and
+		elseif (oslv.state==NODE.started) and
 			(not nslv or
-			 nslv.instance_sn > oslv.instance_sn or nslv.local_slice.instance_sn > oslv.local_slice.instance_sn or
-			 nslv.set_state==STATE.register or nslv.set_state==STATE.instantiate) then
+			 nslv.instance_sn ~= oslv.instance_sn or nslv.local_slice.instance_sn ~= oslv.local_slice.instance_sn or
+			 nslv.set_state==SERVER.register or nslv.set_state==SERVER.deploy) then
 			
-			oslv.ctx={failure=false, objective=STATE.instantiate}
-			ctree.iterate( crules.cb2, stop_rules, sys_conf, otree, ntree, path )
+			slv_iterate( stop_rules, NODE.started, NODE.deployed, nil)
 			
-			assert( oslv==oslvs[key] and not oslv.ctx.failure)
-			oslv.state = STATE.instantiate
-
+		else
+			break
 		end
 		
 		
@@ -284,8 +362,8 @@ function cb2_set_lsliver( sys_conf, otree, ntree, path, begin, changed )
 end
 
 
-function cb2_set_slivers( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_slivers" end
+function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_slivers" end
 	otree.slivers = otree.local_slivers
 end
 

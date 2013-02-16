@@ -216,8 +216,8 @@ end
 --end
 
 
-function cb2_set_tinc( sys_conf, otree, ntree, path, begin, changed )
-	if not sys_conf then return "cb2_set_tinc" end
+function cb2_set_tinc( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_tinc" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)

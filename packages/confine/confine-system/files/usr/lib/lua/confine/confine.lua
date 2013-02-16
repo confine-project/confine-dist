@@ -9,7 +9,7 @@ local sig     = require "signal"
 local ctree   = require "confine.tree"
 local cdata   = require "confine.data"
 local tools   = require "confine.tools"
-local rules   = require "confine.rules"
+local crules   = require "confine.rules"
 local cnode   = require "confine.node"
 local server  = require "confine.server"
 local system  = require "confine.system"
@@ -110,10 +110,10 @@ function main_loop( )
 		dbg("processing input")
 		if success then
 			if( sys_conf.debug ) then
-				ctree.iterate( rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+				ctree.iterate( crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 			else
 				success,err_msg = pcall(
-				ctree.iterate, rules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+				ctree.iterate, crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 			end
 		end
 		

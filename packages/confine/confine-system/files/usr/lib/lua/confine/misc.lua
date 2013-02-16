@@ -596,3 +596,47 @@ function process_local_slivers( sys_conf, action, out_node, path, key, oldval, n
 end
 
 
+
+--TODO: Remove me!
+function cb_set_local_group_role( sys_conf, action, out_node, path, user_id, oldval, newval )
+	
+	assert(path == "/local_group/user_roles/", "path=%q key=%q"%{path,user_id})
+	
+	if action == "DEL" then
+		
+		del_ssh_keys(sys_conf, user_id)
+		
+	elseif action == "ADD" or action == "CHG" then		
+		
+		if newval.is_technician and newval.local_user and newval.local_user.is_active then
+			
+			local new_tokens = auth_token_to_rsa( newval.local_user.auth_tokens )
+			local old_tokens = oldval and oldval.local_user.auth_tokens
+			
+			if ctree.process(function() end, nil, nil, nil, {[1]={["/[^/]+"] = ""}}, old_tokens, new_tokens, nil) then
+
+				if oldval then
+					del_ssh_keys(sys_conf, user_id)
+				end
+				
+				add_ssh_keys(sys_conf, user_id, new_tokens)
+			end
+			
+		else	
+			if oldval then
+				del_ssh_keys(sys_conf, user_id)
+			end
+		end
+	end
+	
+	return newval
+end
+
+
+--function cb_set_group( sys_conf, action, out_node, path, key, oldval, newval )
+--	
+--	out_node.group.uri = get_node_group(sys_conf, out_node.local_group)
+--	
+--	return out_node.group
+--end
+
