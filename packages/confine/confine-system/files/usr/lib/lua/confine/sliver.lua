@@ -66,21 +66,21 @@ function cb2_set_state( sys_conf, otree, ntree, path, begin, changed )
 	dbg( "oslv=%s nslv=%s", tostring(oslv), tostring(nslv))
 end
 
+
 function cb2_set_sliver_uri( sys_conf, otree, ntree, path, begin, changed )
 	if not sys_conf then return "cb2_set_sliver_uri" end
 
-	local nval = ctree.get_path_val(ntree,path)
-	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
-	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
 	
-	if nval and nslv and slv_key==sys_conf.id.."-"..nslv.local_slice.id and nval==sys_conf.server_base_uri.."/slivers/"..slv_key then
-		ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..slv_key)
-	else
-		dbg("Illegal value path=%s val=%s", path, nval)
-		oslv.ctx.failure = true
-	end
+	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..slv_key)
 end
+
+function cb2_set_node_uri( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_node_uri" end
+
+	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/node")
+end
+
 
 function cb2_set_instance_sn( sys_conf, otree, ntree, path, begin, changed )
 	if not sys_conf then return "cb2_set_sliver_uri" end
@@ -104,12 +104,21 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_set_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_set_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/node",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_set_node_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
+	
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/arch",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_set_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",						crules.cb2_set})
@@ -141,6 +150,8 @@ tmp_rules = start_rules
 
 local stop_rules = {}
 tmp_rules = stop_rules
+
+
 
 function cb2_set_lsliver( sys_conf, otree, ntree, path, begin, changed )
 	if not sys_conf then return "cb2_set_lsliver" end
@@ -273,6 +284,10 @@ function cb2_set_lsliver( sys_conf, otree, ntree, path, begin, changed )
 end
 
 
+function cb2_set_slivers( sys_conf, otree, ntree, path, begin, changed )
+	if not sys_conf then return "cb2_set_slivers" end
+	otree.slivers = otree.local_slivers
+end
 
 
 
@@ -285,35 +300,37 @@ end
 
 out_filter = {}
 tmp_rules = out_filter
-	table.insert(tmp_rules, {"/local_slivers"})
-	table.insert(tmp_rules, {"/local_slivers/*"})
-	table.insert(tmp_rules, {"/local_slivers/*/uri"})
-	table.insert(tmp_rules, {"/local_slivers/*/slice"})
-	table.insert(tmp_rules, {"/local_slivers/*/slice/uri"})	
-	table.insert(tmp_rules, {"/local_slivers/*/node"})
-	table.insert(tmp_rules, {"/local_slivers/*/node/uri"})
-	table.insert(tmp_rules, {"/local_slivers/*/description"})
-	table.insert(tmp_rules, {"/local_slivers/*/instance_sn"})
-	table.insert(tmp_rules, {"/local_slivers/*/template"})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri"})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template"})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri"})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/nr"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/name"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/type"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/parent_name"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/mac_addr"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/ipv4_addr"})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/ipv6_addr"})
-	table.insert(tmp_rules, {"/local_slivers/*/properties"})
-	table.insert(tmp_rules, {"/local_slivers/*/properties/*"})
-	table.insert(tmp_rules, {"/local_slivers/*/nr"})
-	table.insert(tmp_rules, {"/local_slivers/*/state"})
-	table.insert(tmp_rules, {"/local_slivers/*/errors"})
-	table.insert(tmp_rules, {"/local_slivers/*/errors/*"})
-	table.insert(tmp_rules, {"/local_slivers/*/errors/*/member"})
-	table.insert(tmp_rules, {"/local_slivers/*/errors/*/message"})
+	table.insert(tmp_rules, {"/"})
+	table.insert(tmp_rules, {"/*"})
+	table.insert(tmp_rules, {"/*/uri"})
+	table.insert(tmp_rules, {"/*/slice"})
+	table.insert(tmp_rules, {"/*/slice/uri"})	
+	table.insert(tmp_rules, {"/*/node"})
+	table.insert(tmp_rules, {"/*/node/uri"})
+	table.insert(tmp_rules, {"/*/description"})
+	table.insert(tmp_rules, {"/*/properties"})
+	table.insert(tmp_rules, {"/*/properties/*"})
+	table.insert(tmp_rules, {"/*/properties/*/*"})
+	table.insert(tmp_rules, {"/*/instance_sn"})
+	table.insert(tmp_rules, {"/*/template"})
+	table.insert(tmp_rules, {"/*/template/uri"})
+	table.insert(tmp_rules, {"/*/exp_data_uri"})
+	table.insert(tmp_rules, {"/*/exp_data_sha256"})
+	table.insert(tmp_rules, {"/*/interfaces"})
+	table.insert(tmp_rules, {"/*/interfaces/*"})
+	table.insert(tmp_rules, {"/*/interfaces/*/nr"})
+	table.insert(tmp_rules, {"/*/interfaces/*/name"})
+	table.insert(tmp_rules, {"/*/interfaces/*/type"})
+	table.insert(tmp_rules, {"/*/interfaces/*/parent_name"})
+	table.insert(tmp_rules, {"/*/interfaces/*/mac_addr"})
+	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
+	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
+	table.insert(tmp_rules, {"/*/properties"})
+	table.insert(tmp_rules, {"/*/properties/*"})
+	table.insert(tmp_rules, {"/*/nr"})
+	table.insert(tmp_rules, {"/*/state"})
+	table.insert(tmp_rules, {"/*/errors"})
+	table.insert(tmp_rules, {"/*/errors/*"})
+	table.insert(tmp_rules, {"/*/errors/*/member"})
+	table.insert(tmp_rules, {"/*/errors/*/message"})
 

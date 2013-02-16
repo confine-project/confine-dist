@@ -388,13 +388,9 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/set_state",				rules.cb2_set})
 	table.insert(tmp_rules, {"/state",				cb2_set_state})
 --
---
 	table.insert(tmp_rules, {"/local_slivers",			rules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_set_lsliver})
---	table.insert(tmp_rules, {["/local_slivers/*/state"]		= "CB_NOP"})
---	
---	table.insert(tmp_rules, {["/slivers"]				= "CB_NOP"})
---	table.insert(tmp_rules, {["/slivers/*"]				= "CB_NOP"})
---	table.insert(tmp_rules, {["/slivers/*/uri"]			= "CB_NOP"})
+	
+	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 --	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
