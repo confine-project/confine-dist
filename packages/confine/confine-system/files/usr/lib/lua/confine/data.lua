@@ -13,12 +13,14 @@ local nixio  = require "nixio"
 local json   = require "luci.json"
 local ltn12  = require "luci.ltn12"
 local http   = require "luci.http.protocol"
+local lutil  = require "luci.util"
+
 local tools  = require "confine.tools"
-local ctree   = require "confine.tree"
+local ctree  = require "confine.tree"
 
 local dbg    = tools.dbg
 
-local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O- %q"
+local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q"
 local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
 
 local json_pretty_print_tool   = "python -mjson.tool"
@@ -88,6 +90,21 @@ end
 
 
 
+function http_get_raw( url, dst, cert_file )
+	if not url then return nil end
+	
+	assert(url and dst and not nixio.fs.stat(dst))
+	
+	local cert_opt
+	if cert_file then
+		cert_opt = "--ca-certificate="..cert_file
+	else
+		cert_opt = "--no-check-certificate"
+	end
+	local cmd = wget %{ cert_opt, dst, url }
+	dbg (cmd)
+	return (os.execute( cmd ) == 0) and true or false
+end
 
 function http_get_keys_as_table(url, base_uri, cert_file, cache)
 
@@ -110,7 +127,7 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			cert_opt = "--no-check-certificate"
 		end
 		
-		local cmd = wget %{ cert_opt, base_uri..base_key..index_key }	
+		local cmd = wget %{ cert_opt, "-", base_uri..base_key..index_key }	
 		
 		local fd = io.popen(cmd, "r")
 		assert(fd, "Failed to execute %s" %{ cmd })

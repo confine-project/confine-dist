@@ -10,12 +10,11 @@ module( "confine.tinc", package.seeall )
 local nixio  = require "nixio"
 local sig    = require "signal"
 
+local ctree  = require "confine.tree"
+local ssl    = require "confine.ssl"
 local tools  = require "confine.tools"
-local ctree   = require "confine.tree"
 local dbg    = tools.dbg
 
-local RSA_HEADER               = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
-local RSA_TRAILER              = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
 
 
 
@@ -49,7 +48,7 @@ function get_connects (sys_conf)
 
 				local ip_addr  = tools.subfind(content,"Address","\n")
 				local port     = tools.subfind(content,"Port","\n")
-				local pubkey   = tools.subfind(content,RSA_HEADER,RSA_TRAILER)
+				local pubkey   = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
 				local name     = file
 
 				if ip_addr and port and pubkey and name then
@@ -73,7 +72,7 @@ function get (sys_conf, cached_tinc)
 	
 	tinc.name             = "node_" .. sys_conf.id
 	
-	tinc.pubkey           = tools.subfind(nixio.fs.readfile( sys_conf.tinc_node_key_pub ),RSA_HEADER,RSA_TRAILER)
+	tinc.pubkey           = tools.subfind(nixio.fs.readfile( sys_conf.tinc_node_key_pub ),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	
 	tinc.island           = cached_tinc and cached_tinc.island
 
@@ -167,7 +166,7 @@ end
 
 function add_connect (sys_conf, connect)
 	
-	if connect.ip_addr and connect.port and connect.pubkey and tools.subfind(connect.pubkey,RSA_HEADER,RSA_TRAILER) and connect.name then
+	if connect.ip_addr and connect.port and connect.pubkey and tools.subfind(connect.pubkey,ssl.RSA_HEADER,ssl.RSA_TRAILER) and connect.name then
 	
 		tools.mkdirr(sys_conf.tinc_hosts_dir)
 	

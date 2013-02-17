@@ -10,13 +10,11 @@ module( "confine.ssh", package.seeall )
 
 
 local data   = require "confine.data"
-local ctree   = require "confine.tree"
+local ctree  = require "confine.tree"
 local tools  = require "confine.tools"
+local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
 
-RSA_HEADER   = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
-RSA_TRAILER  = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
-SSH_HEADER   = "ssh%-rsa "
 
 local SSH_CONFINE_TAG = " CONFINE_USER="
 
@@ -82,7 +80,7 @@ function get_node_local_group(sys_conf)
 			local id = user_id:gsub(" ",""):gsub("\n","")
 			local user_key = tools.subfindex( line, "", SSH_CONFINE_TAG)
 			
-			if tonumber(id) and user_key and user_key:find("^%s"%SSH_HEADER) then
+			if tonumber(id) and user_key and user_key:find("^%s"%ssl.SSH_HEADER) then
 				
 				if not group.user_roles[id] then
 					group.user_roles[id] = {}
@@ -128,19 +126,19 @@ local function auth_token_to_rsa( auth_tokens )
 	local k,v
 	for k,v in pairs(auth_tokens or {}) do
 		
-		if v:find("^%s"%SSH_HEADER) then
+		if v:find("^%s"%ssl.SSH_HEADER) then
 			ssh_tokens[#ssh_tokens + 1] = v
 			
-		elseif tools.subfind(v,RSA_HEADER,RSA_TRAILER) then
+		elseif tools.subfind(v,ssl.RSA_HEADER,ssl.RSA_TRAILER) then
 			
 			local tmp_file = os.tmpname()
 			io.output(io.open(tmp_file,"w"))
 			io.write(v)
 			io.close()
-			local ssh_key = luci.util.exec( "ssh-keygen -f "..tmp_file.." -i -m PEM" )
+			local ssh_key = ssl.get_ssh_pubkey_pem( tmp_file )
 			os.remove(tmp_file)
 
-			assert( ssh_key and ssh_key:find("^%s"%SSH_HEADER) )
+			assert( ssh_key and ssh_key:find("^%s"%ssl.SSH_HEADER) )
 
 			ssh_tokens[#ssh_tokens + 1] = ssh_key:gsub("\n","")
 

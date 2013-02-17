@@ -13,6 +13,7 @@ local data    = require "confine.data"
 local tools   = require "confine.tools"
 local ctree    = require "confine.tree"
 local ssh     = require "confine.ssh"
+local ssl     = require "confine.ssl"
 local tinc    = require "confine.tinc"
 local sliver  = require "confine.sliver"
 local crules   = require "confine.rules"
@@ -194,7 +195,7 @@ function get_local_node( sys_conf, cached_node )
 	node.uri                   = sys_conf.node_base_uri.."/node"
 	node.id                    = sys_conf.id
 	node.uuid                  = sys_conf.uuid
-	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssh.RSA_HEADER,ssh.RSA_TRAILER)
+	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	node.cert                  = sys_conf.cert
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version

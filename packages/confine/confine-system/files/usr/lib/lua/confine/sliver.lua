@@ -8,12 +8,14 @@
 module( "confine.sliver", package.seeall )
 
 local nixio  = require "nixio"
+local luci   = require "luci"
 
-local util   = require "luci.util"
 local tools  = require "confine.tools"
-local ctree   = require "confine.tree"
-local crules   = require "confine.rules"
-local cnode   = require "confine.node"
+local cdata  = require "confine.data"
+local ctree  = require "confine.tree"
+local crules = require "confine.rules"
+local cnode  = require "confine.node"
+local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
 
 NODE = {
@@ -89,17 +91,18 @@ function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 	
 	if not nval or SERVER[nval] then
-		ctree.set_path_val(otree, path, nval)
+		if nval ~= oval then
+			ctree.set_path_val(otree, path, nval)
+		end
 		
-		if not (oslv.state==NODE.registered or oslv.state==NODE.fail_alloc) then
+		if not (oslv.state==NODE.registered or oslv.state==NODE.fail_alloc or oslv.state==NODE.allocating) then
+			
 			dbg( add_lsliver_error(otree, path, "yet unsupported transition from state="..oslv.state, nval))
 		end
 		
 	else
 		dbg( add_lsliver_error(otree, path, "Illegal", nval))
 	end
-	
-	dbg( "oslv=%s nslv=%s", tostring(oslv), tostring(nslv))
 end
 
 
@@ -135,11 +138,68 @@ end
 
 
 
+local EXP_DATA_DIR_RD      = "/confine/exp_data/"
+
 
 function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_get_exp_data" end
 	
+
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
+	local nval = ctree.get_path_val(ntree,path)
+	local key  = ctree.get_path_leaf(path)
 	
+	if oslv.state==NODE.registered then
+		
+		if key=="exp_data_uri" then
+			if type(nval)=="string" and (nval:match("^http://") or nval:match("^https://")) and (nval:match(".tgz$") or nval:match(".tar.gz$")) then
+				ctree.set_path_val(otree, path, nval)
+			else
+				dbg( add_lsliver_error( otree, path, "Invalid", nval ))
+			end
+		end
+		
+		if key=="exp_data_sha256" then
+			if type(nval)=="string" and nval:len() >= ssl.SHA256_LEN_MIN and nval:len() <= ssl.SHA256_LEN_MAX and nval:match("^[%x]+$") then
+				ctree.set_path_val(otree, path, nval)
+			else
+				dbg( add_lsliver_error( otree, path, "Invalid", nval ))
+			end
+		end
+		
+	elseif oslv.state==NODE.allocating then
+		
+		local uri = oslv and oslv.exp_data_uri
+		local sha = oslv and oslv.exp_data_sha256
+		local dst = EXP_DATA_DIR_RD..sha
+		
+		if not uri or not sha then
+			dbg( add_lsliver_error (otree, path, "missing uri or sha", nval) )
+			return
+		end
+				
+		tools.mkdirr( EXP_DATA_DIR_RD )
+		
+		if nixio.fs.stat(dst) then
+			if ssl.dgst_sha256(dst) ~= sha then
+				dbg( "file=%s does not match given sha256 digest!", dst)
+				nixio.fs.remover( dst )
+			end
+		end
+		
+		if not nixio.fs.stat(dst) then
+			--TODO: check for EXP_DATA_DIR_RD size limit and remove unused files
+			if cdata.http_get_raw(uri, dst) then
+				if ssl.dgst_sha256(dst) ~= sha then
+					nixio.fs.remover( dst )
+					dbg( add_lsliver_error (otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nval) )
+				end
+			else
+				dbg( add_lsliver_error (otree, path, "Inaccessible uri=%s" %{uri}, nval) )
+			end
+		end
+	end
 end
 
 local tmp_rules
@@ -182,6 +242,7 @@ tmp_rules = register_rules
 
 tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
 
 tmp_rules = dealloc_rules
 

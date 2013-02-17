@@ -25,9 +25,6 @@ local require_node_cert   = false
 
 
 
-local RSA_HEADER               = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
-local RSA_TRAILER              = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
-
 
 local function get_local_base( sys_conf, node )
 	local base = {}
