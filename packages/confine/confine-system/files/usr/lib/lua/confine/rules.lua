@@ -24,7 +24,7 @@ function cb2_nop( rules, sys_conf, otree, ntree, path )
 end
 
 function cb2_log( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_nop" end
+	if not rules then return "cb2_log" end
 	return true
 end
 

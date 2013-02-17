@@ -197,11 +197,13 @@ function get_path_val ( tree, path, depth)
 		assert(path_root and path_new)
 		assert( not tonumber(path_root) or not ( tree[path_root] and tree[tonumber(path_root)]) )
 		
-		if tree[path_root] then
+		assert( type(tree)=="table" or tree==cdata.null )
+		
+		if type(tree)=="table" and tree[path_root] then
 		
 			return get_path_val( tree[path_root], path_new, depth+1)
 		
-		elseif tonumber(path_root) and tree[tonumber(path_root)] then
+		elseif type(tree)=="table" and tonumber(path_root) and tree[tonumber(path_root)] then
 			
 			return get_path_val( tree[tonumber(path_root)], path_new, depth+1)
 			

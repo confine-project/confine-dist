@@ -36,17 +36,6 @@ local function get_local_base( sys_conf, node )
 	return base	
 end
 
-local function get_local_templates( node )
-
-	local templates = {}
-	local k,v
-	if node.local_slivers then
-		for k,v in pairs(node.local_slivers) do
-	
-		end
-	end
-	return templates
-end
 
 local function upd_node_rest_conf( sys_conf, node )
 
@@ -54,7 +43,7 @@ local function upd_node_rest_conf( sys_conf, node )
 	cdata.file_put(base, "index.html", system.rest_base_dir)
 
 	pcall(nixio.fs.remover, system.rest_templates_dir)
-	cdata.file_put(get_local_templates(node), nil, system.rest_templates_dir)
+	cdata.file_put(ctree.filter(sliver.template_out_filter, sliver.get_templates(node)), nil, system.rest_templates_dir)
 
 	cdata.file_put(ctree.filter(cnode.out_filter, node), "index.html", system.rest_node_dir)	
 	

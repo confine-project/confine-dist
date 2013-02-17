@@ -139,7 +139,139 @@ end
 
 
 local EXP_DATA_DIR_RD      = "/confine/exp_data/"
+local TEMPLATE_DIR_RD      = "/confine/templates/"
 
+function check_set_or_err( otree, ntree, path, valtype, ... )
+	
+	local val = ctree.get_path_val( ntree, path )
+	local success = false
+	
+	if type(val)==valtype then
+		
+		if arg.n==0 then
+			success=true
+		else
+			local i,v
+			for i,v in ipairs(arg) do
+				if (type(val)=="string" and val:match(v)) or (val==v) then
+					success=true
+					break
+				end
+			end
+		end
+		
+	end
+	
+	if success then
+		ctree.set_path_val(otree, path, val)
+		return val
+	else
+		dbg( add_lsliver_error, tree, path, "Invlaid", val)
+	end
+end
+
+
+function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_template_uri" end
+
+	if begin then
+		dbg( "begin")
+		return
+	end
+	
+	dbg ("end start")
+	
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+
+	if oslv.state==NODE.registered then
+		if oslv.local_template and oslv.local_template.uri then
+			ctree.set_path_val( otree, path, { uri = oslv.local_template.uri } )
+		else
+			dbg( add_lsliver_error( otree, path, "Invalid server template", nil))
+			ctree.set_path_val( otree, path, cdata.null )
+		end
+	end
+	
+	dbg ("end end")
+
+end
+
+function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_get_template" end
+	if not begin then return end
+	
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
+	local nval = ctree.get_path_val(ntree,path)
+	local oval = ctree.get_path_val(otree,path)
+	
+	if oslv.state==NODE.registered and nval then
+		
+		if not oval then ctree.set_path_val(otree,path,{}) end
+		
+		local failure = false
+		failure = not check_set_or_err( otree, ntree, path.."name/",        "string" ) or failure
+		failure = not check_set_or_err( otree, ntree, path.."description/", "string" )
+		failure = not check_set_or_err( otree, ntree, path.."type/",        "string", "^debian$", "^openwrt$" ) or failure
+		failure = not check_set_or_err( otree, ntree, path.."is_active/",   "boolean",true ) or failure
+		failure = not check_set_or_err( otree, ntree, path.."image_uri/",   "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" ) or failure
+		failure = not check_set_or_err( otree, ntree, path.."image_sha256/","string", "^[%x]+$" ) or failure
+
+--		failure = not check_set_or_err( otree, ntree, path.."uri/",         "string", "^https?://.*/[%d]+$" ) or failure
+		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+$") then
+			local id = tonumber(((nval.uri:match("/[%d]+$")):gsub("/","")))
+			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id  )
+			ctree.set_path_val( otree, path.."id/", id )
+		else
+			dbg( add_lsliver_error( otree, path.."uri/", "Invalid", nval.uri) )
+			failure = true
+		end
+		
+--		failure = not check_set_or_err( otree, ntree, path.."node_archs/",  "table" ) or failure
+		if type(nval.node_archs)=="table" and tools.get_table_by_key_val(nval.node_archs, sys_conf.arch) then
+			ctree.set_path_val(otree, path.."node_archs/", nval.node_archs)
+		else
+			dbg( add_lsliver_error( otree, path.."node_archs/", "Missing arch=%s"%sys_conf.arch, nil) )
+			failure = true
+		end
+		
+		if failure then
+			ctree.set_path_val( otree, path, nil )
+		end
+		
+	elseif oslv.state==NODE.allocating then
+		
+		if not oval then
+			dbg( add_lsliver_error (otree, path, "missing uri or sha", nil) )
+			return
+		end
+
+		tools.mkdirr( TEMPLATE_DIR_RD )
+		
+		local uri = oval.image_uri
+		local sha = oval.image_sha256
+		local dst = TEMPLATE_DIR_RD..sha
+		
+		if nixio.fs.stat(dst) then
+			if ssl.dgst_sha256(dst) ~= sha then
+				dbg( "file=%s does not match given sha256 digest!", dst)
+				nixio.fs.remover( dst )
+			end
+		end
+		
+		if not nixio.fs.stat(dst) then
+			--TODO: check for TEMPLATE_DIR_RD size limit and remove unused files
+			if cdata.http_get_raw(uri, dst) then
+				if ssl.dgst_sha256(dst) ~= sha then
+					nixio.fs.remover( dst )
+					dbg( add_lsliver_error (otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nil) )
+				end
+			else
+				dbg( add_lsliver_error (otree, path, "Inaccessible uri=%s" %{uri}, nil) )
+			end
+		end
+	end	
+end
 
 function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_get_exp_data" end
@@ -148,24 +280,17 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
 	local nval = ctree.get_path_val(ntree,path)
+	local oval = ctree.get_path_val(otree,path)
 	local key  = ctree.get_path_leaf(path)
 	
 	if oslv.state==NODE.registered then
 		
 		if key=="exp_data_uri" then
-			if type(nval)=="string" and (nval:match("^http://") or nval:match("^https://")) and (nval:match(".tgz$") or nval:match(".tar.gz$")) then
-				ctree.set_path_val(otree, path, nval)
-			else
-				dbg( add_lsliver_error( otree, path, "Invalid", nval ))
-			end
+			check_set_or_err( otree, ntree, path, "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" )
 		end
 		
 		if key=="exp_data_sha256" then
-			if type(nval)=="string" and nval:len() >= ssl.SHA256_LEN_MIN and nval:len() <= ssl.SHA256_LEN_MAX and nval:match("^[%x]+$") then
-				ctree.set_path_val(otree, path, nval)
-			else
-				dbg( add_lsliver_error( otree, path, "Invalid", nval ))
-			end
+			check_set_or_err( otree, ntree, path, "string", "^[%x]+$")
 		end
 		
 	elseif oslv.state==NODE.allocating then
@@ -175,7 +300,7 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		local dst = EXP_DATA_DIR_RD..sha
 		
 		if not uri or not sha then
-			dbg( add_lsliver_error (otree, path, "missing uri or sha", nval) )
+			dbg( add_lsliver_error (otree, path, "missing uri or sha", oval) )
 			return
 		end
 				
@@ -216,13 +341,21 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/description",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs/*",	crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_get_template
+	table.insert(tmp_rules, {"/local_slivers/*/template",				cb2_set_template_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_set_template_uri
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_get_exp_data})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/arch",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
@@ -242,6 +375,7 @@ tmp_rules = register_rules
 
 tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
 
 tmp_rules = dealloc_rules
@@ -429,17 +563,8 @@ function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
 end
 
 
-
-
-
-
-
-
-
-
 out_filter = {}
 tmp_rules = out_filter
-	table.insert(tmp_rules, {"/"})
 	table.insert(tmp_rules, {"/*"})
 	table.insert(tmp_rules, {"/*/uri"})
 	table.insert(tmp_rules, {"/*/slice"})
@@ -473,3 +598,32 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/errors/*/member"})
 	table.insert(tmp_rules, {"/*/errors/*/message"})
 
+
+
+function get_templates( otree )
+
+	local templates = {}
+	local k,v
+	if otree.local_slivers then
+		for k,lslv in pairs(otree.local_slivers) do
+			local id = lslv.local_template and lslv.local_template.id
+			if id then
+				templates[id] = lslv.local_template
+			end
+		end
+	end
+	return templates
+end
+
+template_out_filter = {}
+tmp_rules = template_out_filter
+	table.insert(tmp_rules, {"/*"})
+	table.insert(tmp_rules, {"/*/uri"})
+	table.insert(tmp_rules, {"/*/name"})
+	table.insert(tmp_rules, {"/*/description"})
+	table.insert(tmp_rules, {"/*/type"})
+	table.insert(tmp_rules, {"/*/node_archs"})
+	table.insert(tmp_rules, {"/*/node_archs/*"})
+	table.insert(tmp_rules, {"/*/is_active"})
+	table.insert(tmp_rules, {"/*/image_uri"})
+	table.insert(tmp_rules, {"/*/image_sha256"})
