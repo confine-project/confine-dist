@@ -134,7 +134,14 @@ function main_loop( )
 			
 			dbg("count=%d i=%d" %{sys_conf.count, iteration})
 			iteration = iteration + 1
-			tools.sleep(sys_conf.interval)
+			
+			if sys_conf.interactive then
+				tools.dbg_(false, "Press enter for next iteration:")
+				io.read()
+			else
+				tools.sleep(sys_conf.interval)
+			end
+
 			if tools.stop then break end
 			dbg("next iteration=%d...",iteration)
 		else

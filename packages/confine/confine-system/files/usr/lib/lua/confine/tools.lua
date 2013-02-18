@@ -12,13 +12,16 @@ local socket  = require "socket"
 local nixio   = require "nixio"
 
 
-
-function dbg(fmt, ...)
+function dbg_(nl, fmt, ...)
 	local t = nixio.times()
 	io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
 	io.stdout:write((debug.getinfo(2).name or "???").."() ")
 	io.stdout:write(string.format(fmt, ...))
-	io.stdout:write("\n")
+	if nl then io.stdout:write("\n") end
+end
+
+function dbg(fmt, ...)
+	dbg_(true, fmt, ...)
 end
 
 stop = false

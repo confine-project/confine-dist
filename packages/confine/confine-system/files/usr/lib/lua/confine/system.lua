@@ -76,9 +76,11 @@ function get_system_conf(sys_conf, arg)
 	end
 	
 		
-	conf.debug          	   = conf.debug    or flags["debug"] or false
-	conf.interval 		   = conf.interval or tonumber(flags["interval"] or 5)
-	conf.count		   = conf.count    or tonumber(flags["count"] or 0)
+	conf.debug          	   = conf.debug       or flags["debug"]              or false
+	conf.interactive	   = conf.interactive or flags["interactive"]        or false
+	conf.count		   = conf.count       or tonumber(flags["count"])    or 0
+	conf.interval 		   = conf.interval    or tonumber(flags["interval"]) or tonumber(uci.get("confine", "node", "retry_limit")) or 60
+	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"])    or tonumber(uci.get("confine", "node", "retry_limit")) or 0
 
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
@@ -96,7 +98,6 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
-	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"]) or tonumber(uci.get("confine", "node", "retry_limit") or 0)
 
 	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
