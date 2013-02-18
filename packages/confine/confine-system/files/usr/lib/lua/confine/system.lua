@@ -63,6 +63,16 @@ end
 
 
 
+function help()
+	print("usage: /usr/lib/lua/confine/confine.lua  \\\
+	      [--debug] \\\
+	      [--interactive] \\\
+	      [--count=<max iterations>] \\\
+	      [--interval=<seconds per iteration>] \\\
+	      [--retry==<max failure retries>] \\\
+	      [--logfile=<path to logfile>")
+	
+end
 
 function get_system_conf(sys_conf, arg)
 
@@ -77,6 +87,10 @@ function get_system_conf(sys_conf, arg)
 		assert( not trash, "Illegal flags: ".. tostring(trash) )
 	end
 	
+	if flags["help"] then
+		help()
+		return
+	end
 		
 	conf.debug          	   = conf.debug       or flags["debug"]              or false
 	conf.interactive	   = conf.interactive or flags["interactive"]        or false

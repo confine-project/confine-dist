@@ -71,11 +71,11 @@ function main_loop( )
 		local success = true
 		local err_msg = nil
 
-		dbg("updating...")
+--		dbg("updating...")
 
-		dbg("getting system conf...")
+--		dbg("getting system conf...")
 		sys_conf = system.get_system_conf( sys_conf, arg )
-		assert(sys_conf)
+		if not sys_conf then break end
 		
 		dbg("getting local node...")
 		local_node = cnode.get_local_node(sys_conf, local_node)
@@ -165,6 +165,6 @@ if system.check_pid() then
 	
 	main_loop()
 	
-	dbg("goodbye")
+--	dbg("goodbye")
 
 end
