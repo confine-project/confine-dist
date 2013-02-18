@@ -146,17 +146,18 @@ end
 
 
 
+if system.check_pid() then
+	
+	math.randomseed( os.time() )
+	
+	sig.signal(sig.SIGINT,  tools.handler)
+	sig.signal(sig.SIGTERM, tools.handler)
+	
+	tools.mkdirr( system.rest_confine_dir)
+	nixio.fs.symlink( system.rest_confine_dir, system.www_dir )
+	
+	main_loop()
+	
+	dbg("goodbye")
 
-
-math.randomseed( os.time() )
-
-sig.signal(sig.SIGINT,  tools.handler)
-sig.signal(sig.SIGTERM, tools.handler)
-
-tools.mkdirr( system.rest_confine_dir)
-nixio.fs.symlink( system.rest_confine_dir, system.www_dir )
-
-main_loop()
-
-dbg("goodbye")
-
+end

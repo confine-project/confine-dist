@@ -17,9 +17,11 @@ local data    = require "confine.data"
 local null    = data.null
 
 
+RUNTIME_DIR = "/var/run/confine/"
+PID_FILE = RUNTIME_DIR.."pid"
 
-node_state_file     = "/tmp/confine.node_state"
-server_state_file   = "/tmp/confine.server_state"
+node_state_file     = RUNTIME_DIR.."node_state"
+server_state_file   = RUNTIME_DIR.."server_state"
 	
 www_dir             = "/www/confine"
 rest_confine_dir    = "/tmp/confine"
@@ -28,6 +30,23 @@ rest_node_dir       = rest_confine_dir.."/api/node/"
 rest_slivers_dir    = rest_confine_dir.."/api/slivers/"
 rest_templates_dir  = rest_confine_dir.."/api/templates/"
 
+
+function check_pid()
+	tools.mkdirr( RUNTIME_DIR )
+	local pid = nixio.fs.readfile( PID_FILE )
+	
+	if pid and tonumber(pid) and nixio.fs.stat( "/proc/"..pid.."/cmdline" ) then
+		tools.dbg("There already seem a confine deamon running. If not remove %s and retry!", PID_FILE)
+		return false
+	else
+		local out = io.open(PID_FILE, "w")
+		assert(out, "Failed to open %s" %PID_FILE)
+		out:write( nixio.getpid() )
+		out:close()
+	end
+	
+	return true
+end
 
 function stop()
 	pcall(nixio.fs.remover, rest_confine_dir)
