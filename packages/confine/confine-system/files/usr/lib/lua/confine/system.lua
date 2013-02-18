@@ -19,6 +19,7 @@ local null    = data.null
 
 RUNTIME_DIR = "/var/run/confine/"
 PID_FILE = RUNTIME_DIR.."pid"
+LOG_FILE = "/var/log/confine.log"
 
 node_state_file     = RUNTIME_DIR.."node_state"
 server_state_file   = RUNTIME_DIR.."server_state"
@@ -62,6 +63,7 @@ end
 
 
 
+
 function get_system_conf(sys_conf, arg)
 
 --	if uci.dirty( "confine" ) then return false end
@@ -79,8 +81,10 @@ function get_system_conf(sys_conf, arg)
 	conf.debug          	   = conf.debug       or flags["debug"]              or false
 	conf.interactive	   = conf.interactive or flags["interactive"]        or false
 	conf.count		   = conf.count       or tonumber(flags["count"])    or 0
-	conf.interval 		   = conf.interval    or tonumber(flags["interval"]) or tonumber(uci.get("confine", "node", "retry_limit")) or 60
+	conf.interval 		   = conf.interval    or tonumber(flags["interval"]) or tonumber(uci.get("confine", "node", "interval"))    or 60
 	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"])    or tonumber(uci.get("confine", "node", "retry_limit")) or 0
+	conf.logfile               = conf.logfile     or flags["logfile"]  or uci.get("confine", "node", "logfile")     or LOG_FILE
+	if conf.logfile then tools.logfile = conf.logfile end
 
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null

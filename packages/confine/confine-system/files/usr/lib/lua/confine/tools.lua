@@ -12,12 +12,25 @@ local socket  = require "socket"
 local nixio   = require "nixio"
 
 
+logfile = false
+
+
 function dbg_(nl, fmt, ...)
 	local t = nixio.times()
-	io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
-	io.stdout:write((debug.getinfo(2).name or "???").."() ")
-	io.stdout:write(string.format(fmt, ...))
-	if nl then io.stdout:write("\n") end
+	local l = "[%d.%3d] %s() %s%s" %{os.time(), (t.utime + t.stime + t.cutime + t.cstime), debug.getinfo(2).name or "???", string.format(fmt,...), nl and "\n" or "" }
+	io.stdout:write(l)
+	
+	if logfile then
+		local out = io.open(logfile, "a")
+		assert(out, "Failed to open %s" %logfile)
+		out:write(l)
+		out:close()
+	end
+
+	--io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
+	--io.stdout:write((debug.getinfo(2).name or "???").."() ")
+	--io.stdout:write(string.format(fmt, ...))
+	--if nl then io.stdout:write("\n") end
 end
 
 function dbg(fmt, ...)
