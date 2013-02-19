@@ -185,7 +185,7 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 			local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
 			local old_tokens = old and old.local_user and old.local_user.auth_tokens or {}
 			
-			if ctree.iterate(function() end, {[1]={"/[^/]+", function() end}}, sys_conf, old_tokens, new_tokens, "/") then --just scan for changes
+			if ctree.iterate(function() end, {[1]={"/*", function() end}}, sys_conf, old_tokens, new_tokens, "/") then --just scan for changes
 
 				if old then
 					del_ssh_keys(sys_conf, user_id)
