@@ -21,6 +21,8 @@ RUNTIME_DIR = "/var/run/confine/"
 PID_FILE = RUNTIME_DIR.."pid"
 LOG_FILE = "/var/log/confine.log"
 
+SERVER_BASE_PATH = "/confine/api"
+
 node_state_file     = RUNTIME_DIR.."node_state"
 server_state_file   = RUNTIME_DIR.."server_state"
 	
@@ -70,6 +72,7 @@ function help()
 	      [--count=<max iterations>] \\\
 	      [--interval=<seconds per iteration>] \\\
 	      [--retry==<max failure retries>] \\\
+	      [--server-base-path==</confine/api>] \\\
 	      [--logfile=<path to logfile>")
 	
 end
@@ -110,7 +113,8 @@ function get_system_conf(sys_conf, arg)
 
 	conf.node_base_uri         = "http://["..conf.mgmt_ipv6_prefix48..":".."%X"%conf.id.."::2]/confine/api"
 --	conf.server_base_uri       = "https://controller.confine-project.eu/api"
-	conf.server_base_uri       = lsys.getenv("SERVER_URI") or "http://["..conf.mgmt_ipv6_prefix48.."::2]/confine/api"
+	conf.server_base_path      = conf.server_base_path or flags["server-base-path"] or uci.get("confine", "server", "base_path")     or SERVER_BASE_PATH 
+	conf.server_base_uri       = lsys.getenv("SERVER_URI") or "http://["..conf.mgmt_ipv6_prefix48.."::2]"..conf.server_base_path
 	
 	conf.local_iface           = uci.get("confine", "node", "local_ifname")
 	
