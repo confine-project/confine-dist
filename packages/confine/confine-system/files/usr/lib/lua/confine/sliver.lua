@@ -65,7 +65,7 @@ end
 
 
 function add_lsliver_error( otree, path, msg, val )
-	assert(otree, path, message)
+	assert(otree and path and msg)
 
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 

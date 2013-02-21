@@ -80,6 +80,7 @@ function main_loop( )
 		dbg("getting local node...")
 		local_node = cnode.get_local_node(sys_conf, local_node)
 		assert(local_node)
+		cdata.file_put( local_node, system.node_state_file )
 		
 		
 		dbg("getting server node...")
@@ -88,47 +89,54 @@ function main_loop( )
 			server_node = server.get_server_node(sys_conf)
 		else
 			success,server_node = pcall( server.get_server_node, sys_conf )
-			err_msg = (not success) and "ERR_RETRY "..server_node or nil
+			if not success then
+				dbg( cnode.add_node_error(local_node, "/", "ERR_RETRY "..server_node, nil) )
+			end
 		end
+		cdata.file_put( server_node, system.server_state_file)
+
 		--util.dumptable(server_node)
 		--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
 	
 		dbg("processing input")
-		if success then
+		if not local_node.errors then
 			if( sys_conf.debug ) then
 				ctree.iterate( crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 			else
 				success,err_msg = pcall(
 				ctree.iterate, crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+				
+				if not success then
+					dbg( cnode.add_node_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+				end
+					
 			end
 		end
 		
-		assert(success or err_msg:sub(1,9)=="ERR_RETRY" or err_msg:sub(1,9)=="ERR_SETUP", err_msg)
-
-		
-		dbg("updating node RestAPI")
-		
-		if success then
-			upd_node_rest_conf( sys_conf, local_node )
---			cdata.file_put( local_node, system.node_state_file )
-			err_cnt = 0
-			
-		elseif err_msg:sub(1,9)=="ERR_RETRY" and sys_conf.retry_limit==0 or sys_conf.retry_limit > err_cnt then
+		if local_node.errors then
 			
 			err_cnt = err_cnt + 1
-			dbg("IGNORING ERROR (".."err_cnt="..err_cnt.." retry_limit="..sys_conf.retry_limit.."): "..err_msg)
+			
+			local k,v
+			for k,v in pairs( local_node.errors ) do
+				
+				if v.message:sub(1,9)=="ERR_RETRY" then
+					v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.terty_limit})
+				end
+					
+				if v.message:sub(1,9)~="ERR_RETRY" or (sys_conf.retry_limit~=0 and sys_conf.retry_limit < err_cnt) then
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+				end
+			end
 		else
-			
-			--local msg = "ERROR: "..((type(err_msg)=="string" and err_msg) or (type(err_msg)=="table" and ctree.as_string(err_msg)) or tostring(err_msg) )
-			dbg("ERROR: "..err_msg)
-			
-			cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
-			upd_node_rest_conf( sys_conf, { message = err_msg, errors = null } )
---			cdata.file_put( local_node, system.node_state_file )
+			err_cnt = 0
 		end
-
+		
 		cdata.file_put( local_node, system.node_state_file )
-		cdata.file_put( server_node, system.server_state_file)
+		upd_node_rest_conf( sys_conf, local_node )
+
+
 			
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			

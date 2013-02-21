@@ -35,63 +35,18 @@ local tmp_rules
 
 
 
-out_filter = {}
-tmp_rules = out_filter
-	table.insert(tmp_rules, {"/description"})
-	table.insert(tmp_rules, {"/properties"})
-	table.insert(tmp_rules, {"/properties/*"})
---	table.insert(tmp_rules, {"/properties/*/*"})
-	table.insert(tmp_rules, {"/cn"})
-	table.insert(tmp_rules, {"/cn/app_url"})
-	table.insert(tmp_rules, {"/cn/cndb_uri"})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on"})
-
-	table.insert(tmp_rules, {"/uri"})
-	table.insert(tmp_rules, {"/id"})
-	table.insert(tmp_rules, {"/uuid"})
-	table.insert(tmp_rules, {"/pubkey"})
-	table.insert(tmp_rules, {"/cert"})
-	table.insert(tmp_rules, {"/arch"})
-	table.insert(tmp_rules, {"/local_iface"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv6"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_range"})
-
-	table.insert(tmp_rules, {"/tinc"})
-	table.insert(tmp_rules, {"/tinc/name"})
-	table.insert(tmp_rules, {"/tinc/pubkey"})
-	table.insert(tmp_rules, {"/tinc/island"})
-	table.insert(tmp_rules, {"/tinc/island/uri"})
-	table.insert(tmp_rules, {"/tinc/connect_to"})
-	table.insert(tmp_rules, {"/tinc/connect_to/*"})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr"})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/port"})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey"})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/name"})
-
-	table.insert(tmp_rules, {"/priv_ipv4_prefix"})
-	table.insert(tmp_rules, {"/direct_ifaces/*"})
-	table.insert(tmp_rules, {"/direct_ifaces"})
-	table.insert(tmp_rules, {"/sliver_mac_prefix"})	
-	
-	table.insert(tmp_rules, {"/group"})
-	table.insert(tmp_rules, {"/group/uri"})
-	
-	table.insert(tmp_rules, {"/boot_sn"})
-	table.insert(tmp_rules, {"/set_state"})
-	table.insert(tmp_rules, {"/state"})
-	table.insert(tmp_rules, {"/soft_version"})
-	
-	table.insert(tmp_rules, {"/slivers"})
-	table.insert(tmp_rules, {"/slivers/*"})
-	table.insert(tmp_rules, {"/slivers/*/uri"})
-
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
-
-	table.insert(tmp_rules, {"/message"})
-	table.insert(tmp_rules, {"/errors"})
 
 
+
+
+function add_node_error( tree, path, msg, val )
+	assert(tree and path and msg)
+
+	tree.errors = tree.errors or {}
+
+	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..tostring(val) })
+	return "Error path=%s msg=%s val=%s" , path, tostring(msg), tostring(val)
+end
 
 
 local function get_node_state ( sys_conf, cached_node )
@@ -191,6 +146,8 @@ function get_local_node( sys_conf, cached_node )
 	cached_node  = cached_node or {} 
 	
 	local node = cached_node
+	
+	node.errors                = nil
 	
 	node.uri                   = sys_conf.node_base_uri.."/node"
 	node.id                    = sys_conf.id
@@ -346,7 +303,7 @@ tmp_rules = in_rules2
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
-	table.insert(tmp_rules, {"/uuid",				cb2_set_uuid})
+--	table.insert(tmp_rules, {"/uuid",				cb2_set_uuid})
 	table.insert(tmp_rules, {"/pubkey", 				cb2_set_setup})
 	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
 	table.insert(tmp_rules, {"/arch",				cb2_set_setup})
@@ -395,3 +352,64 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 --	table.insert(tmp_rules, {["/sliver_pub_ipv4_avail"]		= "CB_NOP"})
+
+
+
+out_filter = {}
+tmp_rules = out_filter
+	table.insert(tmp_rules, {"/description"})
+	table.insert(tmp_rules, {"/properties"})
+	table.insert(tmp_rules, {"/properties/*"})
+	table.insert(tmp_rules, {"/properties/*/*"})
+	table.insert(tmp_rules, {"/cn"})
+	table.insert(tmp_rules, {"/cn/app_url"})
+	table.insert(tmp_rules, {"/cn/cndb_uri"})
+	table.insert(tmp_rules, {"/cn/cndb_cached_on"})
+
+	table.insert(tmp_rules, {"/uri"})
+	table.insert(tmp_rules, {"/id"})
+--	table.insert(tmp_rules, {"/uuid"})
+	table.insert(tmp_rules, {"/pubkey"})
+	table.insert(tmp_rules, {"/cert"})
+	table.insert(tmp_rules, {"/arch"})
+	table.insert(tmp_rules, {"/local_iface"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv6"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4_range"})
+
+	table.insert(tmp_rules, {"/tinc"})
+	table.insert(tmp_rules, {"/tinc/name"})
+	table.insert(tmp_rules, {"/tinc/pubkey"})
+	table.insert(tmp_rules, {"/tinc/island"})
+	table.insert(tmp_rules, {"/tinc/island/uri"})
+	table.insert(tmp_rules, {"/tinc/connect_to"})
+	table.insert(tmp_rules, {"/tinc/connect_to/*"})
+	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr"})
+	table.insert(tmp_rules, {"/tinc/connect_to/*/port"})
+	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey"})
+	table.insert(tmp_rules, {"/tinc/connect_to/*/name"})
+
+	table.insert(tmp_rules, {"/priv_ipv4_prefix"})
+	table.insert(tmp_rules, {"/direct_ifaces/*"})
+	table.insert(tmp_rules, {"/direct_ifaces"})
+	table.insert(tmp_rules, {"/sliver_mac_prefix"})	
+	
+	table.insert(tmp_rules, {"/group"})
+	table.insert(tmp_rules, {"/group/uri"})
+	
+	table.insert(tmp_rules, {"/boot_sn"})
+	table.insert(tmp_rules, {"/set_state"})
+	table.insert(tmp_rules, {"/state"})
+	table.insert(tmp_rules, {"/soft_version"})
+	
+	table.insert(tmp_rules, {"/slivers"})
+	table.insert(tmp_rules, {"/slivers/*"})
+	table.insert(tmp_rules, {"/slivers/*/uri"})
+
+	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
+
+	table.insert(tmp_rules, {"/message"})
+	table.insert(tmp_rules, {"/errors"})
+	table.insert(tmp_rules, {"/errors/*"})
+	table.insert(tmp_rules, {"/errors/*/member"})
+	table.insert(tmp_rules, {"/errors/*/message"})

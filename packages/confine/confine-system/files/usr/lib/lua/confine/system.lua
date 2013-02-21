@@ -156,9 +156,11 @@ end
 
 function set_system_conf( sys_conf, opt, val)
 	
-	assert(opt and type(opt)=="string" and val, "set_system_conf()")
+	assert(opt and type(opt)=="string", "set_system_conf()")
 	
-	if opt == "boot_sn" and
+	if not val then
+	
+	elseif opt == "boot_sn" and
 		type(val)=="number" and 		
 		uci.set("confine", "node", opt, val) then
 		
@@ -224,7 +226,7 @@ function set_system_conf( sys_conf, opt, val)
 		end
 	end
 		
-	assert(false, nil, "CRITICAL", "set_system_conf(): Invalid opt=%s val=%s" %{opt, tostring(val)})
+	assert(false, "ERR_SETUP: Invalid opt=%s val=%s" %{opt, tostring(val)})
 	
 end
 

@@ -16,6 +16,7 @@ local tools  = require "confine.tools"
 local dbg    = tools.dbg
 
 
+local TINC_PORT = 655
 
 
 function get_connects (sys_conf)
@@ -32,6 +33,8 @@ function get_connects (sys_conf)
 			
 			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..file )
 			
+--			dbg( sys_conf.tinc_hosts_dir..file.." = "..content )
+			
 			local subnet = content and tools.subfind(content,"Subnet","\n")
 			
 			if subnet then
@@ -47,21 +50,24 @@ function get_connects (sys_conf)
 				--    file, content or "", tools.canon_ipv6(subnet), tools.canon_ipv6(sys_conf.mgmt_ipv6_prefix48.."::2/128"))
 
 				local ip_addr  = tools.subfind(content,"Address","\n")
-				local port     = tools.subfind(content,"Port","\n")
+				local port     = tools.subfind(content,"Port","\n") or (ip_addr and ip_addr:match(" [%d]+[^.]+\n"))
 				local pubkey   = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
 				local name     = file
 
-				if ip_addr and port and pubkey and name then
+				if ip_addr and pubkey and name then
 					connects[name] = {
-						ip_addr  = ip_addr:gsub(" ",""):gsub("Address=",""):gsub("\n",""),
-						port     = tonumber( (port:gsub(" ",""):gsub("Port=",""):gsub("\n","")) ),
+						ip_addr  = ip_addr:match("[%d]+%.[%d]+%.[%d]+%.[%d]+"),
+						port     = tonumber( (port and (port:match("[%d]+"))) or TINC_PORT ),
 						pubkey   = pubkey,
 						name     = name
 					}
 				end
+				
 			end
 		end
 	end
+	
+	
 	
 	return connects
 end
@@ -231,9 +237,9 @@ function cb2_set_tinc( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 	elseif not begin and old and not new then
 
-		if del_connect( sys_conf, old) then
-			ctree.set_path_val(otree,path,nil)
-		end
+--		if del_connect( sys_conf, old) then
+--			ctree.set_path_val(otree,path,nil)
+--		end
 		
 	elseif not begin and old and new and changed then
 		
