@@ -164,15 +164,15 @@ vct_system_config_check() {
                          ( echo $VCT_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
                          ( echo $VCT_TEMPLATE_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
     variable_check VCT_TEMPLATE_COMP quiet
-    VCT_TEMPLATE_TYPE=$(echo $VCT_TEMPLATE_URL | awk -F $VCT_TEMPLATE_COMP '{print $1}' | awk -F'.' '{print $(NF-1)}')
+    VCT_TEMPLATE_TYPE=$(echo $VCT_TEMPLATE_URL | awk -F"$VCT_TEMPLATE_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
     variable_check VCT_TEMPLATE_TYPE quiet
-    VCT_TEMPLATE_NAME=$(echo $VCT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
+    VCT_TEMPLATE_NAME=$(echo $VCT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" '{print $1}')
     variable_check VCT_TEMPLATE_NAME quiet
-    VCT_TEMPLATE_SITE=$(echo $VCT_TEMPLATE_URL | awk -F ${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP} '{print $1}')
+    VCT_TEMPLATE_SITE=$(echo $VCT_TEMPLATE_URL | awk -F"${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" '{print $1}')
     variable_check VCT_TEMPLATE_SITE quiet
 
     ( [ $VCT_TEMPLATE_TYPE = "vmdk" ] || [ $VCT_TEMPLATE_TYPE = "raw" ] || [ $VCT_TEMPLATE_TYPE = "img" ] ) ||\
-           err $FUNCNAME "Non-supported fs template type $URL_TYPE"
+           err $FUNCNAME "Non-supported fs template type $VCT_TEMPLATE_TYPE"
 
     [ "$VCT_TEMPLATE_URL" = "${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" ] ||\
            err $FUNCNAME "Invalid $VCT_TEMPLATE_URL != ${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}"
@@ -346,13 +346,14 @@ vct_system_install_check() {
     #echo $FUNCNAME $@ >&2
 
     local OPT_CMD=${1:-}
-    local CMD_SOFT=$(    echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local CMD_QUICK=$(   echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," )
-    local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
-    local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
-    local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
-    local UPD_TINC=$(    echo "$OPT_CMD" | grep -e "tinc" > /dev/null && echo "tinc," )
+    local CMD_SOFT=$(      echo "$OPT_CMD" | grep -e "soft"      > /dev/null && echo "soft," )
+    local CMD_QUICK=$(     echo "$OPT_CMD" | grep -e "quick"     > /dev/null && echo "quick," )
+    local CMD_INSTALL=$(   echo "$OPT_CMD" | grep -e "install"   > /dev/null && echo "install," )
+    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "update," )
+    local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
+    local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
+    local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
+    local UPD_CONTROLER=$( echo "$OPT_CMD" | grep -e "controler" > /dev/null && echo "controler," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -511,6 +512,36 @@ EOF
 
 	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
     fi
+
+
+    if [ "$VCT_CONTROLER" = "y" ]; then
+	
+	if [ $CMD_INSTALL ] && ( [ $UPD_CONTROLER ] || ! [ -d $VCT_CTRL_DIR ] ); then
+
+	    if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
+		vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
+		vct_sudo rm /etc/apache/sites-enabled/*
+	    fi
+
+	    vct_do wget $VCT_CTRL_SCRIPT_SITE/$VCT_CTRL_SCRIPT_NAME -O $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
+	    vct_do chmod +x $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
+	    vct_sudo $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME \
+		--type local --mgmt_prefix "${VCT_TESTBED_MGMT_IPV6_PREFIX48}::/48" --tinc_port="${VCT_SERVER_TINC_PORT}" --project_name vct
+
+	fi
+
+	if ! [ -d $VCT_CTRL_DIR ] || ! [ -f $VCT_CTRL_MGMT_PATH ]; then
+	    err $FUNCNAME "Missing controller installation at $VCT_CTRL_DIR but VCT_CONTROLER=$VCT_CONTROLER"
+	fi
+
+	if [ $UPD_NODE ]; then
+	    if [ $VCT_CTRL_MEDIA_FW_DIR ] && [ -d $VCT_CTRL_MEDIA_FW_DIR ]; then
+		vct_sudo ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_CTRL_MEDIA_FW_DIR/
+	    fi
+	fi
+
+    fi
+
 
 }
 
@@ -692,9 +723,14 @@ EOF
 	fi
     done
 
-    # check if tinc management network is running:
-    [ $CMD_INIT ] && vct_tinc_stop
-    [ $CMD_INIT ] && vct_tinc_start
+    if [ "$VCT_CONTROLER" = "y" ]; then
+        # check if controller system and management network is running:
+	[ $CMD_INIT ] && vct_sudo $VCT_CTRL_MGMT_START
+    else
+        # check if tinc management network is running:
+	[ $CMD_INIT ] && vct_tinc_stop
+	[ $CMD_INIT ] && vct_tinc_start
+    fi
 }
 
 
@@ -774,6 +810,11 @@ vct_system_cleanup() {
     done
 
     vct_tinc_stop
+
+    if [ $VCT_CTRL_DIR ]; then
+	vct_sudo $VCT_CTRL_MGMT_STOP
+    fi
+
 }
 
 ##########################################################################
@@ -958,12 +999,14 @@ vct_node_create() {
     vct_system_init_check quick
 
     local VCRD_ID_RANGE=$1
+    local VCRD_FW_NAME=${2:-}
     local VCRD_ID=
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+#	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+	local VCRD_PATH="${VCT_SYS_DIR}/rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
 
 	virsh -c qemu:///system dominfo $VCRD_NAME 2>/dev/null && \
 	    err $FUNCNAME "Domain name=$VCRD_NAME already exists"
@@ -972,9 +1015,37 @@ vct_node_create() {
 	    echo "Removing existing rootfs=$VCRD_PATH" >&2 && rm -f $VCRD_PATH
 
 
-	if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
-	    err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
-	fi    
+	if [ $VCRD_FW_NAME ]; then
+	    local FW_PATH="${VCT_CTRL_PRIV_FW_DIR}/${VCRD_FW_NAME}"
+	    if ! [ -f $FW_PATH ]; then
+		err $FUNCNAME "Missing firmware=$FW_PATH for rd-id=$VCRD_ID"
+	    fi
+
+	    local FW_URL="file://${FW_PATH}"
+	    local FW_COMP=$( ( echo $FW_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                             ( echo $FW_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                             ( echo $FW_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+	    
+	    local FW_TYPE=$(echo $FW_URL | awk -F"$FW_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
+	    local FW_NAME=$(echo $FW_URL | awk -F'/' '{print $(NF)}' | awk -F".${FW_TYPE}.${FW_COMP}" '{print $1}')
+	    local FW_SITE=$(echo $FW_URL | awk -F"${FW_NAME}.${FW_TYPE}.${FW_COMP}" '{print $1}')
+
+	    ( [ $FW_TYPE = "vmdk" ] || [ $FW_TYPE = "raw" ] || [ $FW_TYPE = "img" ] ) ||\
+                err $FUNCNAME "Non-supported fs template type $FW_TYPE"
+
+	    [ "$FW_URL" = "${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}" ] ||\
+                err $FUNCNAME "Invalid $FW_URL != ${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}"
+	    
+	    if ! install_url  $FW_URL $FW_SITE $FW_NAME.$FW_TYPE $FW_COMP $VCT_CTRL_PRIV_FW_DIR $VCRD_PATH install ; then
+		err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
+	    fi
+
+	else
+
+	    if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
+		err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
+	    fi
+	fi
 
 
 

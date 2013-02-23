@@ -379,7 +379,7 @@ install_url() {
 		wget -O  $CACHE_DIR/${URL_NAME}.${URL_COMP} $URL  ||\
                        { err $FUNCNAME "No template downloadable from $URL" $CMD_SOFT || return 1 ;}
 		
-	    elif echo $URL_SITE | grep -e "file://" >/dev/null ; then
+	    elif echo $URL_SITE | grep -e "^file://" >/dev/null ; then
 
 		cp -v $( echo $URL_SITE | awk -F'file://' '{print $2}' )/${URL_NAME}.${URL_COMP} $CACHE_DIR/   >&2 ||\
                        { err $FUNCNAME "No template accessible from $URL" $CMD_SOFT || return 1 ;}

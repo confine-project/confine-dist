@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://distro.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_01-x86.img.gz"
+ VCT_TEMPLATE_URL="http://media.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_01-x86.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -62,6 +62,17 @@ VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
 VCT_NODE_MAC_DB=./vct.nodes.local
+
+VCT_CONTROLER="y" ## any other value disables the controller installation and usage
+VCT_CTRL_SCRIPT_SITE="http://redmine.confine-project.eu/projects/controller/repository/revisions/master/raw/scripts"
+VCT_CTRL_SCRIPT_NAME="deploy-controller.sh"
+
+VCT_CTRL_DIR="/home/confine/vct"
+VCT_CTRL_MGMT_PATH="${VCT_CTRL_DIR}/manage.py"
+VCT_CTRL_MGMT_STOP="python ${VCT_CTRL_MGMT_PATH} stopservices"
+VCT_CTRL_MGMT_START="python ${VCT_CTRL_MGMT_PATH} restartservices"
+VCT_CTRL_MEDIA_FW_DIR="${VCT_CTRL_DIR}/media/firmwares"
+VCT_CTRL_PRIV_FW_DIR="${VCT_CTRL_DIR}/private/firmwares"
 
 
 #################################################
