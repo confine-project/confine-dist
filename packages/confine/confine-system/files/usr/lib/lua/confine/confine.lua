@@ -61,8 +61,7 @@ end
 
 
 
-function main_loop( )
-	local sys_conf
+function main_loop( sys_conf )
 	local local_node
 	local err_cnt = 0
 	local iteration = 1
@@ -74,8 +73,7 @@ function main_loop( )
 --		dbg("updating...")
 
 --		dbg("getting system conf...")
-		sys_conf = system.get_system_conf( sys_conf, arg )
-		if not sys_conf then break end
+		if not system.get_system_conf( sys_conf ) then break end
 		
 		dbg("getting local node...")
 		local_node = cnode.get_local_node(sys_conf, local_node)
@@ -168,11 +166,13 @@ if system.check_pid() then
 	sig.signal(sig.SIGINT,  tools.handler)
 	sig.signal(sig.SIGTERM, tools.handler)
 	
+	local sys_conf = system.get_system_conf( nil, arg )
+	
+	tools.mkdirr( ("/www"..sys_conf.node_base_path):match("^/.+/") )
 	tools.mkdirr( system.rest_confine_dir)
-	nixio.fs.symlink( system.rest_confine_dir, system.www_dir )
+	nixio.fs.symlink( system.rest_confine_dir, "/www"..sys_conf.node_base_path )
 	
-	main_loop()
+	main_loop( sys_conf )
 	
---	dbg("goodbye")
 
 end
