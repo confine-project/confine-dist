@@ -11,6 +11,7 @@ local nixio  = require "nixio"
 local sig    = require "signal"
 
 local ctree  = require "confine.tree"
+local cdata  = require "confine.data"
 local ssl    = require "confine.ssl"
 local tools  = require "confine.tools"
 local dbg    = tools.dbg
@@ -19,7 +20,12 @@ local dbg    = tools.dbg
 local TINC_PORT = 655
 
 
-function get_connects (sys_conf)
+local function get_mgmt_nets(sys_conf)
+	
+	return {}
+end
+
+local function get_connects (sys_conf)
 	
 	local connects = {}
 	local node_name = "node_" .. sys_conf.id
@@ -67,31 +73,29 @@ function get_connects (sys_conf)
 		end
 	end
 	
-	
-	
 	return connects
 end
 
-function get (sys_conf, cached_tinc)
+--function get (sys_conf, cached_tinc)
+--
+--	local tinc = {}
+--	
+--	tinc.name             = "node_" .. sys_conf.id
+--	
+--	tinc.pubkey           = tools.subfind(nixio.fs.readfile( sys_conf.tinc_node_key_pub ),ssl.RSA_HEADER,ssl.RSA_TRAILER)
+--	
+--	tinc.island           = cached_tinc and cached_tinc.island
+--
+--	tinc.connect_to       = get_connects(sys_conf)
+--	
+--	
+--	return tinc
+--end
 
-	local tinc = {}
-	
-	tinc.name             = "node_" .. sys_conf.id
-	
-	tinc.pubkey           = tools.subfind(nixio.fs.readfile( sys_conf.tinc_node_key_pub ),ssl.RSA_HEADER,ssl.RSA_TRAILER)
-	
-	tinc.island           = cached_tinc and cached_tinc.island
 
-	tinc.connect_to       = get_connects(sys_conf)
-	
-	
-	return tinc
-end
+local function renew_tinc_conf (sys_conf)
 
-
-local function renew_tinc_conf (sys_conf, connects)
-
-	if not connects then connects = get_connects(sys_conf) end
+	local nets = get_connects(sys_conf) end
 
 	local out = io.open(sys_conf.tinc_conf_file, "w")
 	assert(out, "Failed to open %s" %file)
@@ -99,8 +103,8 @@ local function renew_tinc_conf (sys_conf, connects)
 	out:write( "Name = node_"..sys_conf.id.."\n")
 	
 	local k,v
-	for k,v in pairs(connects) do
-		out:write( "ConnectTo = "..v.name.."\n")
+	for k,v in pairs(nets) do
+		out:write( "ConnectTo = "..v.tinc_server.name.."\n")
 	end
 	
 	out:close()
@@ -113,9 +117,9 @@ local function renew_tinc_conf (sys_conf, connects)
 
 end
 
-local function check_tinc_conf (sys_conf, connects)
+local function check_tinc_conf( sys_conf )
 
-	if not connects then connects = get_connects(sys_conf) end
+	local nets = get_mgmt_nets(sys_conf) end
 		
 	local content = nixio.fs.readfile( sys_conf.tinc_conf_file )
 	
@@ -125,11 +129,11 @@ local function check_tinc_conf (sys_conf, connects)
 		renew_tinc_conf (sys_conf)
 	else
 		local k,v
-		for k,v in pairs(connects) do
-			local c_name = tools.subfind(content,"\nConnectTo",((v.name).."\n"))
-			if not c_name or c_name:gsub(" ",""):gsub("\n","") ~= ("ConnectTo="..(v.name)) then
+		for k,v in pairs(nets) do
+			local c_name = tools.subfind(content,"\nConnectTo",((v.tinc_server.name).."\n"))
+			if not c_name or c_name:gsub(" ",""):gsub("\n","") ~= ("ConnectTo="..(v.tinc_server.name)) then
 				dbg("check_tinc_conf() NO ConnectTo for %s in %s",
-				    sys_conf.tinc_hosts_dir..v.name, sys_conf.tinc_conf_file)
+				    sys_conf.tinc_hosts_dir..v.tinc_server.name, sys_conf.tinc_conf_file)
 				renew_tinc_conf (sys_conf)
 				return
 			end
@@ -146,7 +150,7 @@ local function check_tinc_conf (sys_conf, connects)
 
 				local t_name = t_line:gsub(" ",""):gsub("\n",""):gsub("ConnectTo=","")
 				
-				if not connects[t_name] then
+				if not nets[t_name] then
 					dbg("check_tinc_conf() NO %s for %s in %s",
 					    sys_conf.tinc_hosts_dir..t_name, t_line:gsub("\n",""), sys_conf.tinc_conf_file)
 					renew_tinc_conf(sys_conf)
@@ -159,98 +163,169 @@ local function check_tinc_conf (sys_conf, connects)
 	end
 end
 
-function del_connect (sys_conf, connect)
-	
-	if connect.name then
-		pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..connect.name )
-		check_tinc_conf(sys_conf)
-		return true
-	else
-		return false
-	end
+
+local function del_mgmt_net(sys_conf, net)
+	assert( net and net.tinc_server and net.tinc_server.name)
+	pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..net.tinc_server.name )
+	check_tinc_conf(sys_conf)
+	return true
 end
 
-function add_connect (sys_conf, connect)
-	
-	if connect.ip_addr and connect.port and connect.pubkey and tools.subfind(connect.pubkey,ssl.RSA_HEADER,ssl.RSA_TRAILER) and connect.name then
-	
-		tools.mkdirr(sys_conf.tinc_hosts_dir)
-	
-		local file = sys_conf.tinc_hosts_dir .. connect.name
-		
-		local out = io.open(file, "w")
-		assert(out, "Failed to open %s" %file)
-		
-		out:write( "Address = "..connect.ip_addr.."\n")
-		out:write( "Port = "..connect.port.."\n")
-		out:write( "Subnet = "..sys_conf.mgmt_ipv6_prefix48.."::2/128".."\n" )
-		out:write( connect.pubkey.."\n" )
-	
-		out:close()
-		
-		check_tinc_conf(sys_conf)
-				
-		return true
-	else
-		dbg("ERROR: add_connect() Invalid connect_to parameters")
-		return false
-	end
-end
-
-
---function cb_reconf_tinc( sys_conf, action, out_node, path, key, oldval, newval )
---	if action == "ADD" and not oldval and type(newval) == "table" then
---		if add_connect( sys_conf, newval) then
---			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
---		end
---	elseif action == "DEL" and type(oldval) == "table" and not newval then
---		if del_connect( sys_conf, oldval) then
---			return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
---		end
---	elseif action == "CHG" and type(oldval) == "table" and type(newval) == "table" then
---		if del_connect( sys_conf, oldval) then
---			if add_connect( sys_conf, newval) then
---				return ctree.copy_path_val( action, out_node, path, key, oldval, newval)
---			elseif add_connect( sys_conf, oldval) then
---				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s",
---				    oldval.name, oldval.ip_addr)
---				return oldval
---			end
---		end
+--function del_connect (sys_conf, connect)
+--	
+--	if connect.name then
+--		pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..connect.name )
+--		check_tinc_conf(sys_conf)
+--		return true
+--	else
+--		return false
 --	end
 --end
 
 
-function cb2_set_tinc( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_tinc" end
+local function add_mgmt_net(sys_conf, otree, ntree, path)
+
+	assert( sys_conf and otree and ntree and path)
+	local new = ctree.get_path_val(ntree,path)
+	assert( new )
+
+
+	local failure = false
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr/", "string", "[%x]+:.*:[%x]+" ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend/", "string", "^tinc_server$" ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client/", type(cdata.null), cdata.null ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/", "table") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses", "table") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/addr", "string", "^[%d]+%.[%d]+%.[%d]+%.[%d]+$") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/port", "number") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/is_active", "boolean") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/name", "string") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", "^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}) or failure
+	
+	
+	if failure then
+		dbg("ERROR: add_connect() Invalid connect_to parameters")
+		return false
+	else
+		if new.tinc_server.is_active then
+	
+			tools.mkdirr(sys_conf.tinc_hosts_dir)
+		
+			local file = sys_conf.tinc_hosts_dir .. new.tinc_server.name
+			
+			local out = io.open(file, "w")
+			assert(out, "Failed to open %s" %file)
+			
+			out:write( "Address = "..new.tinc_server.addresses.addr.."\n")
+			out:write( "Port = "..new.tinc_server.addresses.port.."\n")
+			out:write( "Subnet = "..new.addr.."/128".."\n" )
+			out:write( new.tinc_server.pubkey.."\n" )
+		
+			out:close()
+			
+			check_tinc_conf(sys_conf)
+		end
+				
+		return true
+	end
+end
+
+--function add_connect (sys_conf, connect)
+--	
+--	if connect.ip_addr and connect.port and connect.pubkey and tools.subfind(connect.pubkey,ssl.RSA_HEADER,ssl.RSA_TRAILER) and connect.name then
+--	
+--		tools.mkdirr(sys_conf.tinc_hosts_dir)
+--	
+--		local file = sys_conf.tinc_hosts_dir .. connect.name
+--		
+--		local out = io.open(file, "w")
+--		assert(out, "Failed to open %s" %file)
+--		
+--		out:write( "Address = "..connect.ip_addr.."\n")
+--		out:write( "Port = "..connect.port.."\n")
+--		out:write( "Subnet = "..sys_conf.mgmt_ipv6_prefix48.."::2/128".."\n" )
+--		out:write( connect.pubkey.."\n" )
+--	
+--		out:close()
+--		
+--		check_tinc_conf(sys_conf)
+--				
+--		return true
+--	else
+--		dbg("ERROR: add_connect() Invalid connect_to parameters")
+--		return false
+--	end
+--end
+
+
+
+
+
+function cb2_set_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_lsrv_mgmt_net" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
-	local key = ctree.get_path_leaf(path)
 	assert( type(old)=="table" or type(new)=="table" )
 	
 	if begin and not old and new then
 
-		if add_connect( sys_conf, new) then
-			ctree.set_path_val( otree, path, get_connects(sys_conf)[key])
+		if add_mgmt_net( sys_conf, otree, ntree, path) then
+			ctree.set_path_val( otree, path, get_mgmt_nets(sys_conf)[new.tinc_server.name])
 		end
 		
 	elseif not begin and old and not new then
 
---		if del_connect( sys_conf, old) then
---			ctree.set_path_val(otree,path,nil)
---		end
+		if del_mgmt_net( sys_conf, old) then
+			ctree.set_path_val(otree, path, nil)
+		end
 		
 	elseif not begin and old and new and changed then
 		
-		if del_connect( sys_conf, old) then
+		local backup_tree = ctree.copy_recursive(otree)
+		
+		if del_mgmt_net( sys_conf, old) then
 			
-			if add_connect( sys_conf, new) then
-				ctree.set_path_val( otree, path, get_connects(sys_conf)[key] )
-			elseif add_connect( sys_conf, old) then
-				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s", old.name, old.ip_addr)
+			if add_mgmt_net( sys_conf, otree, ntree, path) then
+				ctree.set_path_val( otree, path, get_mgmt_nets(sys_conf)[new.tinc_server.name] )
+			elseif add_mgmt_net( sys_conf, otree, backup_tree, path) then
+				dbg("Failed! Restored old connect_to name=%s ip=%s", old.tinc_server.name, old.tinc_server.addresses.addr)
 			end
 			
 		end
 	end
 end
+
+--function cb2_set_tinc( rules, sys_conf, otree, ntree, path, begin, changed )
+--	if not rules then return "cb2_set_tinc" end
+--
+--	local old = ctree.get_path_val(otree,path)
+--	local new = ctree.get_path_val(ntree,path)
+--	local key = ctree.get_path_leaf(path)
+--	assert( type(old)=="table" or type(new)=="table" )
+--	
+--	if begin and not old and new then
+--
+--		if add_connect( sys_conf, new) then
+--			ctree.set_path_val( otree, path, get_connects(sys_conf)[key])
+--		end
+--		
+--	elseif not begin and old and not new then
+--
+----		if del_connect( sys_conf, old) then
+----			ctree.set_path_val(otree,path,nil)
+----		end
+--		
+--	elseif not begin and old and new and changed then
+--		
+--		if del_connect( sys_conf, old) then
+--			
+--			if add_connect( sys_conf, new) then
+--				ctree.set_path_val( otree, path, get_connects(sys_conf)[key] )
+--			elseif add_connect( sys_conf, old) then
+--				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s", old.name, old.ip_addr)
+--			end
+--			
+--		end
+--	end
+--end

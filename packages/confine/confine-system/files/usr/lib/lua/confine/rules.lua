@@ -17,6 +17,43 @@ local dbg     = tools.dbg
 local null    = data.null
 
 
+function add_error( tree, path, msg, val )
+	assert(tree and path and msg)
+
+	tree.errors = tree.errors or {}
+
+	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..tostring(val) })
+	return "Error path=%s msg=%s val=%s" , path, tostring(msg), tostring(val)
+end
+
+function set_or_err( err_func, otree, ntree, path, valtype, ... )
+	
+	local val = ctree.get_path_val( ntree, path )
+	local success = false
+	
+	if type(val)==valtype then
+		
+		if arg.n==0 then
+			success=true
+		else
+			local i,v
+			for i,v in ipairs(arg) do
+				if (type(val)=="string" and val:match(v)) or (val==v) then
+					success=true
+					break
+				end
+			end
+		end
+		
+	end
+	
+	if success then
+		ctree.set_path_val(otree, path, val)
+		return val
+	else
+		dbg( err_func( otree, path, "Invalid", val) )
+	end
+end
 
 
 function cb2_nop( rules, sys_conf, otree, ntree, path )

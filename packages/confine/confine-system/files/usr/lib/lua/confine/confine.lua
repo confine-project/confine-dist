@@ -88,7 +88,7 @@ function main_loop( sys_conf )
 		else
 			success,server_node = pcall( server.get_server_node, sys_conf )
 			if not success then
-				dbg( cnode.add_node_error(local_node, "/", "ERR_RETRY "..server_node, nil) )
+				dbg( crules.add_error(local_node, "/", "ERR_RETRY "..server_node, nil) )
 			end
 		end
 		cdata.file_put( server_node, system.server_state_file)
@@ -105,7 +105,7 @@ function main_loop( sys_conf )
 				ctree.iterate, crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 				
 				if not success then
-					dbg( cnode.add_node_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
+					dbg( crules.add_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
 					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
 				end
 					

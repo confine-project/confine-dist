@@ -111,13 +111,14 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 	if not url then return nil end
 	
 	local base_key,index_key = ctree.get_url_keys( url )
-	local cached             = cache and cache[base_key] and cache[base_key][index_key] or false
+	local cached             = cache and cache[base_key] and ((index_key and cache[base_key][index_key]) or (not index_key and cache[base_key])) or false
 	
-	dbg("%6s url=%-60s", cached and "cached" or "wget", base_uri..base_key..index_key)
+	url = base_uri..base_key..(index_key or "")
+	dbg("%6s url=%-60s", cached and "cached" or "wget", url)
 	
 	if cached then
 		
-		return cache[base_key][index_key], index_key
+		return cached, index_key
 	
 	else
 		local cert_opt
@@ -127,7 +128,7 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			cert_opt = "--no-check-certificate"
 		end
 		
-		local cmd = wget %{ cert_opt, "-", base_uri..base_key..index_key }	
+		local cmd = wget %{ cert_opt, "-", url }	
 		
 		local fd = io.popen(cmd, "r")
 		assert(fd, "Failed to execute %s" %{ cmd })
@@ -136,18 +137,22 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 		local jsd = json.Decoder(true)
 
 		local result = ltn12.pump.all(src, jsd:sink())
-		assert(result, "Failed processing json input from: %s"%{base_uri..base_key..index_key} )
+		assert(result, "Failed processing json input from: %s"%{url} )
 		
 		result = jsd:get()
 		
 		result = ctree.copy_recursive_rebase_keys(result)
-		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{base_uri..base_key..index_key} )
+		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{url} )
 --		dbg("http:get(): got rebased:")
 --		ctree.dump(result)
 			
 		if cache then
 			if not cache[base_key] then cache[base_key] = {} end
-			cache[base_key][index_key] = result
+			if index_key then
+				cache[base_key][index_key] = result
+			else
+				cache[base_key] = result
+			end
 		end
 		
 		return result, index_key

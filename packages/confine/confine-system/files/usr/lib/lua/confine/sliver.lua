@@ -37,6 +37,9 @@ SERVER = {
 	["start"]        = "start"
 }
 
+local EXP_DATA_DIR_RD      = "/confine/exp_data/"
+local TEMPLATE_DIR_RD      = "/confine/templates/"
+
 
 local register_rules = {}
 local alloc_rules = {}
@@ -45,7 +48,6 @@ local deploy_rules = {}
 local undeploy_rules = {}
 local start_rules = {}
 local stop_rules = {}
-
 
 
 function stop_slivers( sys_conf, sliver )
@@ -64,10 +66,10 @@ end
 
 
 
-function add_lsliver_error( otree, path, msg, val )
-	assert(otree and path and msg)
+local function add_lslv_err( tree, path, msg, val )
+	assert(tree and path and msg)
 
-	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	local oslv = ctree.get_path_val(tree, path:match("^/local_slivers/[^/]+/"))
 
 	oslv.errors = oslv.errors or {}
 
@@ -97,11 +99,11 @@ function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 		if not (oslv.state==NODE.registered or oslv.state==NODE.fail_alloc or oslv.state==NODE.allocating) then
 			
-			dbg( add_lsliver_error(otree, path, "yet unsupported transition from state="..oslv.state, nval))
+			dbg( add_lslv_err(otree, path, "yet unsupported transition from state="..oslv.state, nval))
 		end
 		
 	else
-		dbg( add_lsliver_error(otree, path, "Illegal", nval))
+		dbg( add_lslv_err(otree, path, "Illegal", nval))
 	end
 end
 
@@ -132,41 +134,7 @@ function cb2_set_instance_sn( rules, sys_conf, otree, ntree, path, begin, change
 			ctree.set_path_val(otree, path, nval)
 		end
 	else
-		dbg( add_lsliver_error(otree, path, "Illegal "..type(nval), nval))
-	end
-end
-
-
-
-local EXP_DATA_DIR_RD      = "/confine/exp_data/"
-local TEMPLATE_DIR_RD      = "/confine/templates/"
-
-function check_set_or_err( otree, ntree, path, valtype, ... )
-	
-	local val = ctree.get_path_val( ntree, path )
-	local success = false
-	
-	if type(val)==valtype then
-		
-		if arg.n==0 then
-			success=true
-		else
-			local i,v
-			for i,v in ipairs(arg) do
-				if (type(val)=="string" and val:match(v)) or (val==v) then
-					success=true
-					break
-				end
-			end
-		end
-		
-	end
-	
-	if success then
-		ctree.set_path_val(otree, path, val)
-		return val
-	else
-		dbg( add_lsliver_error, tree, path, "Invlaid", val)
+		dbg( add_lslv_err(otree, path, "Illegal "..type(nval), nval))
 	end
 end
 
@@ -187,7 +155,7 @@ function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, chang
 		if oslv.local_template and oslv.local_template.uri then
 			ctree.set_path_val( otree, path, { uri = oslv.local_template.uri } )
 		else
-			dbg( add_lsliver_error( otree, path, "Invalid server template", nil))
+			dbg( add_lslv_err( otree, path, "Invalid server template", nil))
 			ctree.set_path_val( otree, path, cdata.null )
 		end
 	end
@@ -210,28 +178,28 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 		if not oval then ctree.set_path_val(otree,path,{}) end
 		
 		local failure = false
-		failure = not check_set_or_err( otree, ntree, path.."name/",        "string" ) or failure
-		failure = not check_set_or_err( otree, ntree, path.."description/", "string" )
-		failure = not check_set_or_err( otree, ntree, path.."type/",        "string", "^debian$", "^openwrt$" ) or failure
-		failure = not check_set_or_err( otree, ntree, path.."is_active/",   "boolean",true ) or failure
-		failure = not check_set_or_err( otree, ntree, path.."image_uri/",   "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" ) or failure
-		failure = not check_set_or_err( otree, ntree, path.."image_sha256/","string", "^[%x]+$" ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."name/",        "string" ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."description/", "string" )
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."type/",        "string", "^debian$", "^openwrt$" ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."is_active/",   "boolean",true ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_uri/",   "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_sha256/","string", "^[%x]+$" ) or failure
 
---		failure = not check_set_or_err( otree, ntree, path.."uri/",         "string", "^https?://.*/[%d]+$" ) or failure
+--		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/",         "string", "^https?://.*/[%d]+$" ) or failure
 		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+$") then
 			local id = tonumber(((nval.uri:match("/[%d]+$")):gsub("/","")))
 			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id  )
 			ctree.set_path_val( otree, path.."id/", id )
 		else
-			dbg( add_lsliver_error( otree, path.."uri/", "Invalid", nval.uri) )
+			dbg( add_lslv_err( otree, path.."uri/", "Invalid", nval.uri) )
 			failure = true
 		end
 		
---		failure = not check_set_or_err( otree, ntree, path.."node_archs/",  "table" ) or failure
+--		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."node_archs/",  "table" ) or failure
 		if type(nval.node_archs)=="table" and tools.get_table_by_key_val(nval.node_archs, sys_conf.arch) then
 			ctree.set_path_val(otree, path.."node_archs/", nval.node_archs)
 		else
-			dbg( add_lsliver_error( otree, path.."node_archs/", "Missing arch=%s"%sys_conf.arch, nil) )
+			dbg( add_lslv_err( otree, path.."node_archs/", "Missing arch=%s"%sys_conf.arch, nil) )
 			failure = true
 		end
 		
@@ -242,7 +210,7 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	elseif oslv.state==NODE.allocating then
 		
 		if not oval then
-			dbg( add_lsliver_error (otree, path, "missing uri or sha", nil) )
+			dbg( add_lslv_err(otree, path, "missing uri or sha", nil) )
 			return
 		end
 
@@ -264,10 +232,10 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 			if cdata.http_get_raw(uri, dst) then
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
-					dbg( add_lsliver_error (otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nil) )
+					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nil) )
 				end
 			else
-				dbg( add_lsliver_error (otree, path, "Inaccessible uri=%s" %{uri}, nil) )
+				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, nil) )
 			end
 		end
 	end	
@@ -286,11 +254,11 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	if oslv.state==NODE.registered then
 		
 		if key=="exp_data_uri" then
-			check_set_or_err( otree, ntree, path, "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" )
+			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" )
 		end
 		
 		if key=="exp_data_sha256" then
-			check_set_or_err( otree, ntree, path, "string", "^[%x]+$")
+			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", "^[%x]+$")
 		end
 		
 	elseif oslv.state==NODE.allocating then
@@ -300,7 +268,7 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		local dst = EXP_DATA_DIR_RD..sha
 		
 		if not uri or not sha then
-			dbg( add_lsliver_error (otree, path, "missing uri or sha", oval) )
+			dbg( add_lslv_err(otree, path, "missing uri or sha", oval) )
 			return
 		end
 				
@@ -318,10 +286,10 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 			if cdata.http_get_raw(uri, dst) then
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
-					dbg( add_lsliver_error (otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nval) )
+					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nval) )
 				end
 			else
-				dbg( add_lsliver_error (otree, path, "Inaccessible uri=%s" %{uri}, nval) )
+				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, nval) )
 			end
 		end
 	end

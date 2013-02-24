@@ -39,14 +39,6 @@ local tmp_rules
 
 
 
-function add_node_error( tree, path, msg, val )
-	assert(tree and path and msg)
-
-	tree.errors = tree.errors or {}
-
-	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..tostring(val) })
-	return "Error path=%s msg=%s val=%s" , path, tostring(msg), tostring(val)
-end
 
 
 local function get_node_state ( sys_conf, cached_node )
@@ -176,7 +168,7 @@ function get_local_node( sys_conf, cached_node )
 	
 	node.properties            = cached_node.properties --or {}
 	
-	node.tinc		   = tinc.get(sys_conf, cached_node.tinc)
+--	node.tinc		   = tinc.get(sys_conf, cached_node.tinc)
 	
 	node.local_group           = ssh.get_node_local_group(sys_conf)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
@@ -312,17 +304,40 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup})
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup})
 
-	table.insert(tmp_rules, {"/tinc", 				crules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/name",	 			cb2_set_setup})
-	table.insert(tmp_rules, {"/tinc/pubkey",			cb2_set_setup})
-	table.insert(tmp_rules, {"/tinc/island",			crules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/island/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/connect_to",			crules.cb2_set})
-	table.insert(tmp_rules, {"/tinc/connect_to/*",			tinc.cb2_set_tinc})
-	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr", 		crules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/port", 		crules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey", 		crules.cb2_nop}) --handled by set_tinc
-	table.insert(tmp_rules, {"/tinc/connect_to/*/name", 		crules.cb2_nop}) --handled by set_tinc
+--	table.insert(tmp_rules, {"/tinc", 				crules.cb2_set})
+--	table.insert(tmp_rules, {"/tinc/name",	 			cb2_set_setup})
+--	table.insert(tmp_rules, {"/tinc/pubkey",			cb2_set_setup})
+--	table.insert(tmp_rules, {"/tinc/island",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/tinc/island/uri",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/tinc/connect_to",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/tinc/connect_to/*",			tinc.cb2_set_tinc})
+--	table.insert(tmp_rules, {"/tinc/connect_to/*/ip_addr", 		crules.cb2_nop}) --handled by set_tinc
+--	table.insert(tmp_rules, {"/tinc/connect_to/*/port", 		crules.cb2_nop}) --handled by set_tinc
+--	table.insert(tmp_rules, {"/tinc/connect_to/*/pubkey", 		crules.cb2_nop}) --handled by set_tinc
+--	table.insert(tmp_rules, {"/tinc/connect_to/*/name", 		crules.cb2_nop}) --handled by set_tinc
+----
+	table.insert(tmp_rules, {"/local_server",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/cn",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/cn/app_url",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/cn/cndb_cached_on",	crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/mgmt_net",		tinc.cb2_set_mgmt_net})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/backend",	crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/name",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/pubkey",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/is_active",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/addr",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/port",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/island",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/island/uri",	crules.cb2_set})
+	
+
 
 	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})

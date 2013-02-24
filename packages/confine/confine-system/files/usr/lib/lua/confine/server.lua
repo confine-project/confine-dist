@@ -55,6 +55,18 @@ function get_server_node(sys_conf)
 	
 	local node = data.http_get_keys_as_table("/nodes/%d" % sys_conf.id, sys_conf.server_base_uri ,cert_file, cache)
 	assert(node, "Unable to retrieve node.id=%s" %sys_conf.id)
+	
+	
+	node.local_server   = data.http_get_keys_as_table("/server/", sys_conf.server_base_uri ,cert_file, cache)
+	node.local_gateways = {}
+	local gateways = data.http_get_keys_as_table("/gateways/", sys_conf.server_base_uri ,cert_file, nil)
+	local gw_idx, gw_uri
+	for gw_idx, gw_uri in pairs(gateways) do
+		local gw_obj,gw_id = data.http_get_keys_as_table(gw_uri.uri, sys_conf.server_base_uri, cert_file, cache)
+		assert(gw_obj and gw_id, "Unable to retrieve referenced gateway_url=%s" %gw_uri.uri)
+		assert(gw_obj.mgmt_net, "Gateway response does not define mgmt_net")
+		node.local_gateways[gw_id] = gw_obj
+	end
 
 	get_local_group(sys_conf, node, cert_file, cache)
 
@@ -66,7 +78,7 @@ function get_server_node(sys_conf)
 		local sliver_obj,sliver_id = data.http_get_keys_as_table(sliver_uri.uri, sys_conf.server_base_uri, cert_file, cache)
 		assert(sliver_obj and sliver_id, "Unable to retrieve referenced sliver_url=%s" %sliver_uri.uri)
 		assert(sliver_obj.slice, "Sliver response does not define slice")
-		node.local_slivers[sliver_id] = sliver_obj		
+		node.local_slivers[sliver_id] = sliver_obj
 
 		local slice_obj,slice_id = data.http_get_keys_as_table(sliver_obj.slice.uri, sys_conf.server_base_uri, cert_file, cache)
 		assert(slice_obj and slice_id, "Unable to retrieve referenced slice_url=%s" %sliver_obj.slice.uri )
