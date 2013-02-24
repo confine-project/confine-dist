@@ -64,8 +64,8 @@ function get_server_node(sys_conf)
 	for gw_idx, gw_uri in pairs(gateways) do
 		local gw_obj,gw_id = data.http_get_keys_as_table(gw_uri.uri, sys_conf.server_base_uri, cert_file, cache)
 		assert(gw_obj and gw_id, "Unable to retrieve referenced gateway_url=%s" %gw_uri.uri)
-		assert(gw_obj.mgmt_net, "Gateway response does not define mgmt_net")
-		node.local_gateways[gw_id] = gw_obj
+		assert( ((gw_obj.mgmt_net or {}).tinc_server or {}).name, "Gateway response does not define mgmt_net.tinc_server.name")
+		node.local_gateways[gw_obj.mgmt_net.tinc_server.name] = gw_obj
 	end
 
 	get_local_group(sys_conf, node, cert_file, cache)

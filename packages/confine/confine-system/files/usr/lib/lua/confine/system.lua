@@ -188,27 +188,32 @@ function set_system_conf( sys_conf, opt, val)
 		
 		return get_system_conf(sys_conf)
 		
+
+	elseif opt == "priv_ipv4_prefix" and (val==null or val=="") then
+		
+		return get_system_conf(sys_conf)
+		
 	elseif opt == "priv_ipv4_prefix" and
 		type(val)=="string" and val:gsub(".0/24",""):match("[0-255].[0-255].[0-255]") and
 		uci.set("confine", "node", "priv_ipv4_prefix24", val:gsub(".0/24","") ) then
 		
 		return get_system_conf(sys_conf)
-		
-	elseif opt == "direct_ifaces" and
-		type(val) == "table" then
+
+
+	elseif opt == "direct_ifaces" and type(val) == "table" then
 		
 		local devices = lsys.net.devices()
-		
+	
 		local k,v
 		for k,v in pairs(val) do
 			if type(v)~="string" or not (v:match("^eth[%d]+$") or v:match("^wlan[%d]+$")) then
-				dbg("set_system_conf() opt=%s val=%s Invalid interface prefix!", opt, tostring(v))
+				tools.dbg("opt=%s val=%s Invalid interface prefix!", opt, tostring(v))
 				devices = nil
 				break
 			end
 			
 			if not devices or not tools.get_table_by_key_val(devices,v) then
-				dbg("set_system_conf() opt=%s val=%s Interface does NOT exist on system!",opt,tostring(v))
+				tools.dbg("opt=%s val=%s Interface does NOT exist on system!",opt,tostring(v))
 				devices = nil
 				break
 			end
@@ -218,8 +223,12 @@ function set_system_conf( sys_conf, opt, val)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "sliver_mac_prefix" and
-		type(val) == "string" then
+
+	elseif opt == "sliver_mac_prefix" and (val==null or val=="") then
+		
+		return get_system_conf(sys_conf)
+
+	elseif opt == "sliver_mac_prefix" and type(val) == "string" then
 		
 		local dec = tonumber(val,16) or 0
 		local msb = math.modf(dec / 256)

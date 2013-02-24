@@ -20,6 +20,7 @@ local crules   = require "confine.rules"
 local system  = require "confine.system"
 
 local dbg     = tools.dbg
+local val2string = data.val2string
 
 local null    = data.null
 
@@ -183,7 +184,7 @@ end
 
 
 function cb2_set_sys_key_and_reboot( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_set_boot_sn" end
+	if not rules then return "cb2_set_sys_key_and_reboot" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -191,7 +192,10 @@ function cb2_set_sys_key_and_reboot( rules, sys_conf, otree, ntree, path )
 	local is_table = type(old)=="table" or type(new)=="table"
 
 	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new) then
-		system.reboot()
+		if sys_conf[key]~=old then
+			dbg( "path=%s sys=%s old=%s new=%s", path, val2string(sys_conf[key]), val2string(old), val2string(new))
+			system.reboot()
+		end
 	elseif old ~= new then
 		assert(false, "ERR_SETUP...")
 	end
@@ -206,8 +210,13 @@ function cb2_set_sys_key_and_reboot_prepared( rules, sys_conf, otree, ntree, pat
 	local is_table = type(old)=="table" or type(new)=="table"
 
 	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new ) then
-		system.set_system_conf( sys_conf, "sys_state", "prepared" )
-		system.reboot()
+		
+		if sys_conf[key]~=old then
+			dbg( "path=%s sys=%s old=%s new=%s", path, val2string(sys_conf[key]), val2string(old), val2string(new))
+			system.set_system_conf( sys_conf, "sys_state", "prepared" )
+			system.reboot()
+		end
+		
 	elseif old ~= new then
 		assert(false, "ERR_SETUP...")
 	end
@@ -328,20 +337,20 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_server/mgmt_net/backend",	crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/name",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/pubkey",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/is_active",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/addr",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/port",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/island",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/island/uri",	crules.cb2_set})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/addr",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/port",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island",	crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island/uri",	crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/pubkey",		crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/is_active",	crules.cb2_nop})
 	
 
 
 	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
-	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
-	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
+--FIXME	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
+--FIXME	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
 	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
 	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_lgroup}) --"CB_GET_LOCAL_GROUP"})
@@ -354,8 +363,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		crules.cb2_nop}) --handled by set_local_group_role
 --	
-	table.insert(tmp_rules, {"/group",				crules.cb2_nop}) --handled by set_local_group
-	table.insert(tmp_rules, {"/group/uri",				crules.cb2_nop}) --handled by set_local_group
+	table.insert(tmp_rules, {"/group",				crules.cb2_nop}) --handled by ssh.cb2_set_lgroup
+	table.insert(tmp_rules, {"/group/uri",				crules.cb2_nop}) --handled by ssh.cb2_set_lgroup
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
 	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})

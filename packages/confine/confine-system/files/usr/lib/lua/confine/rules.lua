@@ -48,7 +48,7 @@ function set_or_err( err_func, otree, ntree, path, valtype, ... )
 	end
 	
 	if success then
-		ctree.set_path_val(otree, path, val)
+		ctree.set_path_val(otree, path, type(val)=="table" and {} or val)
 		return val
 	else
 		dbg( err_func( otree, path, "Invalid", val) )
@@ -102,6 +102,8 @@ function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
 	local news = data.val2string(newv):gsub("\n",""):sub(1,28)
 	local is_table = type(oldv)=="table" or type(newv)=="table"
 
+	
+	--dbg( "cb2() path=%s begin=%s changed=%s old=%s new=%s", path, tostring(begin), tostring(changed), olds, news)
 	--if not is_table and (oldv ~= newv) then
 	--	dbg( " %-15s %-50s %s => %s", task(), path, olds, news)
 	--end

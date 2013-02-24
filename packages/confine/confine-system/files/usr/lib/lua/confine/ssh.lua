@@ -125,11 +125,15 @@ local function auth_token_to_rsa( auth_tokens )
 
 	local k,v
 	for k,v in pairs(auth_tokens or {}) do
+			
+		if type(v)=="table" and type(v.data)=="string" then
+			v = v.data
+		end
 		
-		if v:find("^%s"%ssl.SSH_HEADER) then
+		if type(v)=="string" and v:find("^%s"%ssl.SSH_HEADER) then
 			ssh_tokens[#ssh_tokens + 1] = v
 			
-		elseif tools.subfind(v,ssl.RSA_HEADER,ssl.RSA_TRAILER) then
+		elseif type(v)=="string" and tools.subfind(v,ssl.RSA_HEADER,ssl.RSA_TRAILER) then
 			
 			local tmp_file = os.tmpname()
 			io.output(io.open(tmp_file,"w"))
@@ -143,7 +147,7 @@ local function auth_token_to_rsa( auth_tokens )
 			ssh_tokens[#ssh_tokens + 1] = ssh_key:gsub("\n","")
 
 		else
-			assert(false)
+			dbg("Ignoring auth_token=%s", ctree.as_string(v) )
 		end
 	end
 	return ssh_tokens
@@ -173,6 +177,8 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 	local user_id = ctree.get_path_leaf(path)
 	assert( not (old or new) or type(old)=="table" or type(new)=="table" )
 	
+	
+	dbg("cb2_set_lgroup_role")
 	if begin and old and not new then
 
 		del_ssh_keys(sys_conf, user_id)
@@ -180,6 +186,7 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 				
 	elseif not begin and changed and new then
 		
+		dbg("")
 		if new.is_technician and new.local_user and new.local_user.is_active then
 			
 			local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
@@ -203,4 +210,6 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 		ctree.set_path_val( otree, path, ((get_node_local_group(sys_conf)).user_roles)[user_id])
 		
 	end
+	
+	return true
 end

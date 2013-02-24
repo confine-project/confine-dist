@@ -47,7 +47,7 @@ function file_put( data, file, dir )
 	end
 
 
-	dbg("updating RestApi at: "..dir..(file or ""))
+	dbg("updating "..dir..(file or ""))
 	
 	if file and data then
 		local out = io.open(dir .. file, "w")
