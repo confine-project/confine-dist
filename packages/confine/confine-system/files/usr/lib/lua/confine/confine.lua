@@ -120,7 +120,7 @@ function main_loop( sys_conf )
 			for k,v in pairs( local_node.errors ) do
 				
 				if v.message:sub(1,9)=="ERR_RETRY" then
-					v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.terty_limit})
+					v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.retry_limit})
 				end
 					
 				if v.message:sub(1,9)~="ERR_RETRY" or (sys_conf.retry_limit~=0 and sys_conf.retry_limit < err_cnt) then
@@ -158,7 +158,6 @@ function main_loop( sys_conf )
 end
 
 
-
 if system.check_pid() then
 	
 	math.randomseed( os.time() )
@@ -168,8 +167,11 @@ if system.check_pid() then
 	
 	local sys_conf = system.get_system_conf( nil, arg )
 	
-	tools.mkdirr( ("/www"..sys_conf.node_base_path):match("^/.+/") )
-	tools.mkdirr( system.rest_confine_dir)
+	pcall(nixio.fs.remover, system.rest_confine_dir)
+	tools.mkdirr(system.rest_confine_dir)
+	
+	pcall(nixio.fs.remover, "/www"..(sys_conf.node_base_path:match("^/.+/")))
+	tools.mkdirr( "/www"..(sys_conf.node_base_path:match("^/.+/")) )
 	nixio.fs.symlink( system.rest_confine_dir, "/www"..sys_conf.node_base_path )
 	
 	main_loop( sys_conf )
