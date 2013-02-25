@@ -52,7 +52,9 @@ function check_pid()
 end
 
 function stop()
+	tools.dbg("Terminating")
 	pcall(nixio.fs.remover, rest_confine_dir)
+	pcall(nixio.fs.remover, PID_FILE)
 	nixio.kill(nixio.getpid(),sig.SIGKILL)
 end
 
