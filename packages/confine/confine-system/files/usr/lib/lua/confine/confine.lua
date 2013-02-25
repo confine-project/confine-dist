@@ -26,6 +26,7 @@ local require_node_cert   = false
 
 
 
+
 local function get_local_base( sys_conf, node )
 	local base = {}
 	base.uri                   = sys_conf.node_base_uri.."/"
@@ -138,6 +139,7 @@ function main_loop( sys_conf )
 			
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
+			if tools.stop then break end
 			dbg("count=%d i=%d" %{sys_conf.count, iteration})
 			iteration = iteration + 1
 			
@@ -176,5 +178,7 @@ if system.check_pid() then
 	
 	main_loop( sys_conf )
 	
-
+	system.stop()
+	
 end
+

@@ -15,10 +15,14 @@ local nixio   = require "nixio"
 logfile = false
 
 
-function dbg_(nl, fmt, ...)
+function dbg_(nl, err, fmt, ...)
 	local t = nixio.times()
 	local l = "[%d.%3d] %s() %s%s" %{os.time(), (t.utime + t.stime + t.cutime + t.cstime), debug.getinfo(2).name or "???", string.format(fmt,...), nl and "\n" or "" }
-	io.stdout:write(l)
+	if err then
+		io.stderr:write(l)
+	else
+		io.stdout:write(l)
+	end
 	
 	if logfile then
 		local out = io.open(logfile, "a")
@@ -34,16 +38,11 @@ function dbg_(nl, fmt, ...)
 end
 
 function dbg(fmt, ...)
-	dbg_(true, fmt, ...)
+	dbg_(true, false, fmt, ...)
 end
 
-stop = false
-
-local function handler(signo)
-	nixio.signal(nixio.const.SIGINT,  "ign")
-	nixio.signal(nixio.const.SIGTERM, "ign")
-	dbg("going to stop now...")
-	stop = true
+function err(fmt, ...)
+	dbg_(true, true, fmt, ...)
 end
 
 --- Extract flags from an arguments list.
@@ -69,6 +68,14 @@ function parse_flags(args)
    return flags, unpack(args)
 end
 
+stop = false
+
+function handler(signo)
+	nixio.signal(nixio.const.SIGINT,  "ign")
+	nixio.signal(nixio.const.SIGTERM, "ign")
+	dbg("going to stop now...")
+	stop = true
+end
 
 function sleep(sec)
 	local interval=1

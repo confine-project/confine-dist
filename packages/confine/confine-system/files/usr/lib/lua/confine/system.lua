@@ -39,16 +39,15 @@ function check_pid()
 	local pid = nixio.fs.readfile( PID_FILE )
 	
 	if pid and tonumber(pid) and nixio.fs.stat( "/proc/"..pid.."/cmdline" ) then
-		tools.dbg("There already seem a confine deamon running. If not remove %s and retry!", PID_FILE)
+		tools.err("There already seem a confine deamon running. If not remove %s and retry!", PID_FILE)
 		return false
 	else
 		local out = io.open(PID_FILE, "w")
 		assert(out, "Failed to open %s" %PID_FILE)
 		out:write( nixio.getpid() )
 		out:close()
-	end
-	
-	return true
+		return true
+	end	
 end
 
 function stop()
