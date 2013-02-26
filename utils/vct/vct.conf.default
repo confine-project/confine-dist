@@ -63,7 +63,7 @@ VCT_RD_RPC_DIR=/var/run/confine/rpc
 
 VCT_NODE_MAC_DB=./vct.nodes.local
 
-VCT_CONTROLER="y" ## any other value disables the controller installation and usage
+VCT_CONTROLLER="y" ## any other value disables the controller installation and usage
 VCT_CTRL_SCRIPT_SITE="http://redmine.confine-project.eu/projects/controller/repository/revisions/master/raw/scripts"
 VCT_CTRL_SCRIPT_NAME="deploy-controller.sh"
 

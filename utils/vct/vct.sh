@@ -353,7 +353,7 @@ vct_system_install_check() {
     local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
     local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
     local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
-    local UPD_CONTROLER=$( echo "$OPT_CMD" | grep -e "controler" > /dev/null && echo "controler," )
+    local UPD_CONTROLLER=$( echo "$OPT_CMD" | grep -e "controller" > /dev/null && echo "controller," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -514,9 +514,9 @@ EOF
     fi
 
 
-    if [ "$VCT_CONTROLER" = "y" ]; then
+    if [ "$VCT_CONTROLLER" = "y" ]; then
 	
-	if [ $CMD_INSTALL ] && ( [ $UPD_CONTROLER ] || ! [ -d $VCT_CTRL_DIR ] ); then
+	if [ $CMD_INSTALL ] && ( [ $UPD_CONTROLLER ] || ! [ -d $VCT_CTRL_DIR ] ); then
 
 	    if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
 		vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
@@ -531,7 +531,7 @@ EOF
 	fi
 
 	if ! [ -d $VCT_CTRL_DIR ] || ! [ -f $VCT_CTRL_MGMT_PATH ]; then
-	    err $FUNCNAME "Missing controller installation at $VCT_CTRL_DIR but VCT_CONTROLER=$VCT_CONTROLER"
+	    err $FUNCNAME "Missing controller installation at $VCT_CTRL_DIR but VCT_CONTROLLER=$VCT_CONTROLLER"
 	fi
 
 	if [ $UPD_NODE ]; then
@@ -723,7 +723,7 @@ EOF
 	fi
     done
 
-    if [ "$VCT_CONTROLER" = "y" ]; then
+    if [ "$VCT_CONTROLLER" = "y" ]; then
         # check if controller system and management network is running:
 	[ $CMD_INIT ] && vct_sudo $VCT_CTRL_MGMT_START
     else
