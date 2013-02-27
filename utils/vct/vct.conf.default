@@ -73,6 +73,7 @@ VCT_CTRL_MGMT_STOP="python ${VCT_CTRL_MGMT_PATH} stopservices"
 VCT_CTRL_MGMT_START="python ${VCT_CTRL_MGMT_PATH} restartservices"
 VCT_CTRL_MEDIA_FW_DIR="${VCT_CTRL_DIR}/media/firmwares"
 VCT_CTRL_PRIV_FW_DIR="${VCT_CTRL_DIR}/private/firmwares"
+VCT_CTRL_TINC_DIR="/etc/tinc/confine"
 
 
 #################################################

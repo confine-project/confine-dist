@@ -115,6 +115,38 @@ vct_sudo() {
     return $?
 }
 
+vct_sudo_sh() {
+    if [ "${VCT_DRY_RUN:-}" ]; then
+	vct_do sudo sh -c "$@"
+	return $?
+    fi
+
+    local QUERY=
+
+    if [ "$VCT_SUDO_ASK" != "NO" ]; then
+
+	echo "" >&2
+	echo "$0 wants to execute (VCT_SUDO_ASK=$VCT_SUDO_ASK set to ask):" >&2
+	echo ">>>>   sudo sh -c $@   <<<<" >&2
+	read -p "Pleas type: y) to execute and continue, s) to skip and continue, or anything else to abort: " QUERY >&2
+
+	if [ "$QUERY" == "y" ] ; then
+	    sudo sh -c "$@"
+	    return $?
+
+	elif [ "$QUERY" == "s" ] ; then
+
+	    return 0
+	fi
+	
+	err $FUNCNAME "sudo execution cancelled: $QUERY"
+	return 1
+    fi
+
+    sudo sh -c "$@"
+    return $?
+}
+
 vct_do_ping() {
 	if echo $1 | grep -e ":" >/dev/null; then
 		PING="ping6 -c 1 -w 1 -W 1"
@@ -514,6 +546,16 @@ EOF
     fi
 
 
+    if [ $CMD_INSTALL ] && ( [ -d $VCT_CTRL_DIR ] || [ -d /home/confine ] ) && ( ! [ "$VCT_CONTROLLER" = "y" ] ||  [ $UPD_CONTROLLER ] ); then
+	vct_sudo /etc/init.d/postgresql start || true
+	vct_sudo su postgres -c "psql -c 'DROP DATABASE controller;'"  || true
+	vct_sudo python $VCT_CTRL_DIR/manage.py stopservices  || true
+	vct_sudo deluser --force --remove-home confine  || true
+	vct_sudo delgroup confine  || true
+	vct_sudo rm -rf $VCT_CTRL_TINC_DIR  || true
+
+    fi
+
     if [ "$VCT_CONTROLLER" = "y" ]; then
 	
 	if [ $CMD_INSTALL ] && ( [ $UPD_CONTROLLER ] || ! [ -d $VCT_CTRL_DIR ] ); then
@@ -526,7 +568,48 @@ EOF
 	    vct_do wget $VCT_CTRL_SCRIPT_SITE/$VCT_CTRL_SCRIPT_NAME -O $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
 	    vct_do chmod +x $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
 	    vct_sudo $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME \
-		--type local --mgmt_prefix "${VCT_TESTBED_MGMT_IPV6_PREFIX48}::/48" --tinc_port="${VCT_SERVER_TINC_PORT}" --project_name vct
+		--type=local \
+		--project_name='vct' \
+		--mgmt_prefix="${VCT_TESTBED_MGMT_IPV6_PREFIX48}::/48" \
+		--tinc_port="${VCT_SERVER_TINC_PORT}" \
+		--tinc_address="${VCT_SERVER_TINC_IP}" \
+		--tinc_priv_key="${VCT_KEYS_DIR}/tinc/rsa_key.priv" \
+		--tinc_pub_key="${VCT_KEYS_DIR}/tinc/rsa_key.pub" \
+		--base_image_path="${VCT_DL_DIR}/" \
+
+
+#		--build_image="/path/where/builded/images/are/stores" (Optional, /home/confine/vct/private/firmwares by default)
+# CONFINE-owrt-current.img.gz and i686 (done through vct/fixtures/vctfirmwareconfig.json so you don't need to worry about this)
+#
+# About auth tokens and creating a default group, what about executing the following after calling deploy-controller.sh ?
+# at least meanwhile because I'd like to rethink how deploy-controller.sh handles opts.
+
+#echo "
+#from users.models import *;
+## Create VCT group
+#group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True);
+#user = User.objects.get(username='confine');
+## Make confine admin of VCT group
+#Roles.objects.get_or_create(user=user, group=group, is_admin=True);
+## Register auth token
+#token_file = open('/var/lib/vct/keys/id_rsa.pub', 'ro');
+#AuthToken.objects.get_or_create(user=user, data=token_file.read());
+#" | python /home/confine/vct/manage.py shell > /dev/null
+
+
+#	    vct_sudo_sh "cat <<EOF | python ${VCT_CTRL_MGMT_PATH} shell > /dev/null
+#from users.models import *;
+#group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True);
+#user = User.objects.get(username='confine');
+#Roles.objects.get_or_create(user=user, group=group, is_admin=True);
+#token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro');
+#AuthToken.objects.get_or_create(user=user, data=token_file.read());
+#EOF
+#"
+
+# echo "NODES_NODE_ARCH_DFLT = 'i686' " >> /home/confine/vct/vct/settings.py
+	    
+	    vct_sudo $VCT_CTRL_MGMT_START 
 
 	fi
 
@@ -534,12 +617,11 @@ EOF
 	    err $FUNCNAME "Missing controller installation at $VCT_CTRL_DIR but VCT_CONTROLLER=$VCT_CONTROLLER"
 	fi
 
-	if [ $UPD_NODE ]; then
-	    if [ $VCT_CTRL_MEDIA_FW_DIR ] && [ -d $VCT_CTRL_MEDIA_FW_DIR ]; then
-		vct_sudo ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_CTRL_MEDIA_FW_DIR/
-	    fi
-	fi
-
+#	if [ $UPD_NODE ]; then
+#	    if [ $VCT_CTRL_MEDIA_FW_DIR ] && [ -d $VCT_CTRL_MEDIA_FW_DIR ]; then
+#		vct_sudo ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_CTRL_MEDIA_FW_DIR/
+#	    fi
+#	fi
     fi
 
 
