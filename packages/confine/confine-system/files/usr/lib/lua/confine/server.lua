@@ -58,6 +58,7 @@ function get_server_node(sys_conf)
 	
 	
 	node.local_server   = data.http_get_keys_as_table("/server/", sys_conf.server_base_uri ,cert_file, cache)
+	
 	node.local_gateways = {}
 	local gateways = data.http_get_keys_as_table("/gateways/", sys_conf.server_base_uri ,cert_file, nil)
 	local gw_idx, gw_uri
