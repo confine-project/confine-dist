@@ -29,10 +29,22 @@ local require_node_cert   = false
 
 local function get_local_base( sys_conf, node )
 	local base = {}
-	base.uri                   = sys_conf.node_base_uri.."/"
-	base.node_uri              = node.uri
-	base.slivers_uri           = sys_conf.node_base_uri.."/slivers"
-	base.templates_uri         = sys_conf.node_base_uri.."/templates"
+
+	base.uri		= sys_conf.node_base_uri.."/"
+
+	base.confine_params	= {
+		debug_ipv6_prefix	= sys_conf.debug_ipv6_prefix,
+		priv_ipv6_prefix	= sys_conf.priv_ipv6_prefix
+		}
+	base.testbed_params	= {
+		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
+		priv_ipv4_prefix_dflt 	= sys_conf.priv_ipv4_prefix,
+		sliver_mac_prefix_dflt	= sys_conf.sliver_mac_prefix
+		}
+
+	base.node_uri		= node.uri
+	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
+	base.templates_uri	= sys_conf.node_base_uri.."/templates"
 
 	return base	
 end

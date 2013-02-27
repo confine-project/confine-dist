@@ -119,6 +119,11 @@ function get_system_conf(sys_conf, arg)
 	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
 
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
+	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
+
+	conf.priv_ipv6_prefix      = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48")).."::/48"
+	conf.debug_ipv6_prefix     = (uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")).."::/48"
+
 
 	conf.node_base_path        = conf.node_base_path or flags["node-base-path"] or uci.get("confine", "node", "base_path") or NODE_BASE_PATH
 	assert(conf.node_base_path:match("/api$"), "node-base-path MUST end with /api")
