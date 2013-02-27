@@ -26,7 +26,7 @@ local null    = data.null
 
 
 STATE = {
-	["setup"]  	= "setup",
+	["setup"]  	= "debug",
 	["failure"] 	= "failure",
 	["safe"] 	= "safe",
 	["production"]  = "production"
