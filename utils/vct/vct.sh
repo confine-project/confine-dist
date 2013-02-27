@@ -577,8 +577,9 @@ EOF
 		--tinc_pub_key="${VCT_KEYS_DIR}/tinc/rsa_key.pub" \
 		--base_image_path="${VCT_DL_DIR}/" \
 
-
+#		--controller_version="${VCT_CTRL_VERSION}"
 #		--build_image="/path/where/builded/images/are/stores" (Optional, /home/confine/vct/private/firmwares by default)
+
 # CONFINE-owrt-current.img.gz and i686 (done through vct/fixtures/vctfirmwareconfig.json so you don't need to worry about this)
 #
 # About auth tokens and creating a default group, what about executing the following after calling deploy-controller.sh ?

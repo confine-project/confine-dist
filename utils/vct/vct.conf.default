@@ -66,6 +66,7 @@ VCT_NODE_MAC_DB=./vct.nodes.local
 VCT_CONTROLLER="y" ## any other value disables the controller installation and usage
 VCT_CTRL_SCRIPT_SITE="http://redmine.confine-project.eu/projects/controller/repository/revisions/master/raw/scripts"
 VCT_CTRL_SCRIPT_NAME="deploy-controller.sh"
+VCT_CTRL_VERSION="0.6.93" # get latest with: $ python -c 'import controller; print controller.VERSION'
 
 VCT_CTRL_DIR="/home/confine/vct"
 VCT_CTRL_MGMT_PATH="${VCT_CTRL_DIR}/manage.py"
