@@ -20,6 +20,7 @@ local null    = data.null
 RUNTIME_DIR = "/var/run/confine/"
 PID_FILE = RUNTIME_DIR.."pid"
 LOG_FILE = "/var/log/confine.log"
+LOG_SIZE = 1000000
 
 SERVER_BASE_PATH = "/confine/api"
 NODE_BASE_PATH = "/confine/api"
@@ -50,18 +51,19 @@ function check_pid()
 	end	
 end
 
-function stop()
+function stop(code)
 	tools.dbg("Terminating")
 	pcall(nixio.fs.remover, rest_confine_dir)
 	pcall(nixio.fs.remover, PID_FILE)
-	nixio.kill(nixio.getpid(),sig.SIGKILL)
+	os.exit(code)
+--	nixio.kill(nixio.getpid(),sig.SIGKILL)
 end
 
 function reboot()
 	tools.dbg("rebooting...")
 	tools.sleep(2)
 	os.execute("reboot")
-	stop()
+	stop(0)
 end
 
 
@@ -75,8 +77,10 @@ function help()
 	      [--retry==<max failure retries>] \\\
 	      [--server-base-path==</confine/api>] \\\
 	      [--node-base-path==</confine/api>] \\\
-	      [--logfile=<path to logfile>")
-	
+	      [--logfile=<path to logfile>] \\\
+	      [--logsize=<max-logfile-size-in-bytes>] \\\
+	      ")
+	os.exit(0)
 end
 
 function get_system_conf(sys_conf, arg)
@@ -104,6 +108,9 @@ function get_system_conf(sys_conf, arg)
 	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"])    or tonumber(uci.get("confine", "node", "retry_limit")) or 0
 	conf.logfile               = conf.logfile     or flags["logfile"]  or uci.get("confine", "node", "logfile")     or LOG_FILE
 	if conf.logfile then tools.logfile = conf.logfile end
+
+	conf.logsize               = conf.logsize     or flags["logsize"]  or uci.get("confine", "node", "logsize")     or LOG_SIZE
+	if conf.logsize then tools.logsize = conf.logsize end
 
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null

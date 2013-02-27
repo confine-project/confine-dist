@@ -144,7 +144,7 @@ function main_loop( sys_conf )
 			iteration = iteration + 1
 			
 			if sys_conf.interactive then
-				tools.dbg_(false, "Press enter for next iteration:")
+				tools.dbg_(false, false, "Press enter for next iteration:")
 				io.read()
 			else
 				tools.sleep(sys_conf.interval)

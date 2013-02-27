@@ -13,6 +13,7 @@ local nixio   = require "nixio"
 
 
 logfile = false
+logsize = 1000
 
 
 function dbg_(nl, err, fmt, ...)
@@ -25,6 +26,12 @@ function dbg_(nl, err, fmt, ...)
 	end
 	
 	if logfile then
+		
+		local stat = nixio.fs.stat(logfile)
+		if stat and stat.size > logsize then
+			nixio.fs.move(logfile, logfile..".old")
+		end
+		
 		local out = io.open(logfile, "a")
 		assert(out, "Failed to open %s" %logfile)
 		out:write(l)
