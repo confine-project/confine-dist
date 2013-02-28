@@ -1,0 +1,6 @@
+[submodule "openwrt"]
+	path = openwrt
+	url = http://git.confine-project.eu/confine/openwrt.git
+[submodule "packages/openwrt"]
+	path = packages/openwrt
+	url = http://git.confine-project.eu/confine/packages.git

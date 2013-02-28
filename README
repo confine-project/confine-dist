@@ -1,70 +1,120 @@
-** Current options are:
+# Confine-dist
 
-- make all
-Execute all needed to have the CONFINE image.
+*Confine-dist* is the SDK used to generate the images for [CONFINE][1] nodes
+based on [OpenWrt][2].
 
-- make target
-Checks out a specific branch (master or testing) or tag (tags/v0.1, etc.) from each project (confine-dist, openwrt and packages) and compiles a CONFINE image for that target. The branch/tag is specified by the environment variable CONFINE_VERSION (testing by default). 
-To compile tag v0.1 just do:
-make target CONFINE_VERSION=tags/v0.1
+*Confine-dist* has its own [Git repository][3] and [Redmine project site][4].
 
-- make prepare
-Prepare the download dir if not existing and point the feeds.conf file to the proper place.
- 
-- make menuconfig
-Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_configs/
+[1]: http://confine-project.eu/
+[2]: https://openwrt.org/
+[3]: http://git.confine-project.eu/confine.git
+[4]: https://redmine.confine-project.eu/projects/confine
 
-- make kernel_menuconfig
-Provides a ncurses menuconfig from the linux kernel and copy the .config file inside my_configs/
+## Starting from scratch with a Debian machine
 
-- make sync
-Syncronize current files/configs directories with openwrt build tree. Needed when you update confie-dist code (git pull).
+Please install the Debian system leaving out extra software.  A base system
+with SSH access will do.  After you have finished the installation, please
+install the following software:
 
-- make clean
-Removes from $(BUILD_DIR) bin/ and build_dir/ directories
+    # apt-get install git subversion g++ ncurses-dev zlib1g-dev gawk flex \
+          unzip bzip2 gettext build-essential \
+          libncurses5-dev libncursesw5-dev \
+          binutils cpp gcc make psmisc \
+          linux-headers-$(uname -r) docbook-to-man
 
-- make dirclean
-Removes from $(BUILD_DIR) bin/, build_dir/, staging_dir/ and toolchain/ directories
+(Later on you will be able to run `make defconfig` in the `openwrt/` directory
+of *confine-dist* to check for additional dependencies.)
 
-- make distclean
-Removes everything you have compiled and configured -- leaves $(BUILD_DIR) like after a clean checkout
+## How to compile
 
-- make mrproper
-Removes everything leaving just the original files
+The following commands show how to use Git to check out a particular version
+of *confine-dist* and build a node image from it:
 
-** Variables:
+    $ git clone http://git.confine-project.eu/confine.git confine-dist
+    $ cd confine-dist
+    $ git checkout VERSION  # optional, build a particular version
+    $ make all V=99
 
-J = number of process for compilation time
-V = verbosity level
+## About the Makefile
 
-For instance: make all V=99 J=4
+### Targets
 
-** Directories
+`make target`
+: Execute everything needed to have the CONFINE node image.  This is the
+  default `make` target.
 
-- files/
-All files you put inside this directory will be copyied to openwrt root filesystem
+`make prepare`
+: Download OpenWrt source and package descriptions, update and fetch package
+  descriptions in `feeds.conf`, and prepare a default configuration.
 
-- packages/
-All packages here will be copyied inside package/ openwrt directory. If you add a new package, remember to do "menuconfig" to select it
+`make menuconfig`
+: Execute an ncurses *menuconfig* from OpenWrt and copy the resulting
+  `.config` file inside `my_configs/`.
 
-- configs/
-In the first checkout this configs will be copyied to OpenWRT source tree (owrt_config & kernel_config)
+`make kernel_menuconfig`
+: Execute an ncurses *menuconfig* from the Linux kernel and copy the resulting
+  `.config` file inside `my_configs/`.
 
-- my_configs/
-When you execute a menuconfig or kernel_menuconfig, the new config files will be copyied here. So if you want to commit the changes just copy them to configs/ dir
- 
-- images/
-Output image directory
+`make sync`
+: Update and fetch package descriptions in `feeds.conf`, and prepare a default
+  configuration.  Needed when you update *confine-dist* code (`git pull`).
 
-- openwrt/
-OpenWRT source tree
+`make clean`
+: Cleans the `bin/` and `build_dir/` directories from OpenWrt's build
+  directory.
 
-** Output image:
+`make dirclean`
+: Cleans the `bin/`, `build_dir/`, `staging_dir/` and `toolchain/` directories
+  from OpenWrt's build directory.
 
-When compilation finishes, you will find the output images inside images/ directory
+`make distclean`
+: Removes everything you have compiled and configured -- it leaves OpenWrt's
+  build directory like after a clean checkout.
 
-If you need other kind of images (VMware, VBOX and so on) check inside src/bin/x86/ directory
+`make mrproper`
+: Removes everything leaving just the original checked out files.
 
-To copy it in a compact flash or usb stick: dd if=images/IMAGE_FILE of=/dev/sdX
+### Variables
 
+`J`
+: The number of parallel processes for compilation time.
 
+`V`
+: Verbosity level.
+
+For instance: `make all V=99 J=4`.
+
+## Directories
+
+`files/`
+: All files you put inside this directory will be copied to OpenWrt's root
+  filesystem.
+
+`packages/`
+: All packages here will be copied inside OpenWrt's `package/` directory.  If
+  you add a new package, remember to run `make menuconfig` to enable it.
+
+`my_configs/`
+: When you execute a *menuconfig* or *kernel_menuconfig*, the new
+  configuration files will be copied here.
+
+`images/`
+: Output image directory.
+
+`openwrt/`
+: OpenWRT source tree.
+
+**Warning:** If you put or change any file in the `my_configs/`, `files/` or
+`packages/` directories, you need to run `make sync` for the OpenWrt build
+process to note the changes.
+
+## Output image
+
+When compilation finishes, you will find the output images inside the
+`images/` directory.  If you need other kind of images (VMware, VirtualBox and
+so on) check inside the `openwrt/bin/TARGET/` directory (where TARGET can be
+e.g. `x86`).
+
+To copy the image in a compact flash or USB stick:
+
+    # dd if=images/IMAGE_FILE of=/dev/sdX

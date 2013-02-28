@@ -1,4 +1,21 @@
-noce-id   mac                 comments:
+# This file is ignored in favor of vct.nodes.local 
+# Use it only for documenting the used NODE_IDs: 
 
-f09c      00:0d:b9:24:b4:9c   alix (for testing in Berlin)
-f001      00:0d:b9:24:b5:00   alix (for testing in Berlin)
+#node-id  mac                 	       		comments:
+
+f09c      00:0d:b9:24:b4:9c			alix (for testing in Berlin)
+f001      00:0d:b9:24:b5:00   			alix (for testing in Berlin)
+
+# Each following entry includes not only the MAC, but also the IPv4 address of
+# the local interface of a research device *not in the local network*.  The IP
+# adress must be reachable from the server and it will be used by VCT as a
+# recovery addresses for node configuration.
+f101	  00:01:2E:2D:89:2B|10.228.201.72       Zotac Lab 104 UPC
+f102	  00:0D:B9:26:9D:AC|10.228.204.6        Alix C6 roof
+f103	  00:01:2E:39:9A:FA|10.228.201.81       Zotac Lab 104 UPC (black one)
+
+de01      00:03:1d:0b:00:fb|10.64.1.2           Commell 1 FKIE indoor
+de02      00:03:1d:0b:15:2d|10.64.2.2           Commell 2 FKIE indoor
+de03      00:03:1d:0b:15:35|10.64.3.2           Commell 3 FKIE indoor
+de04      00:03:1d:0b:15:31|10.64.4.2           Commell 4 FKIE indoor
+de05      00:03:1d:0b:15:39|10.64.5.2           Commell 5 FKIE indoor

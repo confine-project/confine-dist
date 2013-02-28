@@ -8,7 +8,7 @@ set -u
 CONFINE_RPC_DIR=/var/run/confine/rpc
 
 CONFINE_CONTAINER_NR_MIN_DEC=1
-CONFINE_CONTAINER_NR_MAX_DEC=125 # there are only 126 private IPs.  126 is the RD itself, 125 will be the dummy
+CONFINE_CONTAINER_NR_MAX_DEC=125 # there are only 126 private IPs.  126 is the RD itself
 
 CONFINE_VNET_PREFIX="slv"
 
@@ -100,72 +100,13 @@ confine_allocate_container() {
 }
 
 
-setup_dummy_container() {
-    
-    echo "$FUNCNAME $# $@" >&2
-    
-    confine_system_check
-
-    local NODE_ID=$( uci_get confine.node.id )
-    local DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state soft,quiet )
-
-    if ! [ "$DUMMY_STATE" ] ; then
-
-	confine_sliver_allocate ffffffffffff <<EOF || err $FUNCNAME "Failed allocating dummy"
-config sliver ffffffffffff
-    option user_pubkey     "$( dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep rsa )"
-    option exp_name        "confine-dummy"
-    option if00_type       internal 
-    option if00_name       priv 
-    option if01_type       public   # optional
-    option if01_name       pub0
-    option if01_ipv4_proto none
-EOF
-
-	uci_set lxc.7d.remount='bin lib sbin usr'
-        uci_set lxc.7d.copy='etc !etc/init.d/confine !etc/init.d/openvswitch !etc/init.d/lxc !etc/config/lxc'
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "allocated" ] ; then
-
-	confine_sliver_deploy ffffffffffff <<EOF || err $FUNCNAME "Failed deploying dummy"
-config sliver ffffffffffff_$NODE_ID
-EOF
-
-	DUMMY_STATE=$( uci_get confine-slivers.ffffffffffff.state )
-    fi
-
-
-    if [ "$DUMMY_STATE" = "deployed" ] ; then
-
-	confine_sliver_start ffffffffffff || err $FUNCNAME "Failed starting dummy"
-    fi
-}
-
-
-ssh_dummy_container() {
-
-#    echo "$FUNCNAME $@" >&2
-    
-    local COMMAND="${1:-}"
-    local DUMMY_IP=$( uci_get confine-slivers.ffffffffffff.if00_ipv4 | awk -F'/' '{print $1}' )
-
-    if [ "$COMMAND" ]; then
-	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP ". /etc/profile; $@"
-    else
-	ssh -y -i /etc/dropbear/dropbear_rsa_host_key root@$DUMMY_IP
-
-    fi
-}
 
 
 confine_allocate_dhcp_public_ipv4() {
 
     echo "$FUNCNAME $@" >&2
 
+    local DHCP_IF="test-dhcp"
     local DHCP_MAC=$1
     local OPT_CMD=${2:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
@@ -175,35 +116,20 @@ confine_allocate_dhcp_public_ipv4() {
 
     [ "$PROTO_IPS" = "dhcp" ] || \
 	{ err $FUNCNAME "dhcp-allocation of public ipv4 disabled due to confine.node.sl_public_ipv4_proto=dhcp" $CMD_SOFT; return 1; }
+
+
+    ip link show $DHCP_IF > /dev/null 2>&1 || \
+	ip link add link br-local dev $DHCP_IF type macvlan
     
-    local DHCP_CONTAINER_NR=$( uci_get confine-slivers.ffffffffffff.sliver_nr )
-    local DHCP_IF=$(           uci_get confine-slivers.ffffffffffff.if01_name    )
-    local ORIG_MAC=$(          uci_get confine-slivers.ffffffffffff.if01_mac     )
-    local DUMMY_REPORT=/tmp/confine-$( date +%s )-$BASHPID-dhcp-report
-    local HOST_REPORT=/lxc/images/$DHCP_CONTAINER_NR/rootfs/$DUMMY_REPORT
-    local DHCP_REQUEST="\
-date  > $DUMMY_REPORT && \
-ip link set $DHCP_IF down && \
-ip link set $DHCP_IF address $DHCP_MAC && \
-udhcpc -i $DHCP_IF  >> $DUMMY_REPORT && \
-ip addr show dev $DHCP_IF >> $DUMMY_REPORT && \
-echo COMPLETED  >> $DUMMY_REPORT ; \
-ip link set $DHCP_IF down && \
-ip link set $DHCP_IF address $ORIG_MAC && \
-uci show system.@system[0].hostname  >> $DUMMY_REPORT \
-"
+    ip link set $DHCP_IF down
+    ip link set $DHCP_IF address $DHCP_MAC
+    ip link set $DHCP_IF up
 
-    ssh_dummy_container "$DHCP_REQUEST" >&2
+    local DHCP_RESULT="$( udhcpc -fq -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
+    local DHCP_IP=$( echo $DHCP_RESULT | awk -F'ip=' '{print $2}' | awk '{print $1}' )
 
-    cat $HOST_REPORT | grep -e "^system.cfg.......hostname=" >/dev/null || \
-	{ err $FUNCNAME "Incomplete REPORT=$( cat $HOST_REPORT ) DHCP_REQUEST=$DHCP_REQUEST " $CMD_SOFT; return 1; }
-
-    cat $HOST_REPORT | grep -e "link/ether $DHCP_MAC brd ff:ff:ff:ff:ff:ff" >/dev/null || \
-	{ err $FUNCNAME "Failed faking DHCP_MAC=$DHCP_MAC" $CMD_SOFT; return 1; }
-
-    local DHCP_IP=
-    DHCP_IP=$( cat $HOST_REPORT | grep -e "^udhcpc: ifconfig $DHCP_IF" | awk '{print $4}' )
-    DHCP_IP=$( cat $HOST_REPORT | grep -e "inet $DHCP_IP" | grep "scope global $DHCP_IF$" | awk '{print $2}' )
+    ip link set $DHCP_IF down
+    ip link del link br-local dev $DHCP_IF type macvlan
 
     [ $DHCP_IP ] || \
 	{ err $FUNCNAME "Failed obtaining dhcp address" $CMD_SOFT; return 1; }
@@ -299,13 +225,14 @@ confine_tinc_stop() {
 
 	kill $TINC_PID
 
-	echo -n "wait till tinc cleaned up"
+	echo -n "wait till tinc cleaned up "
 	while [ $TINC_CNT -le $TINC_MAX ]; do
 	    sleep 1
 	    [ -x /proc/$TINC_PID ] || break
 	    TINC_CNT=$(( TINC_CNT + 1 ))
 	    echo -n "."
 	done
+	
 	echo
 
 	[ -x /proc/$TINC_PID ] && kill -9 $TINC_PID && \
@@ -319,38 +246,46 @@ confine_tinc_setup() {
     echo "$FUNCNAME $@" >&2
 
     local VCRD_ID=$1
+    local VCRD_ID_DEC=$(( 16#${VCRD_ID} ))
     local SERVER_MGMT_IPV6_PREFIX48=$2
-    local SERVER_TINC_IP=$3
-    local SERVER_TINC_PORT=$4
-    local SERVER_TINC_KEY="$5"
 
     confine_tinc_stop
 
-    mkdir -p /etc/tinc/confine/
-    rm -rf   /etc/tinc/confine/*
-    mkdir    /etc/tinc/confine/hosts
-    
-    cat <<EOF > /etc/tinc/confine/tinc.conf
-Name = node_x$VCRD_ID
-ConnectTo = server
-EOF
+    mkdir -p /etc/tinc/confine/hosts
 
-    cat <<EOF > /etc/tinc/confine/hosts/node_x$VCRD_ID
+    if ! [ -f /etc/tinc/confine/rsa_key.priv ]; then
+	 echo "no /etc/tinc/confine/rsa_key.priv" >&2
+        cp /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
+    fi
+
+    ssh-keygen -e -m PEM -f /etc/tinc/confine/rsa_key.priv > /etc/tinc/confine/rsa_key.pub
+
+    if ! [ -f /etc/tinc/confine/hosts/node_$VCRD_ID_DEC ]; then
+	cat <<EOF > /etc/tinc/confine/hosts/node_$VCRD_ID_DEC
 Subnet = $SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
+$( cat /etc/tinc/confine/rsa_key.pub )
+EOF
+    fi
+
+    local SERVER_CONFS=$(ls /etc/tinc/confine/hosts/ | grep -v node_$VCRD_ID_DEC)
+    local SERVER_CONF=
+    cat <<EOF > /etc/tinc/confine/tinc.conf
+Name = node_$VCRD_ID_DEC
+$( for SERVER_CONF in $SERVER_CONFS; do echo "ConnectTo = $SERVER_CONF"; done )
 EOF
 
-    ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub >> /etc/tinc/confine/hosts/node_x$VCRD_ID
 
-    ln -s /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
-    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.priv
-    chmod 600 /etc/tinc/confine/server_rsa_key.priv
-
-    cat <<EOF > /etc/tinc/confine/hosts/server
-Address = $SERVER_TINC_IP
-Port = $SERVER_TINC_PORT
-Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
-$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.priv )
-EOF
+#    echo "$SERVER_TINC_KEY" > /etc/tinc/confine/server_rsa_key.pub
+#    chmod 600 /etc/tinc/confine/server_rsa_key.pub
+#
+#    cat <<EOF > /etc/tinc/confine/hosts/server
+#Address = $SERVER_TINC_IP
+#Port = $SERVER_TINC_PORT
+#Subnet = $SERVER_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+#$( ssh-keygen -e -m PEM -f /etc/tinc/confine/server_rsa_key.pub )
+#EOF
+#
+#    rm /etc/tinc/confine/server_rsa_key.pub
 
     cat <<EOF > /etc/tinc/confine/tinc-up
 #!/bin/sh
@@ -408,14 +343,11 @@ confine_node_enable() {
 
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
 	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
-	local SERVER_TINC_IP=$(            uci_get confine.server.tinc_ip                       soft )
-	local SERVER_TINC_PORT=$(          uci_get confine.server.tinc_port                     soft )
-	local SERVER_TINC_KEY="$(          uci_get confine.server.tinc_pubkey                   soft )"
 
-	local NODE_LOCAL_IFNAME=$(         uci_get confine-defaults.system.local_ifname         soft )
+	local NODE_LOCAL_IFNAME=$(         uci_get confine.node.local_ifname                    soft )
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
 	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48  soft )
-	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
+#	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
 	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine.node.rd_public_ipv4_proto            soft )
 	local NODE_RD_PUBL_IPV4=$(         uci_get confine.node.rd_public_ipv4                  soft,quiet )
 	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine.node.rd_public_ipv4_gw               soft,quiet )
@@ -424,15 +356,10 @@ confine_node_enable() {
 
 	if true && \
 	    [ "$VCRD_ID" ] && \
-	    [ "$SERVER_MGMT_PUBKEY" ] && \
-	    [ "$SERVER_TINC_IP" ] && \
-	    [ "$SERVER_TINC_PORT" ] && \
-	    [ "$SERVER_TINC_KEY" ] && \
 	    [ "$SERVER_MGMT_IPV6_PREFIX48" ] && \
 	    [ "$NODE_LOCAL_IFNAME" ] && \
 	    [ "$NODE_PRIV_IPV4_PREFIX24" ] && \
 	    [ "$NODE_PRIV_IPV6_PREFIX48" ] && \
-	    [ "$NODE_DBG_IPV6_PREFIX48" ] && \
 	    [ "$NODE_RD_PUBL_IPV4_PROTO" ] && \
 	    true ; then
 
@@ -445,7 +372,7 @@ confine_node_enable() {
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		
 		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    cp /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
+		    mv /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
 		
 		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
 
@@ -456,15 +383,14 @@ confine_node_enable() {
 		dropbearconvert dropbear openssh /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/openssh_rsa_host_key 
 	    fi
 
-	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
+#	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
 
 		dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep ssh-rsa > /etc/dropbear/dropbear_rsa_host_key.pub
+		ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub > /etc/dropbear/openssh_rsa_host_key.pub
 		
-		uci_set confine.node.rd_pubkey="$( cat /etc/dropbear/dropbear_rsa_host_key.pub )"
+		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 # $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
 
-		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
-
-	    fi
+#	    fi
 
 
 	    echo "Configuring wireless... " >&2
@@ -522,6 +448,18 @@ confine_node_enable() {
 
 			WTEST="$(uci_get wifi-template.${WTIF}.encryption soft,quiet)" && \
 			    uci_set wireless.${WTIF}.encryption="$WTEST" || uci_del wireless.${WTIF}.encryption soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key="$WTEST" || uci_del wireless.${WTIF}.key soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key1 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key1="$WTEST" || uci_del wireless.${WTIF}.key1 soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key2 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key2="$WTEST" || uci_del wireless.${WTIF}.key2 soft,quiet
+
+			WTEST="$(uci_get wifi-template.${WTIF}.key3 soft,quiet)" && \
+			    uci_set wireless.${WTIF}.key3="$WTEST" || uci_del wireless.${WTIF}.key3 soft,quiet
 
 		    fi
 
@@ -590,12 +528,12 @@ confine_node_enable() {
 	    uci_set network.management.proto=static
 	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
-	    uci_set network.recovery1=interface
-	    uci_set network.recovery1.ifname=br-local
-	    uci_set network.recovery1.proto=static
-	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
-	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
-	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
+#	    uci_set network.recovery1=interface
+#	    uci_set network.recovery1.ifname=br-local
+#	    uci_set network.recovery1.proto=static
+#	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
+#	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
+#	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
 
 	    uci_set network.recovery2=interface
 	    uci_set network.recovery2.ifname=br-local
@@ -647,8 +585,6 @@ confine_node_enable() {
 	
 	uci_set confine.node.state=started
 
-	setup_dummy_container
-	
 	confine.lib confine_info
 
 	return 0
@@ -840,6 +776,11 @@ confine_sliver_allocate() {
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
 	    uci_del lxc.$CT_NR.rootfs_url
 
+	    if [ "$IF01_TYPE" = "public" ] && [ "$IF01_PROTO" = "dhcp" ]; then 
+		uci_set lxc.$CT_NR.customize=debian-confine-dhcp.sh
+	    fi
+
+
 	else
 
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
@@ -851,6 +792,7 @@ confine_sliver_allocate() {
 
 	fi
 
+	uci_set lxc.$CT_NR.hostname=${SL_ID}_${NODE_ID}
 	uci_set lxc.$CT_NR.tag=confine-sliver-$SL_ID
 
 	local IF_KEY=
@@ -891,8 +833,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
 		    [ $IF_PROTO ] && uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$IF_PROTO
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 		    if [ "$IF_PROTO" = "static" ] ; then
 			uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
@@ -1054,6 +996,77 @@ EOF1
 }
 
 
+
+
+
+confine_sliver_fw_stop() {
+
+    local SL_ID=$( check_slice_id $1 )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+
+    local IF_KEY=
+
+    for IF_KEY in $IF_KEYS; do
+
+	local IF_PAIR=$(    uci_get lxc.$CT_NR.if${IF_KEY}_pair     soft,quiet )
+
+	if [ "$IF_PAIR" ]; then
+
+	    local EBARGS=
+
+	    ebtables -L FORWARD | grep $IF_PAIR | while read EBARGS; do ebtables -D FORWARD $EBARGS ; done
+	fi
+    done
+}
+
+confine_sliver_fw_restart() {
+
+    local SL_ID=$( check_slice_id $1 )
+    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+
+    confine_sliver_fw_stop $SL_ID
+
+    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+
+    local IF_KEY=
+
+    for IF_KEY in $IF_KEYS; do
+
+	local IF_TYPE=$(    uci_get lxc.$CT_NR.if${IF_KEY}_type     soft,quiet )
+	local IF_NETCONF=$( uci_get lxc.$CT_NR.if${IF_KEY}_netconf  soft,quiet )
+
+	if [ "$IF_TYPE" == "veth" ] || [ "$IF_NETCONF" ]; then
+	    echo
+	    local IF_PAIR=$(    uci_get lxc.$CT_NR.if${IF_KEY}_pair )
+
+	    local IF_MAC=$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_mac )
+	    local IF_IPV4=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 soft,quiet )
+	    local IF_IPV6=$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv6 soft,quiet )
+
+	    # set default policy ...
+	    ebtables -I FORWARD -i $IF_PAIR -j DROP
+
+	    # enable white list ...
+	    local EBTARG=
+	    local EBTCMD=
+	    cat /etc/confine-ebtables.lst | awk -F'#' '{print $1}' | grep -e "^ *-p" | while read EBTARG; do
+		EBTCMD="ebtables -I FORWARD -i $IF_PAIR $EBTARG"
+		echo "$EBTCMD" >&2
+		$EBTCMD
+	    done
+
+	    # set general rules ...
+	    ebtables -I FORWARD -i $IF_PAIR -s ! $IF_MAC -j DROP 
+	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 $( [ "$IF_IPV4" ] && echo "--ip-src ! $IF_IPV4") -j DROP
+	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-src 0.0.0.0/0 --ip-proto udp --ip-sport 68 --ip-dport 67 -j ACCEPT
+
+	fi
+
+    done
+}
+
 confine_sliver_start() {
 
     # echo "$FUNCNAME $# $@" >&2
@@ -1069,6 +1082,8 @@ confine_sliver_start() {
 	[ -f $LXC_IMAGES_PATH/$CT_NR/config ] ; then
 
 	uci_set confine-slivers.$SL_ID.state=starting
+
+	confine_sliver_fw_restart $SL_ID
 
 	lxc.lib lxc_start $CT_NR
 
@@ -1104,6 +1119,8 @@ confine_sliver_stop() {
 	    if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 		lxc.lib lxc_stop $CT_NR
 	    fi
+
+	    confine_sliver_fw_stop $SL_ID
 	    
 	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
 		uci_set confine-slivers.$SL_ID.state=deployed
@@ -1160,7 +1177,7 @@ confine_sliver_remove() {
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
 
-	if [ "$SLIVER_ARG" = "all" ] && [ "$SLICE_ID" = "ffffffffffff" ]; then
+	if [ "$SLIVER_ARG" = "all" ]; then
 	    continue
 	fi
 

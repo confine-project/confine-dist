@@ -25,7 +25,6 @@ fi
 
 # MAIN_PID=$BASHPID
 
-VCT_NODE_MAC_DB=./vct.nodes
 UCI_DEFAULT_PATH=$VCT_UCI_DIR
 ERR_LOG_TAG='VCT'
 . ./lxc.functions
@@ -116,7 +115,16 @@ vct_sudo() {
     return $?
 }
 
+vct_do_ping() {
+	if echo $1 | grep -e ":" >/dev/null; then
+		PING="ping6 -c 1 -w 1 -W 1"
+	else
+		PING="ping -c 1 -w 1 -W 1"
+	fi
 
+	$PING $1 
+	return $?
+}
 
 
 ##########################################################################
@@ -181,7 +189,7 @@ vct_tinc_setup() {
     vct_do mkdir -p $VCT_TINC_DIR/confine/hosts
 
     vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc.conf
-BindToAddress = $VCT_SERVER_TINC_IP
+BindToAddress = 0.0.0.0
 Port = $VCT_SERVER_TINC_PORT
 Name = server
 StrictSubnets = yes
@@ -624,7 +632,7 @@ vct_system_init_check(){
     	echo $UDHCPD_COMMAND;
 		local UDHCPD_PID=$( ps aux | grep "$UDHCPD_COMMAND" | grep -v grep | awk '{print $2}' )
 	    
-		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID && sleep 1
+		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID && sleep 1
 		
 
 		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
@@ -683,16 +691,6 @@ EOF
 	fi
     done
 
-    # check if bridge has disabled features:
-    local PROC_FILE=
-    for PROC_FILE in $(ls /proc/sys/net/bridge); do
-	if ! [ $(cat /proc/sys/net/bridge/$PROC_FILE) = "0" ]; then
-	    [ $CMD_INIT ] && vct_sudo sysctl -w net.bridge.$PROC_FILE=0 > /dev/null
-	    [ $(cat /proc/sys/net/bridge/$PROC_FILE) = "0" ] ||\
-	    { err $FUNCNAME "/proc/sys/net/bridge/$PROC_FILE != 0" $CMD_SOFT || return 1 ;}
-	fi
-    done
-
     # check if tinc management network is running:
     [ $CMD_INIT ] && vct_tinc_stop
     [ $CMD_INIT ] && vct_tinc_start
@@ -748,7 +746,7 @@ vct_system_cleanup() {
 		local UDHCPD_COMMAND="udhcpd $UDHCPD_CONF_FILE"
 		local UDHCPD_PID=$( ps aux | grep -e "$UDHCPD_COMMAND" | grep -v "grep" | awk '{print $2}' )
 	    
-		[ ${UDHCPD_PID:-} ] && vct_sudo kill $UDHCPD_PID
+		[ ${UDHCPD_PID:-} ] &&  echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID
 		
 	    fi
 
@@ -809,6 +807,18 @@ vcrd_ids_get() {
     fi
 }
 
+vct_node_get_ip_from_db() {
+	local VCRD_ID=$1
+	local IP=
+	[ -f $VCT_NODE_MAC_DB  ]  && {
+	        VCT_NODE_MACIP=$(grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB | awk '{print $2}')
+		if  echo $VCT_NODE_MACIP | grep -e "|" > /dev/null ; then
+		    IP="$( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB | awk '{print $2}' | cut -d\| -f2 )"
+		fi
+	}
+	echo "$IP"
+}
+
 vct_node_get_mac() {
     local VCRD_ID=$1
     local OPT_CMD=${2:-}
@@ -816,7 +826,10 @@ vct_node_get_mac() {
     local MAC=
 
     [ -f $VCT_NODE_MAC_DB  ] && \
-	MAC=$( grep -e "^$VCRD_ID " $VCT_NODE_MAC_DB | awk '{print $2}' )
+	MAC="$( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB | awk '{print $2}' | cut -d\| -f1 )"
+
+#    echo "vcrd_id=$VCRD_ID mac=$MAC db=$VCT_NODE_MAC_DB pwd=$(pwd)" >&2
+
 
     if  [ $MAC ]  ; then
 
@@ -862,12 +875,14 @@ vct_node_info() {
 	    ( virsh -c qemu:///system dominfo $NAME | grep -e "State:" | grep -e "running" > /dev/null && echo "running" || echo "down"  ) || \
 	    echo "EXTERN" )
 	local MAC=$( vct_node_get_mac $ID quiet )
-	local RESCUE=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local RESCUE_DELAY="$( [ "$STATE" = "down" ] && echo "--" || ping6 -c 1 -w 1 -W 1 $RESCUE  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
+	local IPV6_RESCUE="${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )"
+	local IP="$(vct_node_get_ip_from_db $ID)"
+	IP="${IP:-$IPV6_RESCUE}"
+	local RESCUE_DELAY="$( [ "$STATE" = "down" ] && echo "--" || vct_do_ping $IP  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
 	local MGMT=$VCT_TESTBED_MGMT_IPV6_PREFIX48:$ID::2
-	local MGMT_DELAY="$( [ "$STATE" = "down" ] && echo "--" || ping6 -c 1 -w 1 -W 1 $MGMT  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
+	local MGMT_DELAY="$( [ "$STATE" = "down" ] && echo "--" || vct_do_ping $MGMT  | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}')"
 
-	printf "%-4s %-8s %-39s %-5s  %-22s %-5s\n" $ID $STATE $RESCUE ${RESCUE_DELAY:---} $MGMT ${MGMT_DELAY:---}
+	printf "%-4s %-8s %-39s %-5s  %-22s %-5s\n" $ID $STATE $IP ${RESCUE_DELAY:---} $MGMT ${MGMT_DELAY:---}
     done
     
 }
@@ -1074,7 +1089,6 @@ vct_node_console() {
 
 
 
-
 vct_node_ssh() {
 
 
@@ -1086,44 +1100,43 @@ vct_node_ssh() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
-	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
+        local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
-	    err $FUNCNAME "$VCRD_NAME not running"
-	fi
+        if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+            err $FUNCNAME "$VCRD_NAME not running"
+        fi
 
 	local MAC=$( vct_node_get_mac $VCRD_ID )
-	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local COUNT=0
-	local COUNT_MAX=60
+	local IP=$( vct_node_get_ip_from_db $VCRD_ID )
+        local IPV6_RESCUE=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
+        local COUNT=0
+        local COUNT_MAX=60
+	[ -z "$IP" ] && IP=$IPV6_RESCUE
 
-	while [ "$COUNT" -le $COUNT_MAX ]; do 
+        while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-		break
-	    
-	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-		echo -n "."
+            vct_do_ping $IP >/dev/null && break
+            
+            [ "$COUNT" = 0 ] && \
+                echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
+                echo -n "."
 
-	    COUNT=$(( $COUNT + 1 ))
-	done
+            COUNT=$(( $COUNT + 1 ))
+        done
 
-	[ "$COUNT" = 0 ] || \
-	    echo
+        [ "$COUNT" = 0 ] || \
+            echo
 
-	[ "$COUNT" -le $COUNT_MAX ] || \
-	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
-	
+        [ "$COUNT" -le $COUNT_MAX ] || \
+            err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IP"
+        
+        echo > $VCT_KEYS_DIR/known_hosts
 
-
-	echo > $VCT_KEYS_DIR/known_hosts
-
-	if [ "$COMMAND" ]; then
-	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
-	else
-	    ssh $VCT_SSH_OPTIONS root@$IPV6
-	fi
+        if [ "$COMMAND" ]; then
+            ssh $VCT_SSH_OPTIONS root@$IP ". /etc/profile > /dev/null; $@"
+        else
+            ssh $VCT_SSH_OPTIONS root@$IP
+        fi
 
     done
 }
@@ -1143,39 +1156,56 @@ vct_node_scp() {
 	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
 	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
-
+	
+	local IP=$( vct_node_get_ip_from_db $VCRD_ID )
 	local MAC=$( vct_node_get_mac $VCRD_ID )
-	local IPV6=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
-	local COUNT=0
+	local IPV6_RESCUE=${VCT_BR00_V6_RESCUE2_PREFIX64}:$( eui64_from_mac $MAC )
 	local COUNT_MAX=60
+	local COUNT=
 
+	[ -z "$IP" ] && IP="$IPV6_RESCUE"
+	local IS_IPV6=$(echo $IP | grep -e ":" -c )
+	
+	COUNT=0
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-		break
+	    vct_do_ping $IP >/dev/null && break
 	    
-	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
-		echo -n "."
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IP (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
 
-	[ "$COUNT" = 0 ] || \
-	    echo
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IP"
 
-	[ "$COUNT" -le $COUNT_MAX ] || \
-	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
 
+	COUNT=0
+	while [ "$COUNT" -le $COUNT_MAX ]; do 
+
+	    echo > $VCT_KEYS_DIR/known_hosts
+	    ssh $VCT_SSH_OPTIONS root@$IP "exit" && break
+	    sleep 1
+	    
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
+
+	    COUNT=$(( $COUNT + 1 ))
+	done
+	echo >&2
+	# [ "$COUNT" = 0 ] || echo >&2
+	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IP"
 
 	echo > $VCT_KEYS_DIR/known_hosts
 
-	scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IPV6\]:/ )
+	if [ $IS_IPV6 -ne 0 ]; then
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IP\]:/ )
+	else
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@$IP:/ )
+	fi
 
     done
 }
-
-
 
 
 vct_node_mount() {
@@ -1255,6 +1285,7 @@ vct_node_customize() {
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
+	local VCRD_ID_DEC=$(( 16#${VCRD_ID} ))
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 	local PREP_ROOT=$VCT_VIRT_DIR/node_prepare/$VCRD_NAME-$( date +%Y%m%d-%H%M%S )-$BASHPID
 	local PREP_UCI=$PREP_ROOT/etc/config
@@ -1294,29 +1325,51 @@ vct_node_customize() {
 
 	touch $PREP_UCI/confine-defaults
 	uci_set confine-defaults.defaults=defaults                                               path=$PREP_UCI
-	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48     path=$PREP_UCI
-	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48   path=$PREP_UCI
+#	uci_set confine-defaults.defaults.priv_ipv6_prefix48=$VCT_CONFINE_PRIV_IPV6_PREFIX48     path=$PREP_UCI
+#	uci_set confine-defaults.defaults.debug_ipv6_prefix48=$VCT_CONFINE_DEBUG_IPV6_PREFIX48   path=$PREP_UCI
 
 	touch $PREP_UCI/confine
 	uci_set confine.testbed=testbed                                                          path=$PREP_UCI
 	uci_set confine.testbed.mgmt_ipv6_prefix48=$VCT_TESTBED_MGMT_IPV6_PREFIX48               path=$PREP_UCI
-	uci_set confine.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16                      path=$PREP_UCI
-	uci_set confine.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24          path=$PREP_UCI
+#	uci_set confine.testbed.mac_dflt_prefix16=$VCT_TESTBED_MAC_PREFIX16                      path=$PREP_UCI
+#	uci_set confine.testbed.priv_dflt_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24          path=$PREP_UCI
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
-	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
+#	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
 	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
-	uci_set confine.server.tinc_ip=$VCT_SERVER_TINC_IP                                       path=$PREP_UCI
-	uci_set confine.server.tinc_port=$VCT_SERVER_TINC_PORT                                   path=$PREP_UCI
-	uci_set confine.server.tinc_pubkey="$( ssh-keygen -yf $VCT_KEYS_DIR/tinc/rsa_key.priv )" path=$PREP_UCI
+
+	mkdir -p $PREP_ROOT/etc/tinc/confine/hosts/
+	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/server
+Address = $VCT_SERVER_TINC_IP
+Port = $VCT_SERVER_TINC_PORT
+Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
+$( cat $VCT_KEYS_DIR/tinc/rsa_key.pub )
+EOF
+
+	tincd -c $PREP_ROOT/etc/tinc/confine/ -K <<EOF
+# first  interactive enter acknowledges rsa_key.priv
+# second interactive enter acknowledges rsa_key.pub
+EOF
+
+	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC
+Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
+$( cat $PREP_ROOT/etc/tinc/confine/rsa_key.pub )
+EOF
+
+	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/confine/hosts/
+
+	# this is optional:
+	# mkdir -p $PREP_ROOT/etc/dropbear
+	# ssh-keygen  -N "" -C "root@rd$VCRD_ID" -f $PREP_ROOT/etc/dropbear/openssh_rsa_host_key
+
 
 	uci_set confine.node=node                                                                path=$PREP_UCI
 	uci_set confine.node.id=$VCRD_ID                                                         path=$PREP_UCI
-#       uci_set confine.node.rd_pubkey=""                                                        path=$PREP_UCI
-	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
+#	uci_set confine.node.cn_url=$( echo $VCT_NODE_CN_URL | sed s/NODE_ID/$VCRD_ID/ )         path=$PREP_UCI
 	uci_set confine.node.mac_prefix16=$VCT_TESTBED_MAC_PREFIX16                              path=$PREP_UCI
 	uci_set confine.node.priv_ipv4_prefix24=$VCT_TESTBED_PRIV_IPV4_PREFIX24                  path=$PREP_UCI
 
+	uci_set confine.node.local_ifname=$VCT_NODE_LOCAL_IFNAME                                 path=$PREP_UCI
 	uci_set confine.node.public_ipv4_avail=$VCT_NODE_PUBLIC_IPV4_AVAIL                       path=$PREP_UCI
 	uci_set confine.node.rd_public_ipv4_proto=$VCT_NODE_RD_PUBLIC_IPV4_PROTO                 path=$PREP_UCI
 	if [ "$VCT_NODE_RD_PUBLIC_IPV4_PROTO" = "static" ] && [ "$VCT_NODE_PUBLIC_IPV4_PREFIX16" ] ; then
@@ -1351,11 +1404,14 @@ vct_node_customize() {
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
-	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
+#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
-	    [ "$TINC_PID" ] && vct_sudo kill -1 $TINC_PID
+	    echo >&2
+	    [ "$TINC_PID" ] && \
+		echo "Notify tincd to reload its configuration by sending SIGHUP (-1) signal" >&2 && \
+		vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
@@ -1417,9 +1473,9 @@ vct_slice_attributes() {
 		local SLIVER_STATE=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.state soft,quiet )
 		local NAME="$( uci_get $VCT_SLICE_DB.$SLIVER_ID.exp_name soft,quiet )"
 		local IPV6=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.if01_ipv6 soft,quiet | awk -F'/' '{print $1}' )
-		local V6RTT=$( [ "$IPV6" ] && ping6 -c 1 -w 1 -W 1 $IPV6 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
+		local V6RTT=$( [ "$IPV6" ] && vct_do_ping $IPV6 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
 		local IPV4=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.if01_ipv4 soft,quiet | awk -F'/' '{print $1}' )
-		local V4RTT=$( [ "$IPV4" ] && ping -c 1 -w 1 -W 1 $IPV4 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
+		local V4RTT=$( [ "$IPV4" ] && vct_do_ping $IPV4 2>/dev/null | grep avg | awk -F' = ' '{print $2}' | awk -F'/' '{print $1}' )
 		local VLAN=$( uci_get $VCT_SLICE_DB.$SLIVER_ID.vlan_nr soft,quiet )
 		
 		printf "%-17s %-11s %-12s %-30s %-39s %-5s %-15s %-5s %-4s\n" \
@@ -1729,18 +1785,17 @@ vct_sliver_ssh() {
     local VCRD_ID=
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
-
-	local IPV6=$( uci_get $VCT_SLICE_DB.${SLIVER}_${VCRD_ID}.if01_ipv6 | awk -F'/' '{print $1}' )
+	
+	local IP=$( uci_get $VCT_SLICE_DB.${SLIVER}_${VCRD_ID}.if01_ipv6 | awk -F'/' '{print $1}' )
 	local COUNT=0
 	local COUNT_MAX=60
 
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
-	    ping6 -c 1 -w 1 -W 1 $IPV6 > /dev/null && \
-		break
-	    
+	    	vct_do_ping $IP > /dev/null && break
+
 	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IPV6 (frstboot may take upto 40 secs)" || \
+		echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
 		echo -n "."
 
 	    COUNT=$(( $COUNT + 1 ))
@@ -1750,16 +1805,14 @@ vct_sliver_ssh() {
 	    echo
 
 	[ "$COUNT" -le $COUNT_MAX ] || \
-	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IPV6"
+	    err $FUNCNAME "Failed connecting to node=$VCRD_ID via $IP"
 	
-
-
 	echo > $VCT_KEYS_DIR/known_hosts
 
 	if [ "$COMMAND" ]; then
-	    ssh $VCT_SSH_OPTIONS root@$IPV6 ". /etc/profile > /dev/null; $@"
+	    ssh $VCT_SSH_OPTIONS root@$IP ". /etc/profile > /dev/null; $@"
 	else
-	    ssh $VCT_SSH_OPTIONS root@$IPV6
+	    ssh $VCT_SSH_OPTIONS root@$IP
 	fi
 
     done
