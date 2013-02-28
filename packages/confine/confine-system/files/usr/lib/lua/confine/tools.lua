@@ -1,4 +1,4 @@
---[[
+ --[[
 
 
 
@@ -12,22 +12,37 @@ local socket  = require "socket"
 local nixio   = require "nixio"
 
 
+logfile = false
 
-function dbg(fmt, ...)
+
+function dbg_(nl, err, fmt, ...)
 	local t = nixio.times()
-	io.stdout:write(string.format("[%d.%3d] ", os.time(),
-	                              t.utime + t.stime + t.cutime + t.cstime))
-	io.stdout:write(string.format(fmt, ...))
-	io.stdout:write("\n")
+	local l = "[%d.%3d] %s() %s%s" %{os.time(), (t.utime + t.stime + t.cutime + t.cstime), debug.getinfo(2).name or "???", string.format(fmt,...), nl and "\n" or "" }
+	if err then
+		io.stderr:write(l)
+	else
+		io.stdout:write(l)
+	end
+	
+	if logfile then
+		local out = io.open(logfile, "a")
+		assert(out, "Failed to open %s" %logfile)
+		out:write(l)
+		out:close()
+	end
+
+	--io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
+	--io.stdout:write((debug.getinfo(2).name or "???").."() ")
+	--io.stdout:write(string.format(fmt, ...))
+	--if nl then io.stdout:write("\n") end
 end
 
-stop = false
+function dbg(fmt, ...)
+	dbg_(true, false, fmt, ...)
+end
 
-local function handler(signo)
-	nixio.signal(nixio.const.SIGINT,  "ign")
-	nixio.signal(nixio.const.SIGTERM, "ign")
-	dbg("going to stop now...")
-	stop = true
+function err(fmt, ...)
+	dbg_(true, true, fmt, ...)
 end
 
 --- Extract flags from an arguments list.
@@ -53,6 +68,14 @@ function parse_flags(args)
    return flags, unpack(args)
 end
 
+stop = false
+
+function handler(signo)
+	nixio.signal(nixio.const.SIGINT,  "ign")
+	nixio.signal(nixio.const.SIGTERM, "ign")
+	dbg("going to stop now...")
+	stop = true
+end
 
 function sleep(sec)
 	local interval=1
@@ -117,6 +140,24 @@ function mkdirr( path, mode )
 	end
 end
 
+function join_tables( t1, t2 )
+	local tn = {}
+	local k,v
+	for k,v in pairs(t1) do tn[k] = v end
+	for k,v in pairs(t2) do tn[k] = v end
+	return tn
+end
+
+function get_table_items( t )
+	local count = 0
+	local k,v
+	for k,v in pairs(t) do
+		count = count + 1
+		--dbg("get_table_items() c=%s k=%s v=%s", count, k, tostring(v))
+	end
+	--dbg("get_table_items() t=%s c=%s", tostring(t), count)
+	return count
+end
 
 function get_table_by_key_val( t, val, key )
 	
@@ -133,6 +174,10 @@ function get_table_by_key_val( t, val, key )
 		end
 	end
 	return nil
+end
+
+function fname()
+	return debug.getinfo(2).name.."() "
 end
 
 function str2table( str, pattern )

@@ -236,10 +236,10 @@ EOF
 
 	local FS_COMP=$( ( echo $FS_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
                          ( echo $FS_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
-                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo ".gz" ) )
+                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
 
-	local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
-	local FS_SITE=$(echo $FS_URL | awk -F ${FS_NAME}.${FS_COMP} '{print $1}')
+	local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F".${FS_COMP}" '{print $1}')
+	local FS_SITE=$(echo $FS_URL | awk -F"${FS_NAME}.${FS_COMP}" '{print $1}')
 
 	[ "$FS_URL" = "${FS_SITE}${FS_NAME}.${FS_COMP}" ] ||\
                    err $FUNCNAME "Invalid $FS_URL != ${FS_SITE}${FS_NAME}.${FS_COMP}"

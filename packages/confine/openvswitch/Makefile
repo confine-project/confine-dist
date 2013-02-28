@@ -1,5 +1,8 @@
-#    
-#    Thiss program is free software: you can redistribute it and/or modify
+# CONFINE firmware generator (http://confine-project.eu)
+#
+#    Copyright (C) 2011, 2012 Universitat Politecnica de Barcelona (UPC), CONFINE project
+#
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -17,9 +20,6 @@
 # See /LICENSE for more information.
 #
 # Authors: Xavier León <xleon@ac.upc.edu>
-#
-# Copyright (C) 2011 Universitat Politecnica de Barcelona (UPC)
-#                    CONFINE project
 
 include $(TOPDIR)/rules.mk
 

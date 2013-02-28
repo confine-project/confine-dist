@@ -10,7 +10,7 @@ module( "confine.tree", package.seeall )
 
 local util   = require "luci.util"
 local tools  = require "confine.tools"
-local data   = require "confine.data"
+local cdata   = require "confine.data"
 local dbg    = tools.dbg
 
 
@@ -19,21 +19,23 @@ function get_url_keys( url )
 	local full_key = api_last and url:sub(api_last+1) or url
 	local base_key = full_key:sub( full_key:find( "/[%l]+/" ) )
 	local index_first,index_last = full_key:find( "/[%d]+[-]*[%d]*" )
-	local index_key = full_key:sub( index_first+1, index_last)
+	local index_key = index_first and full_key:sub( index_first+1, index_last)
 	
 	return base_key, index_key
 end
 
 
 function as_string( tree, maxdepth, spaces )
---	luci.util.dumptable(obj):gsub("%s"%tostring(data.null),"null")
+--	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
 	if not maxdepth then maxdepth = 10 end
 	if not spaces then spaces = "" end
 	local result = ""
 	local k,v
-	for k,v in pairs(tree) do
+	for k,v in pairs(tree or {}) do
 			
-		result = result .. spaces..tostring(k).." : "..(type(v)=="string"and'"'or"")..data.val2string(v)..(type(v)=="string"and'"'or"").."\n"
+		result = result .. spaces..
+			(type(k)=="string"and'"'or"")..cdata.val2string(k)..(type(k)=="string"and'"'or"").." : "..
+			(type(v)=="string"and'"'or"")..cdata.val2string(v)..(type(v)=="string"and'"'or"").."\n"
 		
 		if type(v) == "table"  then
 			assert( maxdepth > 1, "maxdepth reached!")
@@ -67,7 +69,7 @@ function get_key(obj, def)
 			local base_key,index_key = get_url_keys(obj.uri)
 			return index_key
 			
-		elseif obj.user and obj.user.uri then
+		elseif type(obj.user)=="table" and obj.user.uri then
 			
 			local base_key,index_key = get_url_keys(obj.user.uri)
 			return index_key
@@ -88,29 +90,33 @@ function get_key(obj, def)
 end
 
 
-function copy(t, add)
-	local k,v
-	local t2 = {}
-	for k,v in pairs(t) do
-		t2[k] = v
-	end
-	if add then
-		t2[#t2+1] = add
-	end
-	return t2
-end
+--function copy(t, add)
+--	local k,v
+--	local t2 = {}
+--	for k,v in pairs(t) do
+--		t2[k] = v
+--	end
+--	if add then
+--		t2[#t2+1] = add
+--	end
+--	return t2
+--end
 
 function copy_recursive(t)
-	local k,v
-	local t2 = {}
-	for k,v in pairs(t) do
-		if type(v) == "table" then
-			t2[k] = copy_recursive(v)
-		else
-			t2[k] = v
+	if type(t) == "table" then
+		local k,v
+		local t2 = {}
+		for k,v in pairs(t) do
+			if type(v) == "table" then
+				t2[k] = copy_recursive(v)
+			else
+				t2[k] = v
+			end
 		end
+		return t2
+	else
+		return t
 	end
-	return t2
 end
 
 function copy_recursive_rebase_keys(t)
@@ -129,177 +135,224 @@ function copy_recursive_rebase_keys(t)
 end
 
 
-function filter(rules, tree, new_tree, path)
-	
-	local curpath = path and "/"..table.concat(path, "/") or ""
-	
-	if not path then path = { } end
-	if not new_tree then new_tree = { } end
-	
-	local pk, pv
-	for pk,pv in ipairs(rules) do
-	
-		local pattern = util.keys(pv)[1]
-		local task    = pv[pattern]
 
-		local k,v
-		for k,v in pairs(tree) do
---			dbg("filter_tree path=%s k=%s v=%s", curpath, tostring(k), tostring(v))
-			if (curpath.."/"..k):match("^%s$" % pattern) then
-				if type(tree[k]) == table then
-					new_tree[k] = {}
-					filter(rules, tree[k], new_tree[k], copy(path,k))
-				else
-					new_tree[k] = tree[k]
-				end
-				break
-			end
-		end
-	end
+
+
+
+
+
+function set_path_val ( tree, path, val, depth)
+
+	depth = depth or 0
+
+	--dbg("l=%s tree=%s path=%s val=%s", depth, tostring(tree), path, tostring(val))
+
+	assert( tree )
+	assert( type(path)=="string" )
+	assert( path:len() >= 1 )
 	
-	return new_tree
+	path = (path:sub(path:len(),path:len())=="/") and path or path.."/"
+	
+
+	assert( path~="/" )
+	assert( tools.subfind(path,"^/","/") )
+	
+	local path_root = tools.subfind(path,"^/","/"):gsub("/","")
+	
+	if path:match("^%s$" %"/[^/]+/") then
+		
+		tree[path_root] = val
+		return val
+	
+	else
+		local path_new = path:sub(path_root:len()+2)
+		
+		assert(path_root and path_new)
+		assert( tree[path_root] and type(tree[path_root])=="table", "path=%s key=%s does not exist in tree=%s" %{path, path_root, tostring(tree)} )
+		return set_path_val( tree[path_root], path_new, val, depth+1)
+	end
 end
 
-function process(cb, sys_conf, cb_tasks, out, rules, old, new, path)
+function get_path_val ( tree, path, depth)
+	
+	depth = depth or 0
 
-	local tmp = {}
-	local changed = false
+	
+	assert( tree )
+	assert( type(path)=="string" )
+	assert( path:len() >= 1 )
+	
+	path = (path:sub(path:len(),path:len())=="/") and path or path.."/"
 
-	if not path then path = "/" end
+	if path=="/" then
 		
-	local pk,pv
-	for pk,pv in ipairs(rules) do
+--		dbg("l=%s path=%s tree=%s", depth, path, tostring(tree))		
+		return tree
 	
-		local pattern = util.keys(pv)[1]
-		local task    = pv[pattern]
-	
---		dbg("compare_results pattern=%-40s task=%s", pattern, task)
+	else
+		local path_root = tools.subfind(path,"^/","/"):gsub("/","")
+		local path_new = path:sub(path_root:len()+2)
 
-		local old_key, old_obj
-		for old_key,old_obj in pairs( old or {} ) do
-			if type(task) == "string" and (path..old_key):match("^%s$" % pattern) then
-				tmp[old_key] = old_obj
-			end
-		end
+--		dbg("l=%s path=%s root=%s new=%s newroot=%s tree=%s", depth, path, path_root, path_new, tostring(tree[path_root]), tostring(tree))
+	
+
+		assert(type(path_root)=="string" and path_new, "path_root=%s path_new=%s" %{tostring(path_root), tostring(path_new)})
+		assert( not tonumber(path_root) or not ( tree[path_root] and tree[tonumber(path_root)]),
+		       "path_root=%s tree:\n%s"%{tostring(path_root), as_string(tree)} )
 		
-		local tmp_key, tmp_obj
-		for tmp_key, tmp_obj in pairs(tmp) do
-			if type(task) == "string" and (path..tmp_key):match("^%s$" % pattern) then
-				if new[tmp_key] == nil then
-					--dbg("%s %s (%s; %s) got removed", curpath, v[1], k, tostring(v[2]))
-					cb(sys_conf, "DEL", task, cb_tasks, out, path, tmp_key, tmp_obj, nil)
-					tmp[tmp_key] = nil
-					changed = true
-				end
-			end
-		end
-	
-		local new_key, new_obj
-		for new_key, new_obj in pairs(new or {}) do
-			if type(task) == "string" and (path..new_key):match("^%s$" % pattern) then
-				if tmp[new_key] == nil then
-					--dbg("%s %s (%s; %s) got added", curpath, v[1], k, tostring(v[2]))
-					cb(sys_conf, "ADD", task, cb_tasks, out, path, new_key, nil, new_obj)
-					tmp[new_key] = new_obj
-					changed = true
-				end
-			end
-		end
-	
-		for tmp_key, tmp_obj in pairs(tmp) do
-	
-			if type(task) == "string" and (path..tmp_key):match("^%s$" % pattern) then
-				
-				local  new_obj = new[tmp_key]
-
-				if type(tmp_obj) == "table" then
-					
-					assert(type(new_obj) == "table")
-					
-					if process(cb, sys_conf, cb_tasks, out, rules, tmp_obj, new_obj, path..tmp_key.."/") then
-						cb(sys_conf, "CHG", task, cb_tasks, out, path, tmp_key, tmp_obj, new_obj)
-						changed = true
-					end
-					
-				else
-					assert( new_obj ~= nil, "No new_obj for path=%q tmp_key=%q, tmp_obj=%q"
-						%{path, tostring(tmp_key), tostring(tmp_obj)} )
-
-					if tmp_obj ~= new_obj then
-						--dbg("%s %s (%s; %s => %s) got changed",
-						--    curpath, json_key, k, tmp_obj, new_obj)
-						cb(sys_conf, "CHG", task, cb_tasks, out, path, tmp_key, tmp_obj, new_obj)
-						changed = true
-					end
-				end
-			end
-		end
-	end
-	
-	return changed
-end
-
-
-
-
-
-
-function set_path_val ( action, tree, path, key, oldval, newval)
-
---	dbg("tree_path_set path=%s key=%s", path, key)
-	assert( type(tree)=="table" and type(path)=="string" and (type(key)=="number" or type(key)=="string") ,"")
-
-	if path ~= "/" then
-		local root_key = tools.subfind(path,"^/","/"):gsub("/","")
-		assert(root_key)
-		set_path_val ( action, tree[root_key], path:gsub("^/"..root_key,""), key, oldval, newval )
+		assert( type(tree)=="table" or tree==cdata.null )
 		
-	elseif action == "ADD" then
+		if type(tree)=="table" and tree[path_root] then
 		
-		assert( not oldval and newval )
+			return get_path_val( tree[path_root], path_new, depth+1)
 		
-		if type(key) == "number" then
-			tree[#tree+1] = (type(newval) == "table") and copy_recursive(newval) or newval
+		elseif type(tree)=="table" and tonumber(path_root) and tree[tonumber(path_root)] then
+			
+			return get_path_val( tree[tonumber(path_root)], path_new, depth+1)
+			
 		else
-			assert(not tree[key])
-			tree[key] = (type(newval) == "table") and copy_recursive(newval) or newval
+			return nil
 		end
-
-	elseif action == "DEL" then
-		
-		assert( tree[key] and oldval and not newval )
-		
-		tree[key] = nil
-		
-	elseif action == "CHG" then
-
-		assert(tree[key] and oldval and newval)
-		tree[key] = (type(newval) == "table") and copy_recursive(newval) or newval
-		
-	else
-		assert( false )
 	end
-	
-	return newval or data.null
 end
 
 
-function get_path_val ( tree, path, key)
-
-	assert( type(tree)=="table" and type(path)=="string" and (type(key)=="number" or type(key)=="string") ,"")
-
-	if path ~= "/" then
-
-		local root_key = tools.subfind(path,"^/","/"):gsub("/","")
-		assert(root_key)
-		return get_path_val ( tree[root_key], path:gsub("^/"..root_key,""), key)
-
-	elseif tree[key] then
-		
-		return tree[key]
+function get_path_leaf ( path, depth)
 	
+	depth = depth or 0
+
+	--dbg("l=%s path=%s", depth, path)
+	
+	assert( type(path)=="string" )
+	assert( path:len() >= 1 )
+	
+	path = (path:sub(path:len(),path:len())=="/") and path or path.."/"
+
+	if path=="/" then
+		return nil
 	else
+		local path_root = tools.subfind(path,"^/","/"):gsub("/","")
+		local path_new = path:sub(path_root:len()+2)
 		
-		return data.null
+		assert(path_root and path_new)
+		
+		if path_new=="/" or path_new=="" then
+			return path_root
+		else
+			return get_path_leaf( path_new, depth+1)
+		end
 	end
+end
+
+
+function filter(rules, itree, otree, path)
+	
+	otree = otree or {}
+	path = path or "/"
+
+	assert(rules and otree and itree and path)
+	local pk,pv
+	
+	for pk,pv in ipairs(rules) do
+	
+		local pattern  = pv[1]
+		local pattern_ = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
+
+		local k
+		for k in pairs(get_path_val(itree, path)) do
+				
+			if (path..k):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
+				
+				local v = get_path_val(itree, path..k)
+				
+				if type(v) == "table" then
+					get_path_val(otree, path)[k] = {}
+					filter(rules, itree, otree, path..k.."/")
+				else
+					get_path_val(otree, path)[k] = v
+				end
+				
+			end
+		end
+	end
+	
+	return otree
+end
+
+
+
+function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
+	
+	assert(cb and sys_conf and rules and otree and ntree and path)
+	lvl = lvl or 0
+	local up_changed = false
+	local ocurr = get_path_val(otree, path)
+	local ncurr = get_path_val(ntree, path)
+	local tkeys = tools.join_tables((type(ocurr)=="table" and ocurr or {}), (type(ncurr)=="table" and ncurr or {}))
+	local pk,pv
+
+--	dbg("lvl=%s cb=%s path=%s ov=%s nv=%s", lvl, cb(), path, tostring(ocurr), tostring(ncurr))
+	
+	for pk,pv in ipairs(rules) do
+	
+		local pattern     = pv[1]
+		local task        = pv[2]
+		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s" %{tostring(pattern), tostring(task)} )
+		local pattern_key = pattern:match("%*$") or pattern:match("[^/]+$")
+		local pattern_    = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
+--		local pattern_    = pattern:gsub("/%s$" %pattern_key,"/") -- DOES NOT WORK!!
+
+--		dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_, pattern_key )
+		if path:match("^%s$" %{pattern_:gsub("*","[^/]+")}) then
+		
+--			dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_, pattern_key )
+
+			local tk
+			local unmatched = true
+			
+			for tk in pairs( tkeys ) do
+				
+--				dbg( "pk=%s path=%-25s pattern=%s", pk, path..tk, pattern )
+					
+				if (path..tk):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
+					
+					assert( pattern_key=="*" or pattern_key == tk)
+					
+					unmatched = false
+			
+					local ov,nv
+					if type(ocurr)=="table" then ov = ocurr[tk] end
+					if type(ncurr)=="table" then nv = ncurr[tk] end
+					local is_table = type(ov)=="table" or type(nv)=="table"
+	
+					--dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
+					--    pk, path, tk, pattern, cb(), task(),
+					--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30))
+					
+					assert( ov~=nil or nv~=nil )
+					
+					if is_table then
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
+						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
+					else
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc)
+					end
+					
+					up_changed = up_changed or down_changed
+					up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
+					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --ntree changed
+				end
+			end
+			
+			if unmatched and pattern_key ~= "*" then
+				dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s",
+				    lvl, tostring(pk), tostring(path), tostring(pattern), tostring(pattern_key))
+				cb( task, rules, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
+				up_changed = up_changed or (get_path_val(otree,path..pattern_key.."/")) --otree changed
+			end
+		end
+	end
+
+	return up_changed
 end

@@ -9,14 +9,12 @@
 module( "confine.ssh", package.seeall )
 
 
-local tools  = require "confine.tools"
 local data   = require "confine.data"
-local tree   = require "confine.tree"
+local ctree  = require "confine.tree"
+local tools  = require "confine.tools"
+local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
 
-RSA_HEADER   = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"
-RSA_TRAILER  = "%-%-%-%-%-END RSA PUBLIC KEY%-%-%-%-%-"
-SSH_HEADER   = "ssh%-rsa "
 
 local SSH_CONFINE_TAG = " CONFINE_USER="
 
@@ -82,7 +80,7 @@ function get_node_local_group(sys_conf)
 			local id = user_id:gsub(" ",""):gsub("\n","")
 			local user_key = tools.subfindex( line, "", SSH_CONFINE_TAG)
 			
-			if tonumber(id) and user_key and user_key:find("^%s"%SSH_HEADER) then
+			if tonumber(id) and user_key and user_key:find("^%s"%ssl.SSH_HEADER) then
 				
 				if not group.user_roles[id] then
 					group.user_roles[id] = {}
@@ -107,7 +105,7 @@ function get_node_local_group(sys_conf)
 		end
 	end
 	
---	tree.dump(group)
+--	ctree.dump(group)
 	return group
 end
 
@@ -127,50 +125,76 @@ local function auth_token_to_rsa( auth_tokens )
 
 	local k,v
 	for k,v in pairs(auth_tokens or {}) do
+			
+		if type(v)=="table" and type(v.data)=="string" then
+			v = v.data
+		end
 		
-		if v:find("^%s"%SSH_HEADER) then
+		if type(v)=="string" and v:find("^%s"%ssl.SSH_HEADER) then
 			ssh_tokens[#ssh_tokens + 1] = v
 			
-		elseif tools.subfind(v,RSA_HEADER,RSA_TRAILER) then
+		elseif type(v)=="string" and tools.subfind(v,ssl.RSA_HEADER,ssl.RSA_TRAILER) then
 			
 			local tmp_file = os.tmpname()
 			io.output(io.open(tmp_file,"w"))
 			io.write(v)
 			io.close()
-			local ssh_key = luci.util.exec( "ssh-keygen -f "..tmp_file.." -i -m PEM" )
+			local ssh_key = ssl.get_ssh_pubkey_pem( tmp_file )
 			os.remove(tmp_file)
 
-			assert( ssh_key and ssh_key:find("^%s"%SSH_HEADER) )
+			assert( ssh_key and ssh_key:find("^%s"%ssl.SSH_HEADER) )
 
 			ssh_tokens[#ssh_tokens + 1] = ssh_key:gsub("\n","")
 
 		else
-			assert(false)
+			dbg("Ignoring auth_token=%s", ctree.as_string(v) )
 		end
 	end
 	return ssh_tokens
 end
 
+function cb2_set_lgroup( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_lgroup" end
 
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	
+	
+	assert( old and type(old.user_roles)=="table" )
+	
+	if not begin and changed then
+		otree.group = {uri = otree.local_group.uri}
+	end
+	
+end
 
-function cb_set_local_group_role( sys_conf, action, out_node, path, user_id, oldval, newval )
+function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_lgroup_role" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local user_id = ctree.get_path_leaf(path)
+	assert( not (old or new) or type(old)=="table" or type(new)=="table" )
 	
-	assert(path == "/local_group/user_roles/", "path=%q key=%q"%{path,user_id})
 	
-	if action == "DEL" then
-		
+	dbg("cb2_set_lgroup_role")
+	if begin and old and not new then
+
 		del_ssh_keys(sys_conf, user_id)
+		ctree.set_path_val(otree,path,nil)
+				
+	elseif not begin and changed and new then
 		
-	elseif action == "ADD" or action == "CHG" then		
-		
-		if newval.is_technician and newval.local_user and newval.local_user.is_active then
+		dbg("")
+		if new.is_technician and new.local_user and new.local_user.is_active then
 			
-			local new_tokens = auth_token_to_rsa( newval.local_user.auth_tokens )
-			local old_tokens = oldval and oldval.local_user.auth_tokens
+			local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
+			local old_tokens = old and old.local_user and old.local_user.auth_tokens or {}
 			
-			if tree.process(function() end, nil, nil, nil, {[1]={["/[^/]+"] = ""}}, old_tokens, new_tokens, nil) then
+			if ctree.iterate(function() end, {[1]={"/*", function() end}}, sys_conf, old_tokens, new_tokens, "/") then --just scan for changes
 
-				if oldval then
+				if old then
 					del_ssh_keys(sys_conf, user_id)
 				end
 				
@@ -178,20 +202,14 @@ function cb_set_local_group_role( sys_conf, action, out_node, path, user_id, old
 			end
 			
 		else	
-			if oldval then
+			if old then
 				del_ssh_keys(sys_conf, user_id)
 			end
 		end
+		
+		ctree.set_path_val( otree, path, ((get_node_local_group(sys_conf)).user_roles)[user_id])
+		
 	end
 	
-	return newval
+	return true
 end
-
-
---function cb_set_group( sys_conf, action, out_node, path, key, oldval, newval )
---	
---	out_node.group.uri = get_node_group(sys_conf, out_node.local_group)
---	
---	return out_node.group
---end
-

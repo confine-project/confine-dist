@@ -13,12 +13,14 @@ local nixio  = require "nixio"
 local json   = require "luci.json"
 local ltn12  = require "luci.ltn12"
 local http   = require "luci.http.protocol"
+local lutil  = require "luci.util"
+
 local tools  = require "confine.tools"
-local tree   = require "confine.tree"
+local ctree  = require "confine.tree"
 
 local dbg    = tools.dbg
 
-local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O- %q"
+local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q"
 local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
 
 local json_pretty_print_tool   = "python -mjson.tool"
@@ -27,7 +29,7 @@ null = json.null
 
 function val2string(val)
 	if val == nil then
-		return "ERROR"
+		return tostring(val)--"ERROR"
 	elseif val==null then
 		return "null"
 	else
@@ -45,7 +47,7 @@ function file_put( data, file, dir )
 	end
 
 
-	dbg("updating RestApi at: "..dir..(file or ""))
+	dbg("updating "..dir..(file or ""))
 	
 	if file and data then
 		local out = io.open(dir .. file, "w")
@@ -82,26 +84,41 @@ function file_get( file )
 	
 	ltn12.pump.all(src, jsd:sink())
 
-	return tree.copy_recursive_rebase_keys(jsd:get())
+	return ctree.copy_recursive_rebase_keys(jsd:get())
 
 end
 
 
 
+function http_get_raw( url, dst, cert_file )
+	if not url then return nil end
+	
+	assert(url and dst and not nixio.fs.stat(dst))
+	
+	local cert_opt
+	if cert_file then
+		cert_opt = "--ca-certificate="..cert_file
+	else
+		cert_opt = "--no-check-certificate"
+	end
+	local cmd = wget %{ cert_opt, dst, url }
+	dbg (cmd)
+	return (os.execute( cmd ) == 0) and true or false
+end
 
-function http_get(url, base_uri, cert_file, cache)
+function http_get_keys_as_table(url, base_uri, cert_file, cache)
 
 	if not url then return nil end
 	
-	local base_key,index_key = tree.get_url_keys( url )
-	local cached             = cache and cache[base_key] and cache[base_key][index_key] or false
+	local base_key,index_key = ctree.get_url_keys( url )
+	local cached             = cache and cache[base_key] and ((index_key and cache[base_key][index_key]) or (not index_key and cache[base_key])) or false
 	
-	dbg("%6s url=%-60s base_key=%-13s index_key=%s",
-	    cached and "cached" or "wget", base_uri..base_key..index_key, base_key, index_key)
+	url = base_uri..base_key..(index_key or "")
+	dbg("%6s url=%-60s", cached and "cached" or "wget", url)
 	
 	if cached then
 		
-		return cache[base_key][index_key], index_key
+		return cached, index_key
 	
 	else
 		local cert_opt
@@ -111,7 +128,7 @@ function http_get(url, base_uri, cert_file, cache)
 			cert_opt = "--no-check-certificate"
 		end
 		
-		local cmd = wget %{ cert_opt, base_uri..base_key..index_key }	
+		local cmd = wget %{ cert_opt, "-", url }	
 		
 		local fd = io.popen(cmd, "r")
 		assert(fd, "Failed to execute %s" %{ cmd })
@@ -120,18 +137,22 @@ function http_get(url, base_uri, cert_file, cache)
 		local jsd = json.Decoder(true)
 
 		local result = ltn12.pump.all(src, jsd:sink())
-		assert(result, "Failed processing json input from: %s"%{base_uri..base_key..index_key} )
+		assert(result, "Failed processing json input from: %s"%{url} )
 		
 		result = jsd:get()
 		
-		result = tree.copy_recursive_rebase_keys(result)
-		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{base_uri..base_key..index_key} )
+		result = ctree.copy_recursive_rebase_keys(result)
+		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{url} )
 --		dbg("http:get(): got rebased:")
---		tree.dump(result)
+--		ctree.dump(result)
 			
 		if cache then
 			if not cache[base_key] then cache[base_key] = {} end
-			cache[base_key][index_key] = result
+			if index_key then
+				cache[base_key][index_key] = result
+			else
+				cache[base_key] = result
+			end
 		end
 		
 		return result, index_key

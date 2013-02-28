@@ -7,12 +7,14 @@
 --- CONFINE data io library.
 module( "confine.uci", package.seeall )
 
+local tools  = require "confine.tools"
+local dbg    = tools.dbg
 
 local uci    = require "luci.model.uci".cursor()
 
 
 
-function dirty( config )
+local function dirty( config )
 	local uci_changes = uci.changes("confine")
 	if uci_changes.confine then
 		dbg("confine config has uncomiited changes:")
@@ -24,26 +26,30 @@ end
 
 function set( config, section, option, val)
 
-	if dirty( config ) then
-		return false
+	assert( not dirty(config), "uci.set config=%s DIRTY when setting option=%s"
+	       %{tostring(config), tostring(section).."."..tostring(option).."."..tostring(val)})
+
+	if uci:set( config, section, option, val ) and uci:commit( config ) then
+		return true
 	else
-		if uci:set( config, section, option, val ) and uci:commit( config ) then
-			return true
-		else
-			return false
-		end
+		return false
 	end
 end
 
+function get( config, section, option, default )
 
-function get( config, section, option )
+	assert( not dirty(config), "uci.get config=%s DIRTY when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
 
-	if dirty( config ) then
-		return false
-	else
-		return uci:get( config, section, option)
+	local val = uci:get( config, section, option)
+	
+	if val == nil and default ~= nil then
+		set( config, section, option, default)
+		return default
 	end
+	
+	return val
 end
+
 
 function get_all( config, section )
 
@@ -57,6 +63,9 @@ function get_all( config, section )
 end
 
 
-function getd( config, section, option )
-	return uci:get( config, section, option)
-end
+--function get_dirty( config, section, option )
+--	
+--	assert( dirty(config), "uci.get config=%s uncomitted when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
+--
+--	return uci:get( config, section, option)
+--end

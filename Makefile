@@ -1,8 +1,8 @@
 # CONFINE firmware generator (http://confine-project.eu)
 #
-#    Copyright (C) 2011 Universitat Politecnica de Barcelona (UPC)
+#    Copyright (C) 2011, 2012, 2013 Universitat Politecnica de Barcelona (UPC)
 #
-#    Thiss program is free software: you can redistribute it and/or modify
+#    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
@@ -16,28 +16,20 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-ifdef DEV
-OWRT_GIT ?= gitosis@git.confine-project.eu:confine/openwrt.git
-OWRT_PKG_GIT ?= gitosis@git.confine-project.eu:confine/packages.git
-else
-OWRT_GIT ?= http://git.confine-project.eu/confine/openwrt.git
-OWRT_PKG_GIT ?= http://git.confine-project.eu/confine/packages.git
-endif
-
-TIMESTAMP = $(shell date +%d%m%y_%H%M)
+TIMESTAMP = $(shell date -u +%Y%m%d-%H%M)
 BUILD_DIR = openwrt
 FILES_DIR = files
 PACKAGE_DIR = packages
 OWRT_PKG_DIR = $(PACKAGE_DIR)/openwrt
-OWRT_FEEDS = feeds.conf
-CONFIG_DIR = configs
+OWRT_FEEDS = feeds.conf.in
 MY_CONFIGS = my_configs
 DOWNLOAD_DIR = dl
 
 #TARGET values: x86, ar71xx, realview
 TARGET ?= x86
 SUBTARGET ?= generic
-#PROFILE ?= Default
+# Some targets (not x86) need a profile.
+PROFILE ?=
 PARTSIZE ?= 900
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
@@ -46,37 +38,38 @@ CONFIG = $(BUILD_DIR)/.config
 KCONF = target/linux/$(TARGET)/config-3.3
 KCONFIG = $(BUILD_DIR)/$(KCONF)
 
-
 IMAGES = images
+# This is a build sequence number automatically set by Jenkins.
+BUILD_NUMBER ?= unknown
 NIGHTLY_IMAGES_DIR ?= www
 IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
 IMAGE_TYPE ?= ext4
 J ?= 1
 V ?= 0
-MAKE_SRC = -j$(J) V=$(V)
-CONFINE_VERSION ?= testing
+MAKE_SRC_OPTS = -j$(J) V=$(V)
+
 
 define prepare_workspace
-	git clone $(OWRT_GIT) "$(BUILD_DIR)"
-	cd $(BUILD_DIR) && git checkout $(CONFINE_VERSION)
-	git clone $(OWRT_PKG_GIT) "$(OWRT_PKG_DIR)"
-	cd $(OWRT_PKG_DIR) && git checkout $(CONFINE_VERSION)
+	git submodule update --init
 	[ ! -d "$(DOWNLOAD_DIR)" ] && mkdir -p "$(DOWNLOAD_DIR)" || true
-	rm -f $(BUILD_DIR)/dl || true
+	rm -f $(BUILD_DIR)/dl
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
-	rm -rf "$(BUILD_DIR)/files" || true
+	rm -rf "$(BUILD_DIR)/files"
 	ln -s "../$(FILES_DIR)" "$(BUILD_DIR)/files"
 endef
 
 define update_feeds
-	cat $(OWRT_FEEDS) | sed -e "s|PATH|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
-	@echo "Updating feed $(1)"
-	"$(BUILD_DIR)/$(1)/scripts/feeds" update -a
-	"$(BUILD_DIR)/$(1)/scripts/feeds" install -a
+	cat $(OWRT_FEEDS) | sed -e "s|@PACKAGE_DIR@|`pwd`/$(PACKAGE_DIR)|" > $(BUILD_DIR)/feeds.conf
+	@echo "Updating feeds"
+	"$(BUILD_DIR)/scripts/feeds" update -a
+	"$(BUILD_DIR)/scripts/feeds" install -a
 endef
 
 define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
+# This command restores OpenWrt's default configuration and adds answers
+# to some options to avoid the configuration process asking for them.
+# This should be fixed in mainstream soon.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
 		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
 		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
@@ -99,6 +92,7 @@ define create_configs
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
 endef
 
+
 define menuconfig_owrt
 	make -C "$(BUILD_DIR)" menuconfig
 	mkdir -p "$(MY_CONFIGS)"
@@ -113,25 +107,19 @@ define kmenuconfig_owrt
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
-define update_workspace
-	git checkout $(CONFINE_VERSION) && git pull origin $(CONFINE_VERSION)
-	(cd "$(BUILD_DIR)" git checkout $(CONFINE_VERSION) && git pull )
-	(cd "$(OWRT_PKG_DIR)" && git checkout $(CONFINE_VERSION) && git pull )
-endef
-
 define build_src
-	make -C "$(BUILD_DIR)" $(MAKE_SRC) BRANCH_GIT=$(shell git branch|grep ^*|cut -d " " -f 2) REV_GIT=$(shell git --no-pager log -n 1 --oneline|cut -d " " -f 1)
+	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS)
 endef
 
 
 define post_build
 	mkdir -p "$(IMAGES)"
-#	[ -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
-#	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
-#	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
-	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
+#	[ -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
+#	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
+#	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
+	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).img.gz" "$(IMAGES)/CONFINE-owrt-current.img.gz"
-	@echo 
+	@echo
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
 
@@ -144,42 +132,37 @@ define nightly_build
 
 	@echo $(BUILD_ID)
 
+	$(eval CONFINE_VERSION := $(shell git branch | grep ^* | cut -d " " -f 2))
+
 	mkdir -p "$(NIGHTLY_IMAGES_DIR)"
-	cp -f "$(BUILD_DIR)/bin/x86/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz"
+	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz"
 	ln -fs  "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-$(BUILD_ID).img.gz" "$(NIGHTLY_IMAGES_DIR)/CONFINE-openwrt-$(CONFINE_VERSION)-latest.img.gz"
 endef
 
 
-all: prepare 
-	@echo "Using $(IMAGE_TYPE)."
+all: target
+
+target: prepare
 	$(call build_src)
 	$(call post_build)
 
 nightly: prepare
-	@echo "Using $(IMAGE_TYPE)."
 	$(call build_src)
 	$(call nightly_build)
 
-target: prepare 
-	$(call build_src)
-	$(call post_build)
-
-prepare: .prepared 
+prepare: .prepared
 
 .prepared:
 	@echo "Using $(IMAGE_TYPE)."
 	$(call prepare_workspace)
-	$(call update_workspace)
 	$(call update_feeds)
 	$(call create_configs)
 	@touch .prepared
 
-sync: prepare 
+sync: prepare
 	$(call update_feeds)
 	$(call create_configs)
 
-update: prepare
-	$(call update_workspace)
 
 menuconfig: prepare
 	$(call menuconfig_owrt)
@@ -202,10 +185,10 @@ distclean:
 	$(call create_configs)
 
 mrproper:
-	rm -rf "$(BUILD_DIR)" || true
-	rm -rf "$(OWRT_PKG_DIR)" || true
-	rm -rf "$(DOWNLOAD_DIR)" || true
-	rm -f .prepared || true
+	rm -f .prepared
+	rm -rf "$(DOWNLOAD_DIR)"
+	git submodule foreach 'find . -mindepth 1 -maxdepth 1 | xargs rm -rf'
+
 
 help:
 	@cat README

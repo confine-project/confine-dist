@@ -1,16 +1,11 @@
 ** Current options are:
 
-- make all
-Execute all needed to have the CONFINE image.
-
 - make target
-Checks out a specific branch (master or testing) or tag (tags/v0.1, etc.) from each project (confine-dist, openwrt and packages) and compiles a CONFINE image for that target. The branch/tag is specified by the environment variable CONFINE_VERSION (testing by default). 
-To compile tag v0.1 just do:
-make target CONFINE_VERSION=tags/v0.1
+Execute all needed to have the CONFINE image. This is the default target.
 
 - make prepare
 Prepare the download dir if not existing and point the feeds.conf file to the proper place.
- 
+
 - make menuconfig
 Provides a ncurses menuconfig from OpenWRT and copy the .config file inside my_configs/
 
@@ -47,12 +42,9 @@ All files you put inside this directory will be copyied to openwrt root filesyst
 - packages/
 All packages here will be copyied inside package/ openwrt directory. If you add a new package, remember to do "menuconfig" to select it
 
-- configs/
-In the first checkout this configs will be copyied to OpenWRT source tree (owrt_config & kernel_config)
-
 - my_configs/
 When you execute a menuconfig or kernel_menuconfig, the new config files will be copyied here. So if you want to commit the changes just copy them to configs/ dir
- 
+
 - images/
 Output image directory
 
@@ -63,8 +55,6 @@ OpenWRT source tree
 
 When compilation finishes, you will find the output images inside images/ directory
 
-If you need other kind of images (VMware, VBOX and so on) check inside src/bin/x86/ directory
+If you need other kind of images (VMware, VBOX and so on) check inside src/bin/TARGET/ directory (where TARGET can be e.g. x86)
 
 To copy it in a compact flash or usb stick: dd if=images/IMAGE_FILE of=/dev/sdX
-
-
