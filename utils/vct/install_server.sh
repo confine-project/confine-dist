@@ -1,8 +1,5 @@
 source ./vct.sh
 
-VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a6' # get latest with: $ python -c 'import controller; print controller.VERSION'
-
 
 install_server () {
     local CURRENT_VERSION=$(python -c "from controller import get_version; print get_version();" || echo false)
