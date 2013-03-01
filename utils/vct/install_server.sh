@@ -1,7 +1,7 @@
 source ./vct.sh
 
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a5' # get latest with: $ python -c 'import controller; print controller.VERSION'
+VCT_SERVER_VERSION='0.8a6' # get latest with: $ python -c 'import controller; print controller.VERSION'
 
 
 install_server () {
@@ -45,9 +45,7 @@ install_server () {
     python server/manage.py collectstatic --noinput
     
     vct_sudo python server/manage.py setuptincd --noinput --safe \
-        --tinc_address="${VCT_SERVER_TINC_IP}" \
-        --tinc_privkey="${VCT_KEYS_DIR}/tinc/rsa_key.priv" \
-        --tinc_pubkey="${VCT_KEYS_DIR}/tinc/rsa_key.pub"
+        --tinc_address="${VCT_SERVER_TINC_IP}"
     python server/manage.py updatetincd
     
     vct_sudo python server/manage.py restartservices
