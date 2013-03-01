@@ -1,0 +1,20 @@
+[
+{
+    "pk": 1, 
+    "model": "firmware.config", 
+    "fields": {
+        "version": "0.1", 
+        "description": "Confine Firmware", 
+        "image_name": "confine-firmware-%(node_id)d-%(arch)s.img.gz"
+    }
+},
+{
+    "pk": 1, 
+    "model": "firmware.baseimage", 
+    "fields": {
+        "image": "CONFINE-owrt-current.img.gz", 
+        "config": 1, 
+        "architectures": "i686"
+    }
+}
+]
