@@ -75,9 +75,9 @@ NODES_NODE_ARCHS = (('i686', 'i686'),)
 FIRMWARE_BUILD_PATH = get_vct_config('VCT_SYS_DIR')
 FIRMWARE_BASE_IMAGE_PATH = get_vct_config('VCT_DL_DIR')
 TINC_TINCD_ROOT = get_vct_config('VCT_TINC_DIR')
-TINC_NET_NAME = 'vct'
+TINC_NET_NAME = 'confine'
 
-SLICES_TEMPLATE_IMAGE_DIR = os.path.join(MEDIA_ROOT, 'templates')
+SLICES_TEMPLATE_IMAGE_DIR = os.path.join(MEDIA_ROOT, 'templates') # VCT_DL_DIR
 SLICES_SLICE_EXP_DATA_DIR = os.path.join(PRIVATE_MEDIA_ROOT, 'exp_data')
 
 # TODO add support for:

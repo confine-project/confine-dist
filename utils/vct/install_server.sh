@@ -17,7 +17,7 @@ install_server () {
         vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
     else
         # An older version is present, just go ahead and proceed with normal way
-        vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip --controller_version $VCT_SERVER_VERSION
+        vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
     fi
     vct_sudo controller-admin.sh install_requirements
     
@@ -37,12 +37,12 @@ install_server () {
     
     # Load initial datat into the database
     vct_sudo python server/manage.py loaddata firmwareconfig
-    vct_sudo python server/manage.py loaddata vctfirmwareconfig
+    # don't really know why this fixtures are not automatically detected, interesting mistery to be solved ...
+    vct_sudo python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
     
-    vct_sudo python server/manage.py setuptincd --noinput --safe \
-        --tinc_address="${VCT_SERVER_TINC_IP}"
+    vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
     python server/manage.py updatetincd
     
     vct_sudo python server/manage.py restartservices
