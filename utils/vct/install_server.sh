@@ -37,7 +37,6 @@ install_server () {
     
     # Load initial datat into the database
     vct_sudo python server/manage.py loaddata firmwareconfig
-    # don't really know why this fixtures are not automatically detected, interesting mistery to be solved ...
     vct_sudo python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
@@ -55,7 +54,7 @@ install_server () {
     cat <<- EOF | python server/manage.py shell > /dev/null
 		from users.models import *
 		if not User.objects.filter(username='vct').exists():
-		 User.objects.create_superuser('vct', 'vct@example.com', 'vct')
+		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
 		
 		group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
 		user = User.objects.get(username='vct')
