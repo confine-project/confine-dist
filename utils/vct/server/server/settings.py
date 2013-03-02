@@ -55,30 +55,38 @@ PRIVATE_MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'private')
 # Example: "/home/media/media.lawrence.com/static/"
 STATIC_ROOT = os.path.join(VCT_SERVER_ROOT, 'static')
 
+# Install / uninstall modules
 INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct', prepend=True)
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'gis')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'issues')
 
-TINC_MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
-TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
-
+# Confine params
 DEBUG_IPV6_PREFIX = get_vct_config('VCT_CONFINE_DEBUG_IPV6_PREFIX48') + '::/48'
 PRIV_IPV6_PREFIX = get_vct_config('VCT_CONFINE_PRIV_IPV6_PREFIX48') + '::/48'
 
+# Testbed params
 PRIV_IPV4_PREFIX_DFLT = get_vct_config('VCT_TESTBED_PRIV_IPV4_PREFIX24') + '.0/24'
 SLIVER_MAC_PREFIX_DFLT = '0x' + get_vct_config('VCT_TESTBED_MAC_PREFIX16')
+MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 
+# Nodes
 NODES_NODE_LOCAL_IFACE_DFLT = get_vct_config('VCT_NODE_LOCAL_IFNAME')
 NODES_NODE_ARCH_DFLT = 'i686'
 NODES_NODE_ARCHS = (('i686', 'i686'),)
 
+# Firmware generation
 FIRMWARE_BUILD_PATH = get_vct_config('VCT_SYS_DIR')
 FIRMWARE_BASE_IMAGE_PATH = get_vct_config('VCT_DL_DIR')
+
+# Tinc
 TINC_TINCD_ROOT = get_vct_config('VCT_TINC_DIR')
 TINC_NET_NAME = 'confine'
+TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
+# Slices and slivers
 SLICES_TEMPLATE_IMAGE_DIR = os.path.join(MEDIA_ROOT, 'templates') # VCT_DL_DIR
 SLICES_SLICE_EXP_DATA_DIR = os.path.join(PRIVATE_MEDIA_ROOT, 'exp_data')
+
 
 # TODO add support for:
 #   VCT_NODE_ISOLATED_PARENTS="eth1 eth2 wlan0 wlan1"  
