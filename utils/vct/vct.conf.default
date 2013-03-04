@@ -48,6 +48,7 @@ VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 
 VCT_KEYS_DIR=$VCT_VIRT_DIR/keys
 VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
+VCT_TINC_NET="confine"
 
 VCT_SSH_OPTIONS="-i $VCT_USER_HOME/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
 
@@ -63,19 +64,12 @@ VCT_RD_RPC_DIR=/var/run/confine/rpc
 
 VCT_NODE_MAC_DB=./vct.nodes.local
 
-VCT_CONTROLLER="y" ## any other value disables the controller installation and usage
-VCT_CTRL_SCRIPT_SITE="http://redmine.confine-project.eu/projects/controller/repository/revisions/master/raw/scripts"
-VCT_CTRL_SCRIPT_NAME="deploy-controller.sh"
-VCT_CTRL_VERSION="0.6.93" # get latest with: $ python -c 'import controller; print controller.VERSION'
+#################################################
 
-VCT_CTRL_DIR="/home/confine/vct"
-VCT_CTRL_MGMT_PATH="${VCT_CTRL_DIR}/manage.py"
-VCT_CTRL_MGMT_STOP="python ${VCT_CTRL_MGMT_PATH} stopservices"
-VCT_CTRL_MGMT_START="python ${VCT_CTRL_MGMT_PATH} restartservices"
-VCT_CTRL_MEDIA_FW_DIR="${VCT_CTRL_DIR}/media/firmwares"
-VCT_CTRL_PRIV_FW_DIR="${VCT_CTRL_DIR}/private/firmwares"
-VCT_CTRL_TINC_DIR="/etc/tinc/confine"
-
+VCT_SERVER="y" ## any other value disables the controller installation and usage
+VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
+VCT_SERVER_VERSION='0.8a6' # get latest with: $ python -c 'import controller; print controller.VERSION'
+VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
 

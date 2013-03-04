@@ -6,6 +6,8 @@ https://docs.djangoproject.com/en//topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en//ref/settings/
+and particulary for this project:
+$ find /usr/local/lib/python2.6/dist-packages/controller/ -iname '*settings.py'|xargs cat|grep "getattr(settings,"
 """
 
 from controller.utils import add_app, remove_app
@@ -66,8 +68,8 @@ PRIV_IPV6_PREFIX = get_vct_config('VCT_CONFINE_PRIV_IPV6_PREFIX48') + '::/48'
 
 # Testbed params
 PRIV_IPV4_PREFIX_DFLT = get_vct_config('VCT_TESTBED_PRIV_IPV4_PREFIX24') + '.0/24'
-SLIVER_MAC_PREFIX_DFLT = '0x' + get_vct_config('VCT_TESTBED_MAC_PREFIX16')
-MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
+SLIVER_MAC_PREFIX_DFLT = '0x' + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[0:2] + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[3:6]
+TINC_MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 
 # Nodes
 NODES_NODE_LOCAL_IFACE_DFLT = get_vct_config('VCT_NODE_LOCAL_IFNAME')
@@ -80,7 +82,7 @@ FIRMWARE_BASE_IMAGE_PATH = get_vct_config('VCT_DL_DIR')
 
 # Tinc
 TINC_TINCD_ROOT = get_vct_config('VCT_TINC_DIR')
-TINC_NET_NAME = 'confine'
+TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers

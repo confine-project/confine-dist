@@ -216,11 +216,10 @@ vct_system_config_check() {
 
 vct_tinc_setup() {
 
-    vct_do mkdir -p $VCT_TINC_DIR
-    vct_do rm -rf $VCT_TINC_DIR/* 
-    vct_do mkdir -p $VCT_TINC_DIR/vct/hosts
+    vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
+    vct_do mkdir -p $VCT_TINC_DIR/$VCT_TINC_NET/hosts
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc.conf
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc.conf
 BindToAddress = 0.0.0.0
 Port = $VCT_SERVER_TINC_PORT
 Name = server
@@ -228,31 +227,31 @@ StrictSubnets = yes
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/hosts/server
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server
 Address = $VCT_SERVER_TINC_IP
 Port = $VCT_SERVER_TINC_PORT
 Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
 EOF
 "
     
-    #vct_do tincd -c $VCT_TINC_DIR/vct  -K
-    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/vct/hosts/server"
-    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/vct/rsa_key.priv
+    #vct_do tincd -c $VCT_TINC_DIR/$VCT_TINC_NET  -K
+    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server"
+    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/$VCT_TINC_NET/rsa_key.priv
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc-up
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc-up
 #!/bin/sh
 ip -6 link set \\\$INTERFACE up mtu 1400
 ip -6 addr add $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/vct/tinc-down
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc-down
 #!/bin/sh
 ip -6 addr del $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 ip -6 link set \\\$INTERFACE down
 EOF
 "
-    vct_do chmod a+rx $VCT_TINC_DIR/vct/tinc-{up,down}
+    vct_do chmod a+rx $VCT_TINC_DIR/$VCT_TINC_NET/tinc-{up,down}
     
 }
 
@@ -373,6 +372,89 @@ check_rpm() {
     done
 }
 
+
+
+vct_system_install_server() {
+    local CURRENT_VERSION=$(python -c "from controller import get_version; print get_version();" || echo false)
+    
+    vct_sudo apt-get update
+    vct_sudo apt-get install -y --force-yes python-pip
+    
+    vct_sudo mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
+    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
+    
+    # executes pip commands on /tmp because of garbage they generate
+    local CURRENT=$(pwd) && cd /tmp
+    if [[ ! $(pip freeze|grep confine-controller) ]]; then
+        # First time controller gets installed
+        vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
+    else
+        # An older version is present, just go ahead and proceed with normal way
+        vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
+    fi
+    vct_sudo controller-admin.sh install_requirements
+    
+    # cleanup possible pip shit
+    vct_sudo rm -fr {pip-*,build,src}
+    
+    cd -
+    vct_sudo python server/manage.py setupceleryd --username $VCT_USER
+
+    if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
+	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
+	vct_sudo rm /etc/apache/sites-enabled/*
+    fi
+    vct_sudo python server/manage.py setupapache
+
+    vct_sudo python server/manage.py setupfirmware
+    
+    # We need postgres to be online, just making sure it is.
+    vct_sudo service postgresql start
+    vct_sudo python server/manage.py setuppostgres --db_name controller --db_user confine --db_password confine
+    vct_sudo python server/manage.py syncdb --noinput
+    vct_sudo python server/manage.py migrate --noinput
+    
+    # Load initial datat into the database
+    vct_sudo python server/manage.py loaddata firmwareconfig
+    vct_sudo python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    # Move static files in a place where apache can get them
+    python server/manage.py collectstatic --noinput
+    
+    vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
+    python server/manage.py updatetincd
+    
+    vct_sudo python server/manage.py restartservices
+    if [[ $CURRENT_VERSION != false ]]; then
+        # Per version upgrade specific operations
+        vct_sudo python server/manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
+    fi
+    
+    # Create a vct user, default VCT group and provide initial auth token to vct user
+    cat <<- EOF | python server/manage.py shell > /dev/null
+		from users.models import *
+		if not User.objects.filter(username='vct').exists():
+		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
+		
+		group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
+		user = User.objects.get(username='vct')
+		Roles.objects.get_or_create(user=user, group=group, is_admin=True);
+		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
+		AuthToken.objects.get_or_create(user=user, data=token_file.read())
+		EOF
+}
+
+vct_system_remove_server() {
+	vct_sudo /etc/init.d/postgresql start || true
+	vct_sudo su postgres -c "psql -c 'DROP DATABASE controller;'"  || true
+	vct_sudo python $VCT_SERVER_DIR/manage.py stopservices  || true
+	vct_sudo deluser --force --remove-home confine  || true
+	vct_sudo delgroup confine  || true
+	if [ -d $VCT_SERVER_DIR ] && echo "${VCT_SERVER_DIR}"  | grep "^${VCT_VIRT_DIR}/." > /dev/null; then
+	    vct_sudo rm -rf $VCT_SERVER_DIR  || true
+	fi
+}
+
+
 vct_system_install_check() {
 
     #echo $FUNCNAME $@ >&2
@@ -385,7 +467,7 @@ vct_system_install_check() {
     local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
     local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
     local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
-    local UPD_CONTROLLER=$( echo "$OPT_CMD" | grep -e "controller" > /dev/null && echo "controller," )
+    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "server," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -525,14 +607,14 @@ EOF
 
     # check tinc configuration:
 
-    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_TINC ] && vct_do rm -rf $VCT_TINC_DIR
+    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_TINC ] && vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
 
-    if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
+    if ! [ -d $VCT_TINC_DIR/$VCT_TINC_NET ] &&  [ $CMD_INSTALL ] ; then
 	vct_tinc_setup
     fi
 
-    [ -f $VCT_TINC_DIR/vct/hosts/server ] || \
-	{ err $FUNCNAME "$VCT_TINC_DIR/vct/hosts/server not existing" $CMD_SOFT || return 1 ;}
+    [ -f $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server ] || \
+	{ err $FUNCNAME "$VCT_TINC_DIR/$VCT_TINC_NET/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
 
 
@@ -546,85 +628,21 @@ EOF
     fi
 
 
-    if [ $CMD_INSTALL ] && ( [ -d $VCT_CTRL_DIR ] || [ -d /home/confine ] ) && ( ! [ "$VCT_CONTROLLER" = "y" ] ||  [ $UPD_CONTROLLER ] ); then
-	vct_sudo /etc/init.d/postgresql start || true
-	vct_sudo su postgres -c "psql -c 'DROP DATABASE controller;'"  || true
-	vct_sudo python $VCT_CTRL_DIR/manage.py stopservices  || true
-	vct_sudo deluser --force --remove-home confine  || true
-	vct_sudo delgroup confine  || true
-	vct_sudo rm -rf $VCT_CTRL_TINC_DIR  || true
-
+    if [ $CMD_INSTALL ] && [ -d $VCT_SERVER_DIR ] && ( ! [ "$VCT_SERVER" = "y" ] ||  [ $UPD_SERVER ] ); then
+	vct_system_remove_server
     fi
 
-    if [ "$VCT_CONTROLLER" = "y" ]; then
+    if [ "$VCT_SERVER" = "y" ]; then
 	
-	if [ $CMD_INSTALL ] && ( [ $UPD_CONTROLLER ] || ! [ -d $VCT_CTRL_DIR ] ); then
-
-	    if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
-		vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
-		vct_sudo rm /etc/apache/sites-enabled/*
-	    fi
-
-	    vct_do wget $VCT_CTRL_SCRIPT_SITE/$VCT_CTRL_SCRIPT_NAME -O $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
-	    vct_do chmod +x $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME
-	    vct_sudo $VCT_VIRT_DIR/$VCT_CTRL_SCRIPT_NAME \
-		--type=local \
-		--project_name='vct' \
-		--mgmt_prefix="${VCT_TESTBED_MGMT_IPV6_PREFIX48}::/48" \
-		--tinc_port="${VCT_SERVER_TINC_PORT}" \
-		--tinc_address="${VCT_SERVER_TINC_IP}" \
-		--tinc_priv_key="${VCT_KEYS_DIR}/tinc/rsa_key.priv" \
-		--tinc_pub_key="${VCT_KEYS_DIR}/tinc/rsa_key.pub" \
-		--base_image_path="${VCT_DL_DIR}/" \
-
-#		--controller_version="${VCT_CTRL_VERSION}"
-#		--build_image="/path/where/builded/images/are/stores" (Optional, /home/confine/vct/private/firmwares by default)
-
-# CONFINE-owrt-current.img.gz and i686 (done through vct/fixtures/vctfirmwareconfig.json so you don't need to worry about this)
-#
-# About auth tokens and creating a default group, what about executing the following after calling deploy-controller.sh ?
-# at least meanwhile because I'd like to rethink how deploy-controller.sh handles opts.
-
-#echo "
-#from users.models import *;
-## Create VCT group
-#group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True);
-#user = User.objects.get(username='confine');
-## Make confine admin of VCT group
-#Roles.objects.get_or_create(user=user, group=group, is_admin=True);
-## Register auth token
-#token_file = open('/var/lib/vct/keys/id_rsa.pub', 'ro');
-#AuthToken.objects.get_or_create(user=user, data=token_file.read());
-#" | python /home/confine/vct/manage.py shell > /dev/null
-
-
-#	    vct_sudo_sh "cat <<EOF | python ${VCT_CTRL_MGMT_PATH} shell > /dev/null
-#from users.models import *;
-#group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True);
-#user = User.objects.get(username='confine');
-#Roles.objects.get_or_create(user=user, group=group, is_admin=True);
-#token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro');
-#AuthToken.objects.get_or_create(user=user, data=token_file.read());
-#EOF
-#"
-
-# echo "NODES_NODE_ARCH_DFLT = 'i686' " >> /home/confine/vct/vct/settings.py
-	    
-	    vct_sudo $VCT_CTRL_MGMT_START 
-
+	if [ $CMD_INSTALL ] && ( [ $UPD_SERVER ] || ! [ -d $VCT_SERVER_DIR ] ); then
+	    vct_system_install_server
 	fi
 
-	if ! [ -d $VCT_CTRL_DIR ] || ! [ -f $VCT_CTRL_MGMT_PATH ]; then
-	    err $FUNCNAME "Missing controller installation at $VCT_CTRL_DIR but VCT_CONTROLLER=$VCT_CONTROLLER"
+	if ! [ -d $VCT_SERVER_DIR ]; then
+	    err $FUNCNAME "Missing controller installation at $VCT_SERVER_DIR but VCT_SERVER=$VCT_SERVER"
 	fi
 
-#	if [ $UPD_NODE ]; then
-#	    if [ $VCT_CTRL_MEDIA_FW_DIR ] && [ -d $VCT_CTRL_MEDIA_FW_DIR ]; then
-#		vct_sudo ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_CTRL_MEDIA_FW_DIR/
-#	    fi
-#	fi
     fi
-
 
 }
 
@@ -806,11 +824,13 @@ EOF
 	fi
     done
 
-    if [ "$VCT_CONTROLLER" = "y" ]; then
+    if [ "$VCT_SERVER" = "y" ]; then
         # check if controller system and management network is running:
-	[ $CMD_INIT ] && vct_sudo $VCT_CTRL_MGMT_START
+	[ $CMD_INIT ] && vct_tinc_stop
+	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices
     else
         # check if tinc management network is running:
+	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
 	[ $CMD_INIT ] && vct_tinc_stop
 	[ $CMD_INIT ] && vct_tinc_start
     fi
@@ -894,8 +914,8 @@ vct_system_cleanup() {
 
     vct_tinc_stop
 
-    if [ $VCT_CTRL_DIR ]; then
-	vct_sudo $VCT_CTRL_MGMT_STOP
+    if [ $VCT_SERVER_DIR ]; then
+	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
     fi
 
 }
@@ -1082,7 +1102,6 @@ vct_node_create() {
     vct_system_init_check quick
 
     local VCRD_ID_RANGE=$1
-    local VCRD_FW_NAME=${2:-}
     local VCRD_ID=
 
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
@@ -1098,8 +1117,9 @@ vct_node_create() {
 	    echo "Removing existing rootfs=$VCRD_PATH" >&2 && rm -f $VCRD_PATH
 
 
-	if [ $VCRD_FW_NAME ]; then
-	    local FW_PATH="${VCT_CTRL_PRIV_FW_DIR}/${VCRD_FW_NAME}"
+	if [ "$VCT_SERVER" = "y" ]; then
+	    local VCRD_FW_NAME="$( echo $VCT_SERVER_NODE_IMAGE_NAME | sed s/NODE_ID/$(( 16#${VCRD_ID} ))/ )"
+	    local FW_PATH="${VCT_SYS_DIR}/${VCRD_FW_NAME}"
 	    if ! [ -f $FW_PATH ]; then
 		err $FUNCNAME "Missing firmware=$FW_PATH for rd-id=$VCRD_ID"
 	    fi
@@ -1119,7 +1139,7 @@ vct_node_create() {
 	    [ "$FW_URL" = "${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}" ] ||\
                 err $FUNCNAME "Invalid $FW_URL != ${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}"
 	    
-	    if ! install_url  $FW_URL $FW_SITE $FW_NAME.$FW_TYPE $FW_COMP $VCT_CTRL_PRIV_FW_DIR $VCRD_PATH install ; then
+	    if ! install_url  $FW_URL $FW_SITE $FW_NAME.$FW_TYPE $FW_COMP $VCT_SYS_DIR $VCRD_PATH install ; then
 		err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
 	    fi
 
@@ -1511,7 +1531,7 @@ Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
 $( cat $PREP_ROOT/etc/tinc/confine/rsa_key.pub )
 EOF
 
-	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/vct/hosts/
+	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/$VCT_TINC_NET/hosts/
 
 	# this is optional:
 	# mkdir -p $PREP_ROOT/etc/dropbear
@@ -1559,7 +1579,7 @@ EOF
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
-#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/vct/hosts/
+#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/$VCT_TINC_NET/hosts/
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
