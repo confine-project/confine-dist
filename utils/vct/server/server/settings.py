@@ -61,6 +61,8 @@ STATIC_ROOT = os.path.join(VCT_SERVER_ROOT, 'static')
 INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct', prepend=True)
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'gis')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'issues')
+INSTALLED_APPS = remove_app(INSTALLED_APPS, 'registration')
+INSTALLED_APPS = remove_app(INSTALLED_APPS, 'communitynetworks')
 
 # Confine params
 DEBUG_IPV6_PREFIX = get_vct_config('VCT_CONFINE_DEBUG_IPV6_PREFIX48') + '::/48'
@@ -69,7 +71,7 @@ PRIV_IPV6_PREFIX = get_vct_config('VCT_CONFINE_PRIV_IPV6_PREFIX48') + '::/48'
 # Testbed params
 PRIV_IPV4_PREFIX_DFLT = get_vct_config('VCT_TESTBED_PRIV_IPV4_PREFIX24') + '.0/24'
 SLIVER_MAC_PREFIX_DFLT = '0x' + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[0:2] + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[3:6]
-TINC_MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
+MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 
 # Nodes
 NODES_NODE_LOCAL_IFACE_DFLT = get_vct_config('VCT_NODE_LOCAL_IFNAME')
