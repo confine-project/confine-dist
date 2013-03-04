@@ -70,7 +70,7 @@ PRIV_IPV6_PREFIX = get_vct_config('VCT_CONFINE_PRIV_IPV6_PREFIX48') + '::/48'
 
 # Testbed params
 PRIV_IPV4_PREFIX_DFLT = get_vct_config('VCT_TESTBED_PRIV_IPV4_PREFIX24') + '.0/24'
-SLIVER_MAC_PREFIX_DFLT = '0x' + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[0:2] + get_vct_config('VCT_TESTBED_MAC_PREFIX16')[3:6]
+SLIVER_MAC_PREFIX_DFLT = '0x{0}{1}{3}{4}'.format(*get_vct_config('VCT_TESTBED_MAC_PREFIX16'))
 MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 
 # Nodes
