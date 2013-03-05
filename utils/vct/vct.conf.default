@@ -36,8 +36,6 @@ VCT_VIRT_DIR=/var/lib/vct
 # VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
-
-
 PATH="$PATH:/sbin:/usr/sbin"
 
 VCT_DL_DIR=$VCT_VIRT_DIR/downloads
@@ -58,7 +56,6 @@ VCT_TINC_LOG=$VCT_TINC_DIR/vct.log
 #VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/vct -n vct"
 VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG -c $VCT_TINC_DIR/vct -n vct"
 
-
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
@@ -68,7 +65,7 @@ VCT_NODE_MAC_DB=./vct.nodes.local
 
 VCT_SERVER="y" ## any other value disables the controller installation and usage
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a15' # get latest with: $ python -c 'import controller; print controller.VERSION'
+VCT_SERVER_VERSION='0.8a17' # get latest with: $ python -c 'import controller; print controller.VERSION'
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
@@ -162,11 +159,7 @@ EOF
 
 
 #################################################
-
-
-
 # Host network configuration:
-
 
 VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01 VCT_BR02 VCT_BR03 VCT_BR04"  # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
 VCT_BR00_NAME="vct-local"
@@ -189,17 +182,12 @@ VCT_BR00_V4_DHCPD_DNS="$VCT_NODE_PUBLIC_IPV4_DNS"
 VCT_BR00_V4_NAT_OUT_DEV="auto"   # auto (dev of default route), eth0, ... or undefine (="") to disable NAT/SNAT
 VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
 
-
-
-
 VCT_BR01_NAME="vct-direct-01"
-
 VCT_BR02_NAME="vct-direct-02"
 
 
 #################################################
 # Research Device (RD) values:
-
 
 VCT_RD_NAME_PREFIX="vcrd-"
 VCT_RD_MEM="64"                                     # RD Memory in MB
@@ -207,17 +195,12 @@ VCT_RD_LOCAL_BRIDGE="vct-local"
 
 
 #################################################
-#################################################
 # expected parameters:
-
-
-
 
 VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel dummy"
 
 VCT_INTERFACE_MODEL="e1000"
 VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
-
 
 VCT_DEB_PACKAGES=" \
     bridge-utils \
