@@ -66,6 +66,7 @@ end
 
 
 
+
 local function add_lslv_err( tree, path, msg, val )
 	assert(tree and path and msg)
 
@@ -97,10 +98,14 @@ function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
 			ctree.set_path_val(otree, path, nval)
 		end
 		
-		if not (oslv.state==NODE.registered or oslv.state==NODE.fail_alloc or oslv.state==NODE.allocating) then
-			
+		
+		
+		
+		if not (oslv.state==NODE.registered or oslv.state==NODE.allocating) then
 			dbg( add_lslv_err(otree, path, "yet unsupported transition from state="..oslv.state, nval))
 		end
+		
+		
 		
 	else
 		dbg( add_lslv_err(otree, path, "Illegal", nval))
