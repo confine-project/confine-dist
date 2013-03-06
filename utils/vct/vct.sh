@@ -381,8 +381,8 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_sudo mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
-    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
+    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
+#    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
     
     # executes pip commands on /tmp because of garbage they generate
     local CURRENT=$(pwd) && cd /tmp
@@ -416,8 +416,8 @@ vct_system_install_server() {
     vct_sudo python server/manage.py migrate --noinput
     
     # Load initial datat into the database
-    vct_sudo python server/manage.py loaddata firmwareconfig
-    vct_sudo python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    vct_do python server/manage.py loaddata firmwareconfig
+    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
     
