@@ -73,7 +73,7 @@ VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 VCT_CONFINE_PRIV_IPV6_PREFIX48="fdbd:e804:6aa9"   # Mandatory and unique for all testbeds
 VCT_CONFINE_DEBUG_IPV6_PREFIX48="fd5f:eee5:e6ad"  # Mandatory and unique for all testbeds
 
-VCT_TESTBED_MGMT_IPV6_PREFIX48="fdf5:5351:1dfd"   # Used by UPC/Pangea
+VCT_TESTBED_MGMT_IPV6_PREFIX48="fd65:fc41:c50f"   # VCT mgmt prefix registered at SixXS ULA registry
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
