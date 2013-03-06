@@ -928,7 +928,7 @@ vct_system_cleanup() {
     vct_tinc_stop
 
     if [ $VCT_SERVER_DIR ]; then
-	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
+	vct_sudo python server/manage.py stopservices
     fi
 
 }
