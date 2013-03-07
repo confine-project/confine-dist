@@ -182,7 +182,7 @@ vct_system_config_check() {
     variable_check VCT_SSH_OPTIONS     quiet
     variable_check VCT_TINC_PID        quiet
     variable_check VCT_TINC_LOG        quiet
-    variable_check VCT_TINC_CMD        quiet
+    variable_check VCT_TINC_START      quiet
 
 
 # Typical cases:
@@ -258,7 +258,7 @@ EOF
 vct_tinc_start() {
     echo "$FUNCNAME $@" >&2
 
-    vct_sudo $VCT_TINC_CMD
+    vct_sudo $VCT_TINC_START
 }
 
 vct_tinc_stop() {
@@ -270,7 +270,8 @@ vct_tinc_stop() {
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
 
-	vct_sudo kill $TINC_PID
+	vct_sudo $VCT_TINC_STOP
+#	vct_sudo kill $TINC_PID
 
 	echo -n "waiting till tinc cleaned up" >&2
 	while [ $TINC_CNT -le $TINC_MAX ]; do
@@ -380,8 +381,8 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_sudo mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
-    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
+    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
+#    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
     
     # executes pip commands on /tmp because of garbage they generate
     local CURRENT=$(pwd) && cd /tmp
@@ -415,15 +416,17 @@ vct_system_install_server() {
     vct_sudo python server/manage.py migrate --noinput
     
     # Load initial datat into the database
-    vct_sudo python server/manage.py loaddata firmwareconfig
-    vct_sudo python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    vct_do python server/manage.py loaddata firmwareconfig
+    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
     
     vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
     python server/manage.py updatetincd
     
-    vct_sudo python server/manage.py restartservices
+    vct_sudo python server/manage.py startservices --no-tinc
+    vct_sudo $VCT_TINC_START
+    
     if [[ $CURRENT_VERSION != false ]]; then
         # Per version upgrade specific operations
         vct_sudo python server/manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
@@ -443,14 +446,14 @@ vct_system_install_server() {
 		EOF
 }
 
-vct_system_remove_server() {
-	vct_sudo /etc/init.d/postgresql start || true
-	vct_sudo su postgres -c "psql -c 'DROP DATABASE controller;'"  || true
-	vct_sudo python $VCT_SERVER_DIR/manage.py stopservices  || true
-	vct_sudo deluser --force --remove-home confine  || true
-	vct_sudo delgroup confine  || true
-	if [ -d $VCT_SERVER_DIR ] && echo "${VCT_SERVER_DIR}"  | grep "^${VCT_VIRT_DIR}/." > /dev/null; then
-	    vct_sudo rm -rf $VCT_SERVER_DIR  || true
+vct_system_purge_server() {
+	vct_sudo python server/manage.py stopservices --no-postgresql  || true
+	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start || true
+	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  || true
+	grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
+	grep "^confine" /etc/group  > /dev/null && vct_sudo delgroup confine  || true
+	if [ -d $VCT_SERVER_DIR ]; then
+	    vct_do rm -rf $VCT_SERVER_DIR  || true
 	fi
 }
 
@@ -613,6 +616,9 @@ EOF
 	vct_tinc_setup
     fi
 
+    [ -f /etc/tinc/nets.boot ] || vct_sudo touch /etc/tinc/nets.boot
+    [ -f $VCT_TINC_DIR/nets.boot ] || vct_sudo touch $VCT_TINC_DIR/nets.boot
+
     [ -f $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server ] || \
 	{ err $FUNCNAME "$VCT_TINC_DIR/$VCT_TINC_NET/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
@@ -629,7 +635,13 @@ EOF
 
 
     if [ $CMD_INSTALL ] && [ -d $VCT_SERVER_DIR ] && ( ! [ "$VCT_SERVER" = "y" ] ||  [ $UPD_SERVER ] ); then
-	vct_system_remove_server
+	echo "" >&2
+	echo "Purge server installation?" >&2
+	read -p "Please type 'purge' or anything else to skip: " QUERY >&2
+
+	if [ "$QUERY" == "purge" ] ; then
+	    vct_system_purge_server
+	fi
     fi
 
     if [ "$VCT_SERVER" = "y" ]; then
@@ -827,7 +839,8 @@ EOF
     if [ "$VCT_SERVER" = "y" ]; then
         # check if controller system and management network is running:
 	[ $CMD_INIT ] && vct_tinc_stop
-	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices
+	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices --no-tinc
+	[ $CMD_INIT ] && vct_sudo $VCT_TINC_START
     else
         # check if tinc management network is running:
 	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
@@ -915,7 +928,7 @@ vct_system_cleanup() {
     vct_tinc_stop
 
     if [ $VCT_SERVER_DIR ]; then
-	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
+	vct_sudo python server/manage.py stopservices
     fi
 
 }
@@ -1586,7 +1599,7 @@ EOF
 	    echo >&2
 	    [ "$TINC_PID" ] && \
 		echo "Notify tincd to reload its configuration by sending SIGHUP (-1) signal" >&2 && \
-		vct_sudo kill -1 $TINC_PID
+		vct_sudo $VCT_TINC_HUP # vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 

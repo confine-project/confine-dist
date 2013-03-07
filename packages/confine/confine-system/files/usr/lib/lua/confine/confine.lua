@@ -119,7 +119,7 @@ function main_loop( sys_conf )
 				
 				if not success then
 					dbg( crules.add_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
-					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
 				end
 					
 			end
@@ -137,7 +137,7 @@ function main_loop( sys_conf )
 				end
 					
 				if v.message:sub(1,9)~="ERR_RETRY" or (sys_conf.retry_limit~=0 and sys_conf.retry_limit < err_cnt) then
-					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
 				end
 			end
 		else

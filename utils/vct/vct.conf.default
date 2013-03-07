@@ -45,16 +45,16 @@ VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
 VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 
 VCT_KEYS_DIR=$VCT_VIRT_DIR/keys
-VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
-VCT_TINC_NET="confine"
 
 VCT_SSH_OPTIONS="-i $VCT_USER_HOME/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
 
-#VCT_TINC_PID=$VCT_TINC_DIR/vct.pid
-VCT_TINC_PID=/var/run/tinc.vct.pid
-VCT_TINC_LOG=$VCT_TINC_DIR/vct.log
-#VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/vct -n vct"
-VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG -c $VCT_TINC_DIR/vct -n vct"
+VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
+VCT_TINC_NET="confine"
+VCT_TINC_PID=/var/run/tinc.${VCT_TINC_NET}.pid
+VCT_TINC_LOG=$VCT_TINC_DIR/tinc.${VCT_TINC_NET}.log
+VCT_TINC_START="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/${VCT_TINC_NET} -n ${VCT_TINC_NET}"
+VCT_TINC_HUP="tincd -n ${VCT_TINC_NET} -kHUP"
+VCT_TINC_STOP="tincd -n ${VCT_TINC_NET} -kTERM"
 
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
@@ -65,7 +65,7 @@ VCT_NODE_MAC_DB=./vct.nodes.local
 
 VCT_SERVER="y" ## any other value disables the controller installation and usage
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a17' # get latest with: $ python -c 'import controller; print controller.VERSION'
+VCT_SERVER_VERSION='0.8a17' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
@@ -73,7 +73,7 @@ VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 VCT_CONFINE_PRIV_IPV6_PREFIX48="fdbd:e804:6aa9"   # Mandatory and unique for all testbeds
 VCT_CONFINE_DEBUG_IPV6_PREFIX48="fd5f:eee5:e6ad"  # Mandatory and unique for all testbeds
 
-VCT_TESTBED_MGMT_IPV6_PREFIX48="fdf5:5351:1dfd"   # Used by UPC/Pangea
+VCT_TESTBED_MGMT_IPV6_PREFIX48="fd65:fc41:c50f"   # VCT mgmt prefix registered at SixXS ULA registry
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 

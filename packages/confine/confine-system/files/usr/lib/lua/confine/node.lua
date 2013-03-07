@@ -26,7 +26,7 @@ local null    = data.null
 
 
 STATE = {
-	["setup"]  	= "debug",
+	["debug"]  	= "debug",
 	["failure"] 	= "failure",
 	["safe"] 	= "safe",
 	["production"]  = "production"
@@ -73,7 +73,7 @@ function set_node_state( sys_conf, node, val)
 	end
 	
 	
-	if (val == STATE.setup) then
+	if (val == STATE.debug) then
 		node.state = val
 		sliver.remove_slivers( sys_conf, nil )
 		
@@ -265,7 +265,7 @@ function cb2_set_setup( rules, sys_conf, otree, ntree, path )
 	local new = ctree.get_path_val(ntree,path)
 
 	if old ~= new then
-		set_node_state( sys_conf, otree, STATE.setup )
+		set_node_state( sys_conf, otree, STATE.debug )
 		return true
 	end
 end
@@ -286,7 +286,7 @@ function cb2_set_uuid( rules, sys_conf, otree, ntree, path )
 	elseif old == null and path=="/uuid/" and system.set_system_conf( sys_conf, "uuid", new) then
 		ctree.set_path_val( otree, path, new)
 	else
-		set_node_state( sys_conf, otree, STATE.setup )
+		set_node_state( sys_conf, otree, STATE.debug )
 		return true
 	end
 end
