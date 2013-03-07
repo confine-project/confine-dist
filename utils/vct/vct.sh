@@ -631,6 +631,8 @@ EOF
     if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
 
 	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_DL_DIR/confine-latest.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP
     fi
 
 
@@ -1159,7 +1161,7 @@ vct_node_create() {
 	else
 
 	    if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
-		err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
+		err $FUNCNAME "Installing $FW_URL to $VCRD_PATH failed"
 	    fi
 	fi
 
