@@ -439,7 +439,7 @@ vct_system_install_server() {
 		user = User.objects.get(username='vct')
 		Roles.objects.get_or_create(user=user, group=group, is_admin=True);
 		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
-		AuthToken.objects.get_or_create(user=user, data=token_file.read())
+		AuthToken.objects.get_or_create(user=user, data=token_file.read().strip())
 		EOF
 }
 
