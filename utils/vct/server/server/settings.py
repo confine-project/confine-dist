@@ -93,10 +93,3 @@ TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 # Slices and slivers
 SLICES_TEMPLATE_IMAGE_DIR = os.path.join(MEDIA_ROOT, 'templates') # VCT_DL_DIR
 SLICES_SLICE_EXP_DATA_DIR = os.path.join(PRIVATE_MEDIA_ROOT, 'exp_data')
-
-
-# TODO add support for:
-#   VCT_NODE_ISOLATED_PARENTS="eth1 eth2 wlan0 wlan1"  
-#   VCT_NODE_RD_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static 
-#   VCT_NODE_SL_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static and following addresses
-#   VCT_NODE_PUBLIC_IPV4_AVAIL="8"
