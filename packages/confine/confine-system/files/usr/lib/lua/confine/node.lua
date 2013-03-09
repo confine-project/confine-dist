@@ -400,6 +400,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_lgroup_role})
 	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_admin",				crules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_nop}) --handled by set_local_group_role

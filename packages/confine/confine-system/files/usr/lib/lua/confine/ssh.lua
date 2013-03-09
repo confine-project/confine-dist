@@ -188,7 +188,7 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 	elseif not begin and changed and new then
 		
 		dbg("")
-		if new.is_technician and new.local_user and new.local_user.is_active then
+		if (new.is_technician or new.is_admin) and new.local_user and new.local_user.is_active then
 			
 			local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
 			local old_tokens = old and old.local_user and old.local_user.auth_tokens or {}
