@@ -51,17 +51,17 @@ local stop_rules = {}
 
 
 function stop_slivers( sys_conf, sliver )
-	dbg("stop_slivers() sliver=%s... (TBD)" %tostring(sliver))
+	dbg("sliver=%s... (TBD)" %tostring(sliver))
 end
 
 function remove_slivers( sys_conf, sliver)
 --	assert(false)
-	dbg("remove_slivers() sliver=%s... (TBD)" %tostring(sliver))
+	dbg("sliver=%s... (TBD)" %tostring(sliver))
 	stop_slivers( sys_conf, sliver )
 end
 
 function start_slivers( sys_conf, sliver)
-	dbg("start_slivers() sliver=%s... (TBD)" %tostring(sliver))
+	dbg("sliver=%s... (TBD)" %tostring(sliver))
 end
 
 

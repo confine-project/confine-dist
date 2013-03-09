@@ -114,9 +114,12 @@ function get_system_conf(sys_conf, arg)
 
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
-	conf.cert		   = null  -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
 	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
+
+	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
+--	conf.server_cert_file      = "/etc/confine/keys/server.ca"
+	conf.node_cert_file        = "/etc/uhttpd.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
 	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
@@ -138,9 +141,6 @@ function get_system_conf(sys_conf, arg)
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
 
-	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
---	conf.server_cert_file      = "/etc/confine/keys/server.ca"
---	conf.node_cert_file        = "/etc/confine/keys/node.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key
 
 	conf.tinc_node_key_priv    = "/etc/tinc/confine/rsa_key.priv" -- required
 	conf.tinc_node_key_pub     = "/etc/tinc/confine/rsa_key.pub"  -- created by confine_node_enable
@@ -158,7 +158,6 @@ function get_system_conf(sys_conf, arg)
 	conf.sliver_pub_ipv4       = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
-	
 
 	conf.direct_ifaces         = tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+")
 	

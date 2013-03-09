@@ -12,6 +12,10 @@ local luci   = require "luci"
 local tools  = require "confine.tools"
 local dbg    = tools.dbg
 
+CERT_HEADER   = "%-%-%-%-%-BEGIN[%w%s]+CERTIFICATE%-%-%-%-%-"
+CERT_TRAILER  = "%-%-%-%-%-END[%w%s]+CERTIFICATE%-%-%-%-%-"
+
+
 RSA_HEADER   = "%-%-%-%-%-BEGIN[%w%s]+PUBLIC KEY%-%-%-%-%-"
 RSA_TRAILER  = "%-%-%-%-%-END[%w%s]+PUBLIC KEY%-%-%-%-%-"
 --RSA_HEADER   = "%-%-%-%-%-BEGIN RSA PUBLIC KEY%-%-%-%-%-"

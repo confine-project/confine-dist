@@ -27,7 +27,7 @@ end
 
 function as_string( tree, maxdepth, spaces )
 --	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
-	if not maxdepth then maxdepth = 10 end
+	if not maxdepth then maxdepth = 15 end
 	if not spaces then spaces = "" end
 	if type(tree)~="table" then return tostring(tree) end
 	local result = ""
@@ -40,6 +40,7 @@ function as_string( tree, maxdepth, spaces )
 		
 		if type(v) == "table"  then
 			assert( maxdepth > 1, "maxdepth reached!")
+			--dbg( "depth=%2s %s %s", cdata.val2string(maxdepth), spaces, cdata.val2string(k) )
 			result = result .. as_string(v, (maxdepth - 1), spaces.."    ")
 		end
 	end
