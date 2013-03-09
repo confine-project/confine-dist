@@ -438,10 +438,6 @@ vct_system_install_server() {
     vct_sudo python server/manage.py syncdb --noinput
     vct_sudo python server/manage.py migrate --noinput
     
-    # Load initial datat into the database
-    vct_do python server/manage.py loaddata firmwareconfig
-    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
-    vct_do python server/manage.py loaddata server/vct/fixtures/vcttemplates.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
     
@@ -468,6 +464,12 @@ vct_system_install_server() {
 		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
 		AuthToken.objects.get_or_create(user=user, data=token_file.read().strip())
 		EOF
+
+    # Load further data into the database
+    vct_do python server/manage.py loaddata firmwareconfig
+    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    vct_do python server/manage.py loaddata server/vct/fixtures/vcttemplates.json
+    vct_do python server/manage.py loaddata server/vct/fixtures/vctslices.json
 }
 
 vct_system_purge_server() {
