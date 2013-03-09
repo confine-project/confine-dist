@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://media.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_03-x86.img.gz"
+VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_03-x86.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -33,8 +33,21 @@ VCT_VIRT_DIR=/var/lib/vct
 # Note that: templates must be updated: $ ./vct_system_install update
 # and old domains must be removed:      $ ./vct_node_remove <rd-id> 
 # and re-installed:                     $ ./vct_node_create <rd-id> 
-# VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
-# VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+
+
+
+#VCT_SLICE_OWRT_TEMPLATE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
+VCT_SLICE_OWRT_TEMPLATE_URL="http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
+VCT_SLICE_OWRT_EXP_DATA_URL="http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz" # MUST BE .tgz
+VCT_SLICE_OWRT_EXP_NAME="hello-openwrt-experiment"
+
+VCT_SLICE_DEBIAN_TEMPLATE_URL="http://distro.confine-project.eu/misc/debian32.tgz"
+VCT_SLICE_DEBIAN_EXP_DATA_URL="http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
+VCT_SLICE_DEBIAN_EXP_NAME="hello-debian-experiment"
+
+
 
 PATH="$PATH:/sbin:/usr/sbin"
 
@@ -104,10 +117,9 @@ vct_hello_openwrt() {
     cat <<EOF
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-#   option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option fs_template_url "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
-    option exp_name        "hello-openwrt-experiment"
+    option fs_template_url "$VCT_SLICE_OWRT_TEMPLATE_URL"
+    option exp_data_url    "$VCT_SLICE_OWRT_EXP_DATA_URL"
+    option exp_name        "$VCT_SLICE_OWRT_EXP_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal
     option if00_name       priv
@@ -133,9 +145,9 @@ vct_hello_debian() {
     cat <<EOF
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
-    option exp_name        "hello-debian-experiment"
+    option fs_template_url "$VCT_SLICE_DEBIAN_TEMPLATE_URL"
+    option exp_data_url    "$VCT_SLICE_DEBIAN_EXP_DATA_URL"
+    option exp_name        "$VCT_SLICE_DEBIAN_EXP_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal
     option if00_name       priv

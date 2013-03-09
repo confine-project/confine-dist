@@ -186,28 +186,51 @@ vct_system_config_check() {
 
 
 # Typical cases:
-# VCT_TEMPLATE_URL="http://distro.confine-project.eu/rd-images/openwrt-x86-generic-combined-ext4.img.tgz"
-# VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
-# VCT_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="http://distro.confine-project.eu/rd-images/openwrt-x86-generic-combined-ext4.img.tgz"
+# VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
-    variable_check VCT_TEMPLATE_URL  quiet
+    variable_check VCT_NODE_TEMPLATE_URL  quiet
 
-    VCT_TEMPLATE_COMP=$( ( echo $VCT_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
-                         ( echo $VCT_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
-                         ( echo $VCT_TEMPLATE_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
-    variable_check VCT_TEMPLATE_COMP quiet
-    VCT_TEMPLATE_TYPE=$(echo $VCT_TEMPLATE_URL | awk -F"$VCT_TEMPLATE_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
-    variable_check VCT_TEMPLATE_TYPE quiet
-    VCT_TEMPLATE_NAME=$(echo $VCT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" '{print $1}')
-    variable_check VCT_TEMPLATE_NAME quiet
-    VCT_TEMPLATE_SITE=$(echo $VCT_TEMPLATE_URL | awk -F"${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" '{print $1}')
-    variable_check VCT_TEMPLATE_SITE quiet
+    VCT_NODE_TEMPLATE_COMP=$( ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+    variable_check VCT_NODE_TEMPLATE_COMP quiet
+    VCT_NODE_TEMPLATE_TYPE=$(echo $VCT_NODE_TEMPLATE_URL | awk -F"$VCT_NODE_TEMPLATE_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
+    variable_check VCT_NODE_TEMPLATE_TYPE quiet
+    VCT_NODE_TEMPLATE_NAME=$(echo $VCT_NODE_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" '{print $1}')
+    variable_check VCT_NODE_TEMPLATE_NAME quiet
+    VCT_NODE_TEMPLATE_SITE=$(echo $VCT_NODE_TEMPLATE_URL | awk -F"${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" '{print $1}')
+    variable_check VCT_NODE_TEMPLATE_SITE quiet
 
-    ( [ $VCT_TEMPLATE_TYPE = "vmdk" ] || [ $VCT_TEMPLATE_TYPE = "raw" ] || [ $VCT_TEMPLATE_TYPE = "img" ] ) ||\
-           err $FUNCNAME "Non-supported fs template type $VCT_TEMPLATE_TYPE"
+    ( [ $VCT_NODE_TEMPLATE_TYPE = "vmdk" ] || [ $VCT_NODE_TEMPLATE_TYPE = "raw" ] || [ $VCT_NODE_TEMPLATE_TYPE = "img" ] ) ||\
+           err $FUNCNAME "Non-supported fs template type $VCT_NODE_TEMPLATE_TYPE"
 
-    [ "$VCT_TEMPLATE_URL" = "${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" ] ||\
-           err $FUNCNAME "Invalid $VCT_TEMPLATE_URL != ${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}"
+    [ "$VCT_NODE_TEMPLATE_URL" = "${VCT_NODE_TEMPLATE_SITE}${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" ] ||\
+           err $FUNCNAME "Invalid $VCT_NODE_TEMPLATE_URL != ${VCT_NODE_TEMPLATE_SITE}${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}"
+
+
+    variable_check VCT_SLICE_OWRT_TEMPLATE_URL  quiet
+    VCT_SLICE_OWRT_TEMPLATE_COMP=$((echo $VCT_SLICE_OWRT_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+				   (echo $VCT_SLICE_OWRT_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ))
+    VCT_SLICE_OWRT_TEMPLATE_NAME=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_TEMPLATE_SITE=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F"${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_OWRT_EXP_DATA_URL  quiet
+    VCT_SLICE_OWRT_EXP_DATA_COMP=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_OWRT_EXP_DATA_NAME=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_EXP_DATA_SITE=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F"${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_DEBIAN_TEMPLATE_URL  quiet
+    VCT_SLICE_DEBIAN_TEMPLATE_COMP=$((echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+				     (echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ))
+    VCT_SLICE_DEBIAN_TEMPLATE_NAME=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_TEMPLATE_SITE=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F"${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_DEBIAN_EXP_DATA_URL  quiet
+    VCT_SLICE_DEBIAN_EXP_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_DEBIAN_EXP_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_EXP_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
 
 }
 
@@ -469,6 +492,7 @@ vct_system_install_check() {
     local CMD_INSTALL=$(   echo "$OPT_CMD" | grep -e "install"   > /dev/null && echo "install," )
     local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "update," )
     local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
+    local UPD_SLICE=$(     echo "$OPT_CMD" | grep -e "slice"     > /dev/null && echo "update," )
     local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
     local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
     local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "server," )
@@ -624,16 +648,42 @@ EOF
 	{ err $FUNCNAME "$VCT_TINC_DIR/$VCT_TINC_NET/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
 
-
-    # check for update and downloadable file-system-template file:
-
-    [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}
-
-    if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
-
-	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    # check for update and downloadable node-system-template file:
+    [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_NODE_TEMPLATE_URL $VCT_NODE_TEMPLATE_SITE $VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE $VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_NODE_TEMPLATE_URL failed" $CMD_SOFT || return 1
     else
-	ln -fs $VCT_DL_DIR/$VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP $VCT_DL_DIR/confine-latest.$VCT_TEMPLATE_TYPE.$VCT_TEMPLATE_COMP
+	ln -fs $VCT_DL_DIR/$VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE.$VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR/confine-node-template.img.gz
+    fi
+
+    # check for update and downloadable slice-openwrt-template file:
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_TEMPLATE_URL $VCT_SLICE_OWRT_TEMPLATE_SITE $VCT_SLICE_OWRT_TEMPLATE_NAME $VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_TEMPLATE_NAME.$VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-openwrt-template.tgz
+    fi
+
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_EXP_DATA_URL $VCT_SLICE_OWRT_EXP_DATA_SITE $VCT_SLICE_OWRT_EXP_DATA_NAME $VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_EXP_DATA_NAME.$VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
+    fi
+
+    # check for update and downloadable slice-debian-template file:
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_TEMPLATE_URL $VCT_SLICE_DEBIAN_TEMPLATE_SITE $VCT_SLICE_DEBIAN_TEMPLATE_NAME $VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_TEMPLATE_NAME.$VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-debian-template.tgz
+    fi
+
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_EXP_DATA_URL $VCT_SLICE_DEBIAN_EXP_DATA_SITE $VCT_SLICE_DEBIAN_EXP_DATA_NAME $VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_EXP_DATA_NAME.$VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
     fi
 
 
@@ -1123,8 +1173,8 @@ vct_node_create() {
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-#	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
-	local VCRD_PATH="${VCT_SYS_DIR}/rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+#	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_NODE_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_NODE_TEMPLATE_TYPE}"
+	local VCRD_PATH="${VCT_SYS_DIR}/rd${VCRD_ID}.${VCT_NODE_TEMPLATE_TYPE}"
 
 	virsh -c qemu:///system dominfo $VCRD_NAME 2>/dev/null && \
 	    err $FUNCNAME "Domain name=$VCRD_NAME already exists"
@@ -1156,12 +1206,12 @@ vct_node_create() {
                 err $FUNCNAME "Invalid $FW_URL != ${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}"
 	    
 	    if ! install_url  $FW_URL $FW_SITE $FW_NAME.$FW_TYPE $FW_COMP $VCT_SYS_DIR $VCRD_PATH install ; then
-		err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
+		err $FUNCNAME "Installing $VCT_NODE_TEMPLATE_URL to $VCRD_PATH failed"
 	    fi
 
 	else
 
-	    if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
+	    if ! install_url  $VCT_NODE_TEMPLATE_URL $VCT_NODE_TEMPLATE_SITE $VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE $VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
 		err $FUNCNAME "Installing $FW_URL to $VCRD_PATH failed"
 	    fi
 	fi
@@ -1207,7 +1257,7 @@ vct_node_create() {
 	done
 
 
-	local TEMPLATE_TYPE=$( [ "$VCT_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_TEMPLATE_TYPE" )
+	local TEMPLATE_TYPE=$( [ "$VCT_NODE_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_NODE_TEMPLATE_TYPE" )
 	local VIRT_CMD="\
     virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --os-type linux \
 	--import --disk path=$VCRD_PATH,format=$TEMPLATE_TYPE \

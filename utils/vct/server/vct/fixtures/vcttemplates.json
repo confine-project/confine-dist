@@ -1,26 +1,26 @@
 [
 {
-    "pk": 1, 
-    "model": "slices.template", 
+    "pk": 1,
+    "model": "slices.template",
     "fields": {
-        "name": "debian32-minimal", 
-        "image": "./debian32-rootfs.tgz", 
-        "is_active": true, 
-        "node_archs": "x86", 
-        "type": "debian6", 
-        "description": "debian32-minimal"
+        "name": "debian32-example",
+        "image": "confine-slice-debian-template.tgz",
+        "is_active": true,
+        "node_archs": "i686",
+        "type": "debian6",
+        "description": "debian32-example"
     }
 },
 {
-    "pk": 2, 
-    "model": "slices.template", 
+    "pk": 2,
+    "model": "slices.template",
     "fields": {
-        "name": "openwrt1", 
-        "image": "CONFINE-sliver-openwrt-x86-generic-rootfs-310812_1816.tar.gz", 
-        "is_active": true, 
-        "node_archs": "i686", 
-        "type": "openwrt-backfire", 
-        "description": ""
+        "name": "openwrt-backfire-example",
+        "image": "confine-slice-openwrt-template.tgz",
+        "is_active": true,
+        "node_archs": "i686",
+        "type": "openwrt-backfire",
+        "description": "openwrt-backfire-example"
     }
 }
 ]
