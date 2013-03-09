@@ -418,6 +418,7 @@ vct_system_install_server() {
     # Load initial datat into the database
     vct_do python server/manage.py loaddata firmwareconfig
     vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    vct_do python server/manage.py loaddata server/vct/fixtures/vcttemplates.json
     # Move static files in a place where apache can get them
     python server/manage.py collectstatic --noinput
     
