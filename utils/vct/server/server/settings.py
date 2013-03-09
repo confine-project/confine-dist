@@ -13,9 +13,9 @@ $ find /usr/local/lib/python2.6/dist-packages/controller/ -iname '*settings.py'|
 from controller.utils import add_app, remove_app
 from vct.utils import get_vct_config
 # Production settings
-from controller.conf.production_settings import *
+#from controller.conf.production_settings import *
 # Development settings
-# from controller.conf.devel_settings import *
+from controller.conf.devel_settings import *
 
 VCT_SERVER_ROOT = get_vct_config('VCT_SERVER_DIR')
 
@@ -91,5 +91,6 @@ TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers
-SLICES_TEMPLATE_IMAGE_DIR = os.path.join(MEDIA_ROOT, 'templates') # VCT_DL_DIR
-SLICES_SLICE_EXP_DATA_DIR = os.path.join(PRIVATE_MEDIA_ROOT, 'exp_data')
+SLICES_TEMPLATE_IMAGE_DIR = get_vct_config('VCT_DL_DIR')
+SLICES_SLICE_EXP_DATA_DIR = get_vct_config('VCT_DL_DIR')
+SLICES_TEMPLATE_ARCHS = (('i686', 'i686'),)
