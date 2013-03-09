@@ -396,7 +396,7 @@ vct_system_install_server() {
     vct_sudo controller-admin.sh install_requirements
     
     # cleanup possible pip shit
-    vct_sudo rm -fr {pip-*,build,src}
+    # vct_sudo rm -fr {pip-*,build,src}
     
     cd -
     vct_sudo python server/manage.py setupceleryd --username $VCT_USER

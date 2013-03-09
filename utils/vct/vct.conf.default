@@ -65,7 +65,7 @@ VCT_NODE_MAC_DB=./vct.nodes.local
 
 VCT_SERVER="y" ## any other value disables the controller installation and usage
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a27' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_VERSION='0.8a28' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
