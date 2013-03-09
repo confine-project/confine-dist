@@ -89,7 +89,7 @@ function cb2_set( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 end
 
-function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
+function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed, misc, is_val )
 	
 	if not rules then return "cb2" end
 	
@@ -97,9 +97,9 @@ function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
 	assert( type(ntree)=="table" )
 	
 	local oldv = ctree.get_path_val(otree,path)
-	local olds = data.val2string(oldv):gsub("\n",""):sub(1,28)
+	local olds = data.val2string(oldv):gsub("\n","")--:sub(1,28)
 	local newv = ctree.get_path_val(ntree,path)
-	local news = data.val2string(newv):gsub("\n",""):sub(1,28)
+	local news = data.val2string(newv):gsub("\n","")--:sub(1,28)
 	local is_table = type(oldv)=="table" or type(newv)=="table"
 
 	
@@ -110,12 +110,12 @@ function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
 
 	local report = task( rules, sys_conf, otree, ntree, path, begin, changed )
 	
-	local outv = ctree.get_path_val(otree,path)
-	local outs = data.val2string(outv):sub(1,28)
+	local outv = ctree.get_path_val(otree,path), is_table
+	local outs = data.val2string(outv)--:sub(1,28)
 
 	if oldv ~= outv or (oldv ~= newv and not is_table) or changed or report then
-		dbg( " %s %-15s %-50s %s => %s ==> %s",
-		    (is_table and (begin and "BEG" or (changed and "CHG" or "END")) or "VAL"),
+		dbg( "%s %s %-15s %-50s %s => %s ==> %s",
+		    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
 		    task(), path, olds, news, outs)
 	end
 	

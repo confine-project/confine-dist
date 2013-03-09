@@ -29,6 +29,7 @@ function as_string( tree, maxdepth, spaces )
 --	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
 	if not maxdepth then maxdepth = 10 end
 	if not spaces then spaces = "" end
+	if type(tree)~="table" then return tostring(tree) end
 	local result = ""
 	local k,v
 	for k,v in pairs(tree or {}) do
@@ -331,17 +332,19 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					
 					assert( ov~=nil or nv~=nil )
 					
+					local down_changed = false
+					
 					if is_table then
 						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
-						local down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
+						down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
 						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
 					else
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc, true)
 					end
 					
 					up_changed = up_changed or down_changed
 					up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
-					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --ntree changed
+					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --otree vs ntree changed
 				end
 			end
 			
