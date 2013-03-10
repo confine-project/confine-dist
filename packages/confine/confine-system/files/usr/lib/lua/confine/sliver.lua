@@ -376,31 +376,128 @@ tmp_rules = stop_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 
 
+local SLV_REMOVE_BIN   = "/usr/sbin/confine_sliver_remove"
+local SLV_ALLOCATE_BIN = "/usr/sbin/confine_sliver_allocate"
+local SLV_DEPLOY_BIN   = "/usr/sbin/confine_sliver_deploy"
+local SLV_START_BIN    = "/usr/sbin/confine_sliver_start"
+local SLV_STOP_BIN     = "/usr/sbin/confine_sliver_stop"
 
-local function sys_set_lsliver_state( otree, key, state )
+local UCI_SLIVER_MATCH = "^[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]$"
+
+
+local function sys_set_lsliver_state( sys_conf, otree, slv_key, state )
 	
 	assert( type(otree)=="table" )
-	assert( type(tonumber(key))=="number" )
+	assert( type(tonumber(slv_key))=="number" )
 	assert( type(NODE[state])=="string" or not state )
 	
+	local uci_key = "%.12x" %tonumber(slv_key)
+	assert( uci_key:match(UCI_SLIVER_MATCH), "Invalid slv_key=%s uci_key=%s" %{slv_key, uci_key})
+
+	local api_slv = otree.local_slivers[slv_key]
+	local uci_slv = (sys_conf.uci_slivers[uci_key] or {}).api=="confine" and sys_conf.uci_slivers[uci_key]
+	
 	if state then
-		otree.local_slivers[key].state = state
+		
+		
+		if state==NODE.registered then
+			
+			if uci_slv then
+				assert((os.execute( SLV_REMOVE_BIN.." "..uci_key )==0), "Failed removing uci_sliver=%s", uci_key )
+				sys_conf.uci_slivers[uci_key] = nil
+			end
+
+		elseif state==NODE.allocated then
+			--FIXME
+		elseif state==NODE.deployed then
+			--FIXME
+		elseif state==NODE.started then
+			--FIXME
+		else
+			--FIXME	
+		end
+		
+		api_slv.state = state
+		
 	else
-		otree.local_slivers[key] = nil
+
+		if uci_slv then
+			assert((os.execute( SLV_REMOVE_BIN.." "..uci_key )==0), "Failed removing uci_sliver=%s", uci_key )
+			sys_conf.uci_slivers[uci_key] = nil
+		end
+
+		otree.local_slivers[slv_key] = nil
 	end
 end
 
+function sys_get_lsliver( sys_conf, otree )
+	
+	dbg("-------------------")
+	ctree.dump( sys_conf.uci_slivers )	
+	dbg("-------------------")
+	
+	local slvs = otree.local_slivers or {}
+	
+	local sk,sv
+	for sk,sv in pairs(sys_conf.uci_slivers) do
+			
+		if type(sk)=="string" and sk:match(UCI_SLIVER_MATCH) and type(sv)=="table" and sv[".type"]=="sliver" and sv.api=="confine" then
+			
+			if
+				sv.api_instance_sn and
+				sv.api_slice_instance_sn and
+				sv.api_template_id and
+				sv.api_template_image_sha256 and
+				sv.api_template_image_uri and
+				sv.api_template_name and
+				sv.api_template_node_archs and
+				sv.api_template_type and
+				sv.api_set_state and
+				sv.api_slice_uri and
+				sv.api_state then
+				
+				local id = tonumber(sk, 16)
+				local slv = slvs[id] or {}
+				
+				slv.instance_sn = sv.api_instance_sn
+				slv.local_slice = slv.local_slice or {}
+				slv.local_slice.instance_sn = sv.api_slice_instance_sn
+				slv.local_slice.local_group  = slv.local_slice.local_group or {}
+				slv.local_template = slv.local_template or {}
+				slv.local_template.id = sv.api_template_id
+				slv.local_template.image_sha256 = sv.api_template_image_sha256
+				slv.local_template.image_uri = sv.api_template_image_uri
+				slv.local_template.is_active = true
+				slv.local_template.name = sv.api_template_name
+				slv.local_template.node_archs = ctools.str2table(sv.api_template_node_archs,"[^ ]+")
+				slv.local_template.type = sv.api_template_type
+				slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_template_id
+				slv.node = { uri = sys_conf.node_base_uri.."/node" }
+				slv.set_state = sv.api_set_state
+				slv.slice = { uri = sv.api_slice_uri }
+				slv.state = sv.api_state
+				slv.template = { uri = slv.local_template.uri}
+				slv.uri = sys_conf.node_base_uri.."/slivers/"..id
+				
+			else
+				assert((os.execute( SLV_REMOVE_BIN .. " " .. sk ) == 0), "Failed removing corrupted uci_sliver=%s %s",sk, ctree.as_string(sv) )
+				sys_conf.uci_slivers[sk] = nil
+			end
+		end
+	end
+	
+	return slvs
+end
 
-local slv_iterate_args
 
-local function slv_iterate( rules, start_state, success_state, error_state )
+local function slv_iterate( iargs, rules, start_state, success_state, error_state )
 
 	assert( type(rules)=="table" or not rules )
 	assert( type(NODE[  start_state])=="string" or not start_state   )
 	assert( type(NODE[success_state])=="string" or not success_state )
 	assert( type(NODE[  error_state])=="string" or not error_state   )
 	
-	local a = slv_iterate_args
+	local a = iargs
 
 	assert (type(a.cb)=="function")
 	assert (type(a.sys_conf=="table"))
@@ -415,7 +512,7 @@ local function slv_iterate( rules, start_state, success_state, error_state )
 	local nslv = nslvs[key]
 	
 	if start_state then
-		sys_set_lsliver_state( a.otree, key, start_state )
+		sys_set_lsliver_state( a.sys_conf, a.otree, key, start_state )
 	end
 	
 	if rules then
@@ -427,17 +524,14 @@ local function slv_iterate( rules, start_state, success_state, error_state )
 	assert( not oslv.errors or not success_state or error_state)
 	
 	if not success_state then
-		sys_set_lsliver_state( a.otree, key, nil )
+		sys_set_lsliver_state( a.sys_conf, a.otree, key, nil )
 	elseif oslv.errors then
-		sys_set_lsliver_state( a.otree, key, error_state )
+		sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state )
 	else
-		sys_set_lsliver_state( a.otree, key, success_state )
+		sys_set_lsliver_state( a.sys_conf, a.otree, key, success_state )
 	end
 	
 end
-
-
-
 
 
 function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
@@ -446,7 +540,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 
 	local key = ctree.get_path_leaf(path)
 	
-	slv_iterate_args = { cb=crules.cb2, sys_conf=sys_conf, otree=otree, ntree=ntree, path=path }
+	local iargs = { cb=crules.cb2, sys_conf=sys_conf, otree=otree, ntree=ntree, path=path }
 	
 	if otree.state ~= cnode.STATE.production then
 		ntree.local_slivers[key] = nil
@@ -473,104 +567,69 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1)) then
 				
 				if nslv then
-					slv_iterate( register_rules, NODE.registered, NODE.registered, NODE.registered)
+					slv_iterate( iargs, register_rules, NODE.registered, NODE.registered, NODE.registered)
 				end
 				
 				if not oslv.errors and nslv and (nslv.set_state==SERVER.deploy or nslv.set_state==SERVER.start) then
---					
---					slv_iterate( nil, nil, NODE.allocating, NODE.fail_alloc )
-					slv_iterate( alloc_rules, NODE.registered, NODE.allocated, NODE.fail_alloc)
+					
+					slv_iterate( iargs, alloc_rules, NODE.registered, NODE.allocated, NODE.fail_alloc)
 					
 					if oslv.errors then
-						slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
+						slv_iterate( iargs, dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
 					end
 					
 				elseif not nslv then
 					
-					slv_iterate( nil, nil, nil, nil )
+					slv_iterate( iargs, nil, nil, nil, nil )
 					break
 				else
 					break
 				end
 	
 	
-----	
---			elseif (oslv.state==NODE.allocating) then
---				
---				assert( not oslv.errors )
---	
---				slv_iterate( alloc_rules, NODE.allocating, NODE.allocated, NODE.fail_alloc)
---				
---				if oslv.errors then
---					slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
---				end
 	
 			elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and 
 				(not nslv or
 				 nslv.instance_sn > oslv.instance_sn or nslv.set_state==SERVER.register) then
 				
-				slv_iterate( dealloc_rules, NODE.allocated, NODE.registered, nil)
+				slv_iterate( iargs, dealloc_rules, NODE.allocated, NODE.registered, nil)
 				
 	
 			elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and
 				(nslv.set_state==SERVER.deploy or nslv.set_state==SERVER.start) then
-----				
---				slv_iterate( nil, nil, NODE.deploying, NODE.fail_deploy)
-				slv_iterate( deploy_rules, NODE.allocated, NODE.deployed, NODE.fail_deploy)
+				
+				slv_iterate( iargs, deploy_rules, NODE.allocated, NODE.deployed, NODE.fail_deploy)
 				
 				if oslv.errors then
-					slv_iterate( undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
+					slv_iterate( iargs, undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
 				end
 	
 	
-----	
---			elseif (oslv.state==NODE.deploying) then
---				
---				assert( not oslv.errors)
---				
---				slv_iterate( deploy_rules, NODE.deploying, NODE.deployed, NODE.fail_deploy)
---				
---				if oslv.errors then
---					slv_iterate( undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
---				end
 	
 			elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 				(not nslv or
 				 nslv.instance_sn ~= oslv.instance_sn or nslv.local_slice.instance_sn ~= oslv.local_slice.instance_sn or
 				 nslv.set_state==SERVER.register) then
 				
-				slv_iterate( undeploy_rules, NODE.deployed, NODE.allocated, nil)
+				slv_iterate( iargs, undeploy_rules, NODE.deployed, NODE.allocated, nil)
 				
 			elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 				(nslv.set_state==SERVER.start) then
-----				
---				slv_iterate( nil, nil, NODE.starting, NODE.fail_start )
-				slv_iterate(start_rules, NODE.deployed, NODE.started, NODE.fail_start)
+				
+				slv_iterate( iargs, start_rules, NODE.deployed, NODE.started, NODE.fail_start)
 				
 				if oslv.errors then
-					slv_iterate(stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
+					slv_iterate( iargs, stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
 					break
 				end
 	
-	
-----	
---			elseif (oslv.state==NODE.starting) then
---				
---				assert( not oslv.errors)
---				
---				slv_iterate(start_rules, NODE.starting, NODE.started, NODE.fail_start)
---				
---				if oslv.errors then
---					slv_iterate(stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
---					break
---				end
-				
+
 			elseif (oslv.state==NODE.started) and
 				(not nslv or
 				 nslv.instance_sn ~= oslv.instance_sn or nslv.local_slice.instance_sn ~= oslv.local_slice.instance_sn or
 				 nslv.set_state==SERVER.register or nslv.set_state==SERVER.deploy) then
 				
-				slv_iterate( stop_rules, NODE.started, NODE.deployed, nil)
+				slv_iterate( iargs, stop_rules, NODE.started, NODE.deployed, nil)
 				
 			else
 				break

@@ -15,9 +15,9 @@ local uci    = require "luci.model.uci".cursor()
 
 
 local function dirty( config )
-	local uci_changes = uci.changes("confine")
-	if uci_changes.confine then
-		dbg("confine config has uncomiited changes:")
+	local uci_changes = uci.changes( config )
+	if uci_changes[config] then
+		dbg("config=%s has uncomiited changes:", config )
 		luci.util.dumptable(uci_changes)
 		return true
 	end
@@ -54,14 +54,48 @@ end
 function get_all( config, section )
 
 	if dirty( config ) then
+		
 		return false
+	
 	elseif section then
+		
 		return uci:get_all( config, section)
 	else
 		return uci:get_all( config )
 	end
 end
 
+function set_all( config, sections )
+
+	assert( type(config)=="string" and type(sections)=="table" )
+
+	if dirty( config ) then
+		return false
+	else
+		
+		local sk,sv
+		for sk,sv in pairs( get_all( config ) or {} ) do
+			uci:delete( config, sk )
+		end
+		
+		for sk,sv in pairs( sections ) do
+			uci:set( config, sk, sv[".type"] )
+			local ok,ov
+			for ok,ov in pairs( sv ) do
+				if type(ok)=="string" and not ok:match("^%.") then
+					uci:set( config, sk, ok, ov )
+				end
+			end
+		end
+		
+		if uci:save( config ) then
+			return uci:commit( config )
+		else
+			uci:revert( config )
+			return false
+		end
+	end
+end
 
 --function get_dirty( config, section, option )
 --	

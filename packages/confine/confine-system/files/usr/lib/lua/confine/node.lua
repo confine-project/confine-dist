@@ -114,12 +114,12 @@ local function get_local_node_sliver_pub_ipv4 (sys_conf)
 	end
 	
 	local slk,slv
-	for slk,slv in pairs(sys_conf.uci.slivers) do
+	for slk,slv in pairs(sys_conf.uci_slivers) do
 		local ifk,ifv
 		for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
 				
 			local itk = "if"..ifv.."_type"
-			local itv = sys_conf.uci.slivers[slk][itk] or ""
+			local itv = sys_conf.uci_slivers[slk][itk] or ""
 						
 			if itv == "public" then
 --				dbg("slk="..slk.." ifk="..ifk.." ifv="..ifv.." "..itk.."="..itv)
@@ -180,7 +180,7 @@ function get_local_node( sys_conf, cached_node )
 	node.local_group           = ssh.get_node_local_group(sys_conf)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
 	
-	node.local_slivers	   = cached_node.local_slivers  or {}
+	node.local_slivers	   = sliver.sys_get_lsliver( sys_conf, cached_node )
 	node.slivers               = {} --always recreated based on local_slivers
 	
 	return node

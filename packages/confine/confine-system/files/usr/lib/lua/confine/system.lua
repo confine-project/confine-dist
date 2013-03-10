@@ -163,9 +163,9 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
 
-	conf.uci = {}
+--	conf.uci = {}
 --	conf.uci.confine           = uci.get_all("confine")
-	conf.uci.slivers           = uci.get_all("confine-slivers")
+	conf.uci_slivers           = uci.get_all("confine-slivers")
 
 	data.file_put( conf, system_state_file )
 
@@ -251,6 +251,13 @@ function set_system_conf( sys_conf, opt, val)
 			
 			return get_system_conf(sys_conf)
 		end
+		
+	elseif opt == "uci_slivers" and
+		type(val) == "table" and
+		uci.set_all( "confine-slivers", val) then
+		
+		return get_system_conf(sys_conf)
+		
 	end
 		
 	assert(false, "ERR_SETUP: Invalid opt=%s val=%s" %{opt, tostring(val)})
