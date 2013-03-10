@@ -18,7 +18,7 @@ logsize = 1000
 
 function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
-	local l = "%s [%d.%3d] %s() %s%s" %{err and "ERR" or "dbg", os.time(), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
+	local l = "[%s.%d] %s() %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
 	if err then
 		io.stderr:write(l)
 	else
