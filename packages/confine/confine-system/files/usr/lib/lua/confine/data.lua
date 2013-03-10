@@ -66,7 +66,7 @@ function file_put( data, file, dir )
 	elseif data then
 		local k,v
 		for k,v in pairs(data) do
-			file_put( v, k, dir )
+			file_put( v, "index.html", dir .. k .. "/" )
 		end
 	end
 end
