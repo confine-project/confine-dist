@@ -24,6 +24,7 @@ def local_files_form_factory(model_class, field_name, base_class=forms.ModelForm
         path = os.path.abspath(os.path.join(field.storage.location, field.upload_to))
         choices = ( (name, name) for name in os.listdir(path) )
         self.fields[field_name].widget = forms.widgets.Select(choices=choices)
+        self.fields[field_name].required = not field.blank
     
     attributes['__init__'] = __init__
     return type('VCTLocalFileForm', (base_class,), attributes)

@@ -20,13 +20,13 @@ local dbg    = tools.dbg
 
 NODE = {
 	["registered"] 	 = "registered",
-	["allocating"]   = "allocating",
+--	["allocating"]   = "allocating",
 	["fail_alloc"]   = "fail_alloc",
 	["allocated"]	 = "allocated",
-	["deploying"]    = "deploying",
+--	["deploying"]    = "deploying",
 	["fail_deploy"]  = "fail_deploy",
 	["deployed"]	 = "deployed",
-	["starting"]     = "starting",
+--	["starting"]     = "starting",
 	["fail_start"]   = "fail_start",
 	["started"]      = "started"
 }
@@ -156,7 +156,7 @@ function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, chang
 	
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 
-	if oslv.state==NODE.registered then
+	if oslv.state==NODE.registered and rules==register_rules then
 		if oslv.local_template and oslv.local_template.uri then
 			ctree.set_path_val( otree, path, { uri = oslv.local_template.uri } )
 		else
@@ -185,7 +185,7 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
 	
-	if oslv.state==NODE.registered and nval then
+	if rules==register_rules and nval then
 		
 		if not oval then ctree.set_path_val(otree,path,{}) end
 		
@@ -219,7 +219,7 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 			ctree.set_path_val( otree, path, nil )
 		end
 		
-	elseif oslv.state==NODE.allocating then
+	elseif rules==alloc_rules then
 		
 		if not oval then
 			dbg( add_lslv_err(otree, path, "missing uri or sha", nil) )
@@ -265,7 +265,7 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	local oval = ctree.get_path_val(otree,path)
 	local key  = ctree.get_path_leaf(path)
 	
-	if oslv.state==NODE.registered then
+	if rules==register_rules then
 		
 		if key=="exp_data_uri" then
 			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} )
@@ -275,7 +275,7 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^[%x]+$"})
 		end
 		
-	elseif oslv.state==NODE.allocating then
+	elseif rules==alloc_rules then
 		
 		local uri = oslv and oslv.exp_data_uri
 		local sha = oslv and oslv.exp_data_sha256
@@ -477,8 +477,13 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				end
 				
 				if not oslv.errors and nslv and (nslv.set_state==SERVER.deploy or nslv.set_state==SERVER.start) then
+--					
+--					slv_iterate( nil, nil, NODE.allocating, NODE.fail_alloc )
+					slv_iterate( alloc_rules, NODE.registered, NODE.allocated, NODE.fail_alloc)
 					
-					slv_iterate( nil, nil, NODE.allocating, NODE.fail_alloc )
+					if oslv.errors then
+						slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
+					end
 					
 				elseif not nslv then
 					
@@ -489,16 +494,16 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				end
 	
 	
-	
-			elseif (oslv.state==NODE.allocating) then
-				
-				assert( not oslv.errors )
-	
-				slv_iterate( alloc_rules, NODE.allocating, NODE.allocated, NODE.fail_alloc)
-				
-				if oslv.errors then
-					slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
-				end
+----	
+--			elseif (oslv.state==NODE.allocating) then
+--				
+--				assert( not oslv.errors )
+--	
+--				slv_iterate( alloc_rules, NODE.allocating, NODE.allocated, NODE.fail_alloc)
+--				
+--				if oslv.errors then
+--					slv_iterate( dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc)
+--				end
 	
 			elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and 
 				(not nslv or
@@ -509,20 +514,25 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 			elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and
 				(nslv.set_state==SERVER.deploy or nslv.set_state==SERVER.start) then
-				
-				slv_iterate( nil, nil, NODE.deploying, NODE.fail_deploy)
-	
-	
-	
-			elseif (oslv.state==NODE.deploying) then
-				
-				assert( not oslv.errors)
-				
-				slv_iterate( deploy_rules, NODE.deploying, NODE.deployed, NODE.fail_deploy)
+----				
+--				slv_iterate( nil, nil, NODE.deploying, NODE.fail_deploy)
+				slv_iterate( deploy_rules, NODE.allocated, NODE.deployed, NODE.fail_deploy)
 				
 				if oslv.errors then
 					slv_iterate( undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
 				end
+	
+	
+----	
+--			elseif (oslv.state==NODE.deploying) then
+--				
+--				assert( not oslv.errors)
+--				
+--				slv_iterate( deploy_rules, NODE.deploying, NODE.deployed, NODE.fail_deploy)
+--				
+--				if oslv.errors then
+--					slv_iterate( undeploy_rules, NODE.fail_deploy, NODE.fail_deploy, NODE.fail_deploy)
+--				end
 	
 			elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 				(not nslv or
@@ -533,21 +543,27 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				
 			elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 				(nslv.set_state==SERVER.start) then
-				
-				slv_iterate( nil, nil, NODE.starting, NODE.fail_start )
-	
-	
-	
-			elseif (oslv.state==NODE.starting) then
-				
-				assert( not oslv.errors)
-				
-				slv_iterate(start_rules, NODE.starting, NODE.started, NODE.fail_start)
+----				
+--				slv_iterate( nil, nil, NODE.starting, NODE.fail_start )
+				slv_iterate(start_rules, NODE.deployed, NODE.started, NODE.fail_start)
 				
 				if oslv.errors then
 					slv_iterate(stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
 					break
 				end
+	
+	
+----	
+--			elseif (oslv.state==NODE.starting) then
+--				
+--				assert( not oslv.errors)
+--				
+--				slv_iterate(start_rules, NODE.starting, NODE.started, NODE.fail_start)
+--				
+--				if oslv.errors then
+--					slv_iterate(stop_rules, NODE.fail_start, NODE.fail_start, NODE.fail_start)
+--					break
+--				end
 				
 			elseif (oslv.state==NODE.started) and
 				(not nslv or
