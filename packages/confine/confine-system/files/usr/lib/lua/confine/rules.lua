@@ -26,23 +26,24 @@ function add_error( tree, path, msg, val )
 	return "Error path=%s msg=%s val=%s" , path, tostring(msg), data.val2string(val)
 end
 
-function set_or_err( err_func, otree, ntree, path, valtype, ... )
+function set_or_err( err_func, otree, ntree, path, valtype, patterns )
 	
 	local val = ctree.get_path_val( ntree, path )
 	local success = false
 	
 	if type(val)==valtype then
 		
-		if arg.n==0 then
-			success=true
-		else
+		if patterns then
+			assert( type(patterns)=="table" )
 			local i,v
-			for i,v in ipairs(arg) do
+			for i,v in pairs(patterns) do
 				if (type(val)=="string" and val:match(v)) or (val==v) then
 					success=true
 					break
 				end
 			end
+		else
+			success=true
 		end
 		
 	end

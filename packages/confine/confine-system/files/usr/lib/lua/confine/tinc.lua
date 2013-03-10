@@ -265,17 +265,17 @@ local function add_mgmt_net(sys_conf, otree, ntree, path)
 	ctree.set_path_val(otree, path, {})
 
 	local failure = false
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr", "string", "[%x]+:.*:[%x]+" ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend", "string", "^tinc_server$" ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), cdata.null ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr", "string", {"[%x]+:.*:[%x]+"} ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc_server$"} ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), {cdata.null} ) or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server", "table") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses", "table") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1", "table") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", "^[%d]+%.[%d]+%.[%d]+%.[%d]+$") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", {"^[%d]+%.[%d]+%.[%d]+%.[%d]+$"}) or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/port", "number") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/is_active", "boolean") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/name", "string") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", "^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", {"^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}}) or failure
 	
 	
 	if failure then

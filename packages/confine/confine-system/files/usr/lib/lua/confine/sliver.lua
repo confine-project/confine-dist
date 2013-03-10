@@ -75,7 +75,7 @@ local function add_lslv_err( tree, path, msg, val )
 	oslv.errors = oslv.errors or {}
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
-	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/")
+	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key.."/")
 	
 	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..tostring(val) })
 	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), tostring(val)
@@ -169,6 +169,13 @@ function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, chang
 
 end
 
+
+SLIVER_TYPES = {
+	["debian6"] = "debian6",
+	["openwrt-backfire"] = "openwrt-backfire",
+	["openwrt-attitude-adjustment"] = "openwrt-attitude-adjustment"
+}
+
 function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_get_template" end
 	if not begin then return end
@@ -185,12 +192,12 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 		local failure = false
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."name/",        "string" ) or failure
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."description/", "string" )
-		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."type/",        "string", "^debian$", "^openwrt$" ) or failure
-		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."is_active/",   "boolean",true ) or failure
-		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_uri/",   "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" ) or failure
-		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_sha256/","string", "^[%x]+$" ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."type/",        "string", SLIVER_TYPES ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."is_active/",   "boolean", {true} ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_uri/",   "string", {"^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_sha256/","string", {"^[%x]+$"} ) or failure
 
---		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/",         "string", "^https?://.*/[%d]+$" ) or failure
+--		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/",         "string", {"^https?://.*/[%d]+$"} ) or failure
 		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+$") then
 			local id = tonumber(((nval.uri:match("/[%d]+$")):gsub("/","")))
 			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id  )
@@ -240,6 +247,7 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nil) )
 				end
 			else
+				nixio.fs.remover( dst )
 				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, nil) )
 			end
 		end
@@ -259,11 +267,11 @@ function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	if oslv.state==NODE.registered then
 		
 		if key=="exp_data_uri" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$" )
+			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} )
 		end
 		
 		if key=="exp_data_sha256" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", "^[%x]+$")
+			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^[%x]+$"})
 		end
 		
 	elseif oslv.state==NODE.allocating then
@@ -327,8 +335,8 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_get_template
 	table.insert(tmp_rules, {"/local_slivers/*/template",				cb2_set_template_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_set_template_uri
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_get_exp_data})
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_get_exp_data})
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
@@ -349,7 +357,7 @@ tmp_rules = register_rules
 tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
 
 tmp_rules = dealloc_rules
 
