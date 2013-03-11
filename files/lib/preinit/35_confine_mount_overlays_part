@@ -1,0 +1,13 @@
+#!/bin/sh
+
+init_overlays_part() {
+    [ -d /conf ] || mkdir -p /conf
+}
+
+# TODO: find /conf partition from /etc/config/fstab
+do_mount_overlays_part() {
+    mount /dev/sda3 /conf
+}
+
+boot_hook_add preinit_essential init_overlays_part
+boot_hook_add preinit_essential do_mount_overlays_part
