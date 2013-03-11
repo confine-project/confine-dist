@@ -10,12 +10,15 @@ and particulary for this project:
 $ find /usr/local/lib/python2.6/dist-packages/controller/ -iname '*settings.py'|xargs cat|grep "getattr(settings,"
 """
 
+from django.core.files.storage import FileSystemStorage
+
 from controller.utils import add_app, remove_app
 from vct.utils import get_vct_config
 # Production settings
 #from controller.conf.production_settings import *
 # Development settings
 from controller.conf.devel_settings import *
+
 
 VCT_SERVER_ROOT = get_vct_config('VCT_SERVER_DIR')
 
@@ -47,7 +50,8 @@ DATABASES = {
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'media')
+#MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'media')
+MEDIA_ROOT = get_vct_config('VCT_DL_DIR')
 PRIVATE_MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'private')
 
 
@@ -91,8 +95,9 @@ NODES_NODE_SLIVER_PUB_IPV4_RANGE_DFLT = '#%s' % get_vct_config('VCT_NODE_PUBLIC_
 NODES_NODE_DIRECT_IFACES_DFLT = get_vct_config('VCT_NODE_ISOLATED_PARENTS').split(' ')
 
 # Firmware generation
-FIRMWARE_BUILD_PATH = get_vct_config('VCT_SYS_DIR')
-FIRMWARE_BASE_IMAGE_PATH = get_vct_config('VCT_DL_DIR')
+FIRMWARE_BUILD_IMAGE_STORAGE = FileSystemStorage(location=get_vct_config('VCT_SYS_DIR'))
+FIRMWARE_BUILD_IMAGE_PATH = '.'
+FIRMWARE_BASE_IMAGE_PATH = '.'
 
 # Tinc
 TINC_TINCD_ROOT = get_vct_config('VCT_TINC_DIR')
@@ -100,8 +105,10 @@ TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers
-SLICES_TEMPLATE_IMAGE_DIR = get_vct_config('VCT_DL_DIR')
-SLICES_SLICE_EXP_DATA_DIR = get_vct_config('VCT_DL_DIR')
+#SLICES_TEMPLATE_IMAGE_DIR = get_vct_config('VCT_DL_DIR')
+SLICES_TEMPLATE_IMAGE_DIR = '.'
+#SLICES_SLICE_EXP_DATA_DIR = get_vct_config('VCT_DL_DIR')
+SLICES_SLICE_EXP_DATA_DIR = '.'
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
 SLICES_TEMPLATE_ARCHS = (
     ('amd64', 'amd64'),

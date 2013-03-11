@@ -22,9 +22,11 @@ def local_files_form_factory(model_class, field_name, base_class=forms.ModelForm
         base_class.__init__(self, *args, **kwargs)
         field = model_class._meta.get_field_by_name(field_name)[0]
         path = os.path.abspath(os.path.join(field.storage.location, field.upload_to))
-        choices = ( (name, name) for name in os.listdir(path) )
+        choices = tuple( (name, name) for name in os.listdir(path) )
+        if field.blank:
+            choices = (('', '---------'),) + choices
+            self.fields[field_name].required = False
         self.fields[field_name].widget = forms.widgets.Select(choices=choices)
-        self.fields[field_name].required = not field.blank
     
     attributes['__init__'] = __init__
     return type('VCTLocalFileForm', (base_class,), attributes)
