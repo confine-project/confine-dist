@@ -311,7 +311,7 @@ tmp_rules = in_rules2
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
---FIXME	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
+	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
 	table.insert(tmp_rules, {"/arch",				cb2_set_setup})
 	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup})
 	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup})
