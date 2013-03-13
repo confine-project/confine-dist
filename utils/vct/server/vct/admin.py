@@ -4,6 +4,7 @@ from django import forms
 from django.core import validators
 from django.core.exceptions import ValidationError
 
+from controller.models.utils import get_file_field_base_path
 from controller.utils import is_installed
 
 
@@ -20,8 +21,8 @@ def local_files_form_factory(model_class, field_name, base_class=forms.ModelForm
     
     def __init__(self, *args, **kwargs):
         base_class.__init__(self, *args, **kwargs)
+        path = get_file_field_base_path(model_class, field_name)
         field = model_class._meta.get_field_by_name(field_name)[0]
-        path = os.path.abspath(os.path.join(field.storage.location, field.upload_to))
         choices = tuple( (name, name) for name in os.listdir(path) )
         if field.blank:
             choices = (('', '---------'),) + choices
