@@ -40,6 +40,9 @@ start() {
         	mkdir -p /var/run/libvirt/qemu
         	mkdir -p /var/run/libvirt/uml
 	fi
+
+	# Starting libvirtd daemon
+	exec /usr/sbin/libvirtd -d
 }
 
 stop() {
