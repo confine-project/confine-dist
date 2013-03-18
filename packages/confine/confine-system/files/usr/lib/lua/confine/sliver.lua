@@ -228,8 +228,8 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 
 		tools.mkdirr( TEMPLATE_DIR_RD )
 		
---FIXME		local uri = oval.image_uri
-		local uri = "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
+		local uri = oval.image_uri
+--TESTME:	local uri = "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
 		local sha = oval.image_sha256
 		local dst = TEMPLATE_DIR_RD..sha
 		

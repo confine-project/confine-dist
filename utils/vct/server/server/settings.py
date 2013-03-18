@@ -80,15 +80,6 @@ MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 # Nodes
 NODES_NODE_LOCAL_IFACE_DFLT = get_vct_config('VCT_NODE_LOCAL_IFNAME')
 NODES_NODE_ARCH_DFLT = 'i686'
-#NODES_NODE_ARCHS = (('i686', 'i686'),)
-NODES_NODE_ARCHS = (
-    ('amd64', 'amd64'),
-    ('ia64', 'ia64'),
-    ('x86', 'x86'),
-    ('x86_64', 'x86_64'),
-    ('ar71xx', 'ar71xx'),
-    ('i586', 'i586'),
-    ('i686', 'i686'),)
 
 NODES_NODE_SLIVER_PUB_IPV4_DFLT = get_vct_config('VCT_NODE_SL_PUBLIC_IPV4_PROTO')
 NODES_NODE_SLIVER_PUB_IPV4_RANGE_DFLT = '#%s' % get_vct_config('VCT_NODE_PUBLIC_IPV4_AVAIL')
@@ -105,16 +96,10 @@ TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers
-#SLICES_TEMPLATE_IMAGE_DIR = get_vct_config('VCT_DL_DIR')
 SLICES_TEMPLATE_IMAGE_DIR = '.'
-#SLICES_SLICE_EXP_DATA_DIR = get_vct_config('VCT_DL_DIR')
+SLICES_TEMPLATE_IMAGE_NAME = None
 SLICES_SLICE_EXP_DATA_DIR = '.'
+SLICES_SLICE_EXP_DATA_NAME = None
+SLICES_SLIVER_EXP_DATA_DIR = '.'
+SLICES_SLIVER_EXP_DATA_NAME = None
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
-SLICES_TEMPLATE_ARCHS = (
-    ('amd64', 'amd64'),
-    ('ia64', 'ia64'),
-    ('x86', 'x86'),
-    ('x86_64', 'x86_64'),
-    ('ar71xx', 'ar71xx'),
-    ('i586', 'i586'),
-    ('i686', 'i686'),)
