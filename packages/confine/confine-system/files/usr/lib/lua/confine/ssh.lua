@@ -14,6 +14,7 @@ local ctree  = require "confine.tree"
 local tools  = require "confine.tools"
 local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
+local err    = tools.err
 
 
 local SSH_CONFINE_TAG = " CONFINE_USER="
@@ -48,7 +49,7 @@ local function del_ssh_keys(sys_conf, del_id)
 
 	if changed then
 		assert( io.output(io.open(sys_conf.ssh_node_auth_file,"w")) )
-		dbg("del_ssh_keys(): del_id=%s", del_id)
+		dbg("del_ssh_keys(): del_id=%s", tostring(del_id))
 		io.write(out_keys)
 		io.close()
 	end
@@ -60,7 +61,7 @@ local function add_ssh_keys(sys_conf, user_id, ssh_tokens)
 
 	local k,v
 	for k,v in pairs(ssh_tokens) do
-		local token = v..SSH_CONFINE_TAG..tostring(user_id)
+		local token = (v..SSH_CONFINE_TAG..tostring(user_id)):gsub("\n","")
 		dbg("add_ssh_keys(): token=%s", token)
 		io.write( token.."\n" )
 	end				
@@ -97,10 +98,10 @@ function get_node_local_group(sys_conf)
 				end
 				
 			else
+				err( "Corrupted "..sys_conf.ssh_node_auth_file.."! Removing all CONFINE tokens!")
 				del_ssh_keys(sys_conf)
-				return data.null
-				--group.user_roles = {}
-				--break
+				group.user_roles = {}
+				break
 			end
 		end
 	end
@@ -130,10 +131,10 @@ local function auth_token_to_rsa( auth_tokens )
 			v = v.data
 		end
 		
-		if type(v)=="string" and v:find("^%s"%ssl.SSH_HEADER) then
+		if type(v)=="string" and v:match("^%s[^\n]+$" %ssl.SSH_HEADER) then
 			ssh_tokens[#ssh_tokens + 1] = v
 			
-		elseif type(v)=="string" and tools.subfind(v,ssl.RSA_HEADER,ssl.RSA_TRAILER) then
+		elseif type(v)=="string" and v:match("^%s.*%s$" %{ssl.RSA_HEADER,ssl.RSA_TRAILER}) then
 			
 			local tmp_file = os.tmpname()
 			io.output(io.open(tmp_file,"w"))
@@ -187,7 +188,7 @@ function cb2_set_lgroup_role( rules, sys_conf, otree, ntree, path, begin, change
 	elseif not begin and changed and new then
 		
 		dbg("")
-		if new.is_technician and new.local_user and new.local_user.is_active then
+		if (new.is_technician or new.is_admin) and new.local_user and new.local_user.is_active then
 			
 			local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
 			local old_tokens = old and old.local_user and old.local_user.auth_tokens or {}

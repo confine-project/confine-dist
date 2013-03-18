@@ -22,15 +22,21 @@ local TINC_PORT = 655
 
 
 
-local function get_mgmt_nets (sys_conf)
+local function get_mgmt_nets(sys_conf, all)
 	
 	local nets = {}
 	local node_name = "node_" .. sys_conf.id
 	
+	local hosts = nixio.fs.dir( sys_conf.tinc_hosts_dir )
+	if not (type(hosts)=="table" and hosts["server"] and hosts[node_name]) then
+		tools.err("Missing hosts in "..sys_conf.tinc_hosts_dir)
+	end
 	local name
-	for name in nixio.fs.dir( sys_conf.tinc_hosts_dir ) do
+	for name in hosts do
 			
-		if name ~= node_name then
+		local is_mine = (name==node_name)
+			
+		if all or not is_mine then
 			
 			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..name )
 			
@@ -50,9 +56,22 @@ local function get_mgmt_nets (sys_conf)
 				
 				local pubkey = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
 				
-				if subnet and addr and port and pubkey then
-					nets[name] = { addr=subnet, backend="tinc_server", tinc_client=cdata.null,
-						       tinc_server={addresses={[1]={addr=addr, port=port}}, is_active=true, name=name, pubkey=pubkey} }
+				if subnet and pubkey then
+					
+					local tinc = {
+						addresses	= not is_mine and {[1]={addr=(addr or cdata.null), port=(port or cdata.null)}} or nil,
+						is_active	= true,
+						name		= name,
+						pubkey		= pubkey
+					} 
+					
+					nets[name] = {
+						addr		= subnet,
+						backend		= is_mine and "tinc_client" or "tinc_server",
+						native		= cdata.null,
+						tinc_client	= is_mine and tinc or cdata.null,
+						tinc_server	= is_mine and cdata.null or tinc
+					}
 				else
 					dbg("Missing host=%s subnet=%s addr=%s port=%s pubkey=%s",
 					    sys_conf.tinc_hosts_dir..name, tostring(subnet), tostring(addr), tostring(port), tostring(pubkey))
@@ -65,7 +84,19 @@ local function get_mgmt_nets (sys_conf)
 	return nets
 end
 
+function get_node_mgmt_net( sys_conf )
+	return ((get_mgmt_nets( sys_conf, true) or {})["node_"..sys_conf.id]) or cdata.null
+end
 
+function get_lserver( sys_conf )
+	return ((get_mgmt_nets( sys_conf, false) or {})["server"]) or cdata.null
+end
+
+function get_lgateways( sys_conf )
+	local gateways = get_mgmt_nets( sys_conf, false) or {}
+	gateways.server = nil
+	return gateways
+end
 
 --local function get_connects (sys_conf)
 --	
@@ -238,17 +269,17 @@ local function add_mgmt_net(sys_conf, otree, ntree, path)
 	ctree.set_path_val(otree, path, {})
 
 	local failure = false
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr", "string", "[%x]+:.*:[%x]+" ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend", "string", "^tinc_server$" ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), cdata.null ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr", "string", {"[%x]+:.*:[%x]+"} ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc_server$"} ) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), {cdata.null} ) or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server", "table") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses", "table") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1", "table") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", "^[%d]+%.[%d]+%.[%d]+%.[%d]+$") or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", {"^[%d]+%.[%d]+%.[%d]+%.[%d]+$"}) or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/port", "number") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/is_active", "boolean") or failure
 	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/name", "string") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", "^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}) or failure
+	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", {"^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}}) or failure
 	
 	
 	if failure then

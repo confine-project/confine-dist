@@ -1,0 +1,26 @@
+[
+{
+    "pk": 1,
+    "model": "slices.template",
+    "fields": {
+        "name": "debian32-example",
+        "image": "confine-slice-debian-template.tgz",
+        "is_active": true,
+        "node_archs": "i686",
+        "type": "debian6",
+        "description": "debian32-example"
+    }
+},
+{
+    "pk": 2,
+    "model": "slices.template",
+    "fields": {
+        "name": "openwrt-backfire-example",
+        "image": "confine-slice-openwrt-template.tgz",
+        "is_active": true,
+        "node_archs": "i686",
+        "type": "openwrt-backfire",
+        "description": "openwrt-backfire-example"
+    }
+}
+]

@@ -20,6 +20,7 @@ local null    = data.null
 RUNTIME_DIR = "/var/run/confine/"
 PID_FILE = RUNTIME_DIR.."pid"
 LOG_FILE = "/var/log/confine.log"
+LOG_SIZE = 1000000
 
 SERVER_BASE_PATH = "/confine/api"
 NODE_BASE_PATH = "/confine/api"
@@ -50,18 +51,19 @@ function check_pid()
 	end	
 end
 
-function stop()
+function stop(code)
 	tools.dbg("Terminating")
 	pcall(nixio.fs.remover, rest_confine_dir)
 	pcall(nixio.fs.remover, PID_FILE)
-	nixio.kill(nixio.getpid(),sig.SIGKILL)
+	os.exit(code)
+--	nixio.kill(nixio.getpid(),sig.SIGKILL)
 end
 
 function reboot()
 	tools.dbg("rebooting...")
 	tools.sleep(2)
 	os.execute("reboot")
-	stop()
+	stop(0)
 end
 
 
@@ -75,8 +77,10 @@ function help()
 	      [--retry==<max failure retries>] \\\
 	      [--server-base-path==</confine/api>] \\\
 	      [--node-base-path==</confine/api>] \\\
-	      [--logfile=<path to logfile>")
-	
+	      [--logfile=<path to logfile>] \\\
+	      [--logsize=<max-logfile-size-in-bytes>] \\\
+	      ")
+	os.exit(0)
 end
 
 function get_system_conf(sys_conf, arg)
@@ -105,13 +109,24 @@ function get_system_conf(sys_conf, arg)
 	conf.logfile               = conf.logfile     or flags["logfile"]  or uci.get("confine", "node", "logfile")     or LOG_FILE
 	if conf.logfile then tools.logfile = conf.logfile end
 
+	conf.logsize               = conf.logsize     or flags["logsize"]  or uci.get("confine", "node", "logsize")     or LOG_SIZE
+	if conf.logsize then tools.logsize = conf.logsize end
+
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
-	conf.cert		   = null  -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
 	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
 
+	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
+--	conf.server_cert_file      = "/etc/confine/keys/server.ca"
+	conf.node_cert_file        = "/etc/uhttpd.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
+
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
+	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
+
+	conf.priv_ipv6_prefix      = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48")).."::/48"
+	conf.debug_ipv6_prefix     = (uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")).."::/48"
+
 
 	conf.node_base_path        = conf.node_base_path or flags["node-base-path"] or uci.get("confine", "node", "base_path") or NODE_BASE_PATH
 	assert(conf.node_base_path:match("/api$"), "node-base-path MUST end with /api")
@@ -126,9 +141,6 @@ function get_system_conf(sys_conf, arg)
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
 
-	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
---	conf.server_cert_file      = "/etc/confine/keys/server.ca"
---	conf.node_cert_file        = "/etc/confine/keys/node.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key
 
 	conf.tinc_node_key_priv    = "/etc/tinc/confine/rsa_key.priv" -- required
 	conf.tinc_node_key_pub     = "/etc/tinc/confine/rsa_key.pub"  -- created by confine_node_enable
@@ -146,15 +158,14 @@ function get_system_conf(sys_conf, arg)
 	conf.sliver_pub_ipv4       = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
-	
 
 	conf.direct_ifaces         = tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+")
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
 
-	conf.uci = {}
+--	conf.uci = {}
 --	conf.uci.confine           = uci.get_all("confine")
-	conf.uci.slivers           = uci.get_all("confine-slivers")
+	conf.uci_slivers           = uci.get_all("confine-slivers")
 
 	data.file_put( conf, system_state_file )
 
@@ -240,6 +251,13 @@ function set_system_conf( sys_conf, opt, val)
 			
 			return get_system_conf(sys_conf)
 		end
+		
+	elseif opt == "uci_slivers" and
+		type(val) == "table" and
+		uci.set_all( "confine-slivers", val) then
+		
+		return get_system_conf(sys_conf)
+		
 	end
 		
 	assert(false, "ERR_SETUP: Invalid opt=%s val=%s" %{opt, tostring(val)})

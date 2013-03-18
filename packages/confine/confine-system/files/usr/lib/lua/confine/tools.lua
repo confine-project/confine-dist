@@ -13,11 +13,12 @@ local nixio   = require "nixio"
 
 
 logfile = false
+logsize = 1000
 
 
-function dbg_(nl, err, fmt, ...)
+function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
-	local l = "[%d.%3d] %s() %s%s" %{os.time(), (t.utime + t.stime + t.cutime + t.cstime), debug.getinfo(2).name or "???", string.format(fmt,...), nl and "\n" or "" }
+	local l = "[%s.%d] %s() %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
 	if err then
 		io.stderr:write(l)
 	else
@@ -25,6 +26,12 @@ function dbg_(nl, err, fmt, ...)
 	end
 	
 	if logfile then
+		
+		local stat = nixio.fs.stat(logfile)
+		if stat and stat.size > logsize then
+			nixio.fs.move(logfile, logfile..".old")
+		end
+		
 		local out = io.open(logfile, "a")
 		assert(out, "Failed to open %s" %logfile)
 		out:write(l)
@@ -38,11 +45,11 @@ function dbg_(nl, err, fmt, ...)
 end
 
 function dbg(fmt, ...)
-	dbg_(true, false, fmt, ...)
+	dbg_(true, false, debug.getinfo(2).name or "???", fmt, ...)
 end
 
 function err(fmt, ...)
-	dbg_(true, true, fmt, ...)
+	dbg_(true, true, debug.getinfo(2).name or "???", fmt, ...)
 end
 
 --- Extract flags from an arguments list.
