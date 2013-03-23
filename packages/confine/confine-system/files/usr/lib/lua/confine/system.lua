@@ -85,7 +85,7 @@ end
 
 function get_system_conf(sys_conf, arg)
 
---	if uci.dirty( "confine" ) then return false end
+	if not uci.is_clean("confine") or not uci.is_clean("confine-slivers") then return false end
 	
 	local conf = sys_conf or {}
 	local flags = {}
@@ -172,7 +172,7 @@ function get_system_conf(sys_conf, arg)
 	return conf
 end
 
-function set_system_conf( sys_conf, opt, val)
+function set_system_conf( sys_conf, opt, val, section)
 	
 	assert(opt and type(opt)=="string", "set_system_conf()")
 	
@@ -252,15 +252,20 @@ function set_system_conf( sys_conf, opt, val)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "uci_slivers" and
-		type(val) == "table" and
-		uci.set_all( "confine-slivers", val) then
+	elseif opt=="uci_sliver" and
+		type(val)=="table" and type(section)=="string" and
+		uci.set_section_opts( "confine-slivers", section, val) then
 		
 		return get_system_conf(sys_conf)
+	--elseif opt == "uci_slivers" and
+	--	type(val) == "table" and
+	--	uci.set_all( "confine-slivers", val) then
+	--	
+	--	return get_system_conf(sys_conf)
 		
 	end
 		
-	assert(false, "ERR_SETUP: Invalid opt=%s val=%s" %{opt, tostring(val)})
+	assert(false, "ERR_SETUP: Invalid opt=%s val=%s section=%s" %{opt, tostring(val), tostring(section)})
 	
 end
 

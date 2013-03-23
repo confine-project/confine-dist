@@ -650,6 +650,17 @@ EOF
 	{ err $FUNCNAME "$VCT_TINC_DIR/$VCT_TINC_NET/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
 
+    if [ "$CMD_INSTALL" ] &&  [ "$UPD_NODE" ]; then
+	echo "" >&2
+	read -p "Purge existing nodes and slivers (Please type 'y' or anything else to skip): " QUERY >&2
+
+	if [ "$QUERY" == "y" ] ; then
+	    vct_do vct_node_remove all
+	    vct_do vct_slice_attributes flush all
+	fi
+    fi
+
+
     # check for update and downloadable node-system-template file:
     [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}
     if ! vct_do install_url $VCT_NODE_TEMPLATE_URL $VCT_NODE_TEMPLATE_SITE $VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE $VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then

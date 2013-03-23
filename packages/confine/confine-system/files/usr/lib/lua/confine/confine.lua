@@ -148,7 +148,6 @@ function main_loop( sys_conf )
 		upd_node_rest_conf( sys_conf, local_node )
 
 
-			
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
 			if tools.stop then break end
@@ -180,6 +179,7 @@ if system.check_pid() then
 	sig.signal(sig.SIGTERM, tools.handler)
 	
 	local sys_conf = system.get_system_conf( nil, arg )
+	assert(sys_conf)
 	
 	pcall(nixio.fs.remover, system.rest_confine_dir)
 	tools.mkdirr(system.rest_confine_dir)

@@ -163,6 +163,7 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_undeploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove

@@ -66,7 +66,7 @@ function set_node_state( sys_conf, node, val, path)
 	assert( STATE[val], "set_node_state(): Illegal node state=%s" %{tostring(val)})
 
 	if (val == STATE.failure or node.state == STATE.failure) then
-		sliver.remove_slivers( sys_conf, nil )
+		sliver.remove_slivers( sys_conf, node, nil )
 		node.state = val
 		system.set_system_conf(sys_conf, "sys_state", "failure")
 		system.stop()
@@ -75,12 +75,12 @@ function set_node_state( sys_conf, node, val, path)
 	
 	if (val == STATE.debug) then
 		node.state = val
-		sliver.remove_slivers( sys_conf, nil )
+		sliver.remove_slivers( sys_conf, node, nil )
 		
 	elseif (val == STATE.safe) then
 		if (node.state == STATE.production) then
 			node.state = val
-			sliver.stop_slivers( sys_conf, nil )
+			sliver.remove_slivers( sys_conf, node, nil )
 		end
 
 	elseif (val == STATE.production) then
@@ -180,7 +180,7 @@ function get_local_node( sys_conf, cached_node )
 	node.local_group           = ssh.get_node_local_group(sys_conf)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
 	
-	node.local_slivers	   = sliver.sys_get_lsliver( sys_conf, cached_node )
+	node.local_slivers	   = sliver.sys_get_lslivers( sys_conf, cached_node )
 	node.slivers               = {} --always recreated based on local_slivers
 	
 	return node
@@ -246,12 +246,12 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 		
 	elseif is_table and not begin and changed and system.set_system_conf( sys_conf, key, new ) then
 
-		sliver.remove_slivers( sys_conf, nil )
+		sliver.remove_slivers( sys_conf, otree, nil )
 		ctree.set_path_val(otree,path,sys_conf[key])
 		
 	elseif not is_table and old ~= new and system.set_system_conf( sys_conf, key, new ) then
 		
-		sliver.remove_slivers( sys_conf, nil )
+		sliver.remove_slivers( sys_conf, otree, nil )
 		ctree.set_path_val(otree,path,sys_conf[key])
 		
 	elseif not is_table and old ~= new then

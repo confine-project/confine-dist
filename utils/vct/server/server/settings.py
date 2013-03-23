@@ -35,7 +35,6 @@ WSGI_APPLICATION = 'server.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en//ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
@@ -61,6 +60,7 @@ PRIVATE_MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'private')
 # Example: "/home/media/media.lawrence.com/static/"
 STATIC_ROOT = os.path.join(VCT_SERVER_ROOT, 'static')
 
+
 # Install / uninstall modules
 INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct', prepend=True)
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'gis')
@@ -80,7 +80,6 @@ MGMT_IPV6_PREFIX = get_vct_config('VCT_TESTBED_MGMT_IPV6_PREFIX48') + '::/48'
 # Nodes
 NODES_NODE_LOCAL_IFACE_DFLT = get_vct_config('VCT_NODE_LOCAL_IFNAME')
 NODES_NODE_ARCH_DFLT = 'i686'
-
 NODES_NODE_SLIVER_PUB_IPV4_DFLT = get_vct_config('VCT_NODE_SL_PUBLIC_IPV4_PROTO')
 NODES_NODE_SLIVER_PUB_IPV4_RANGE_DFLT = '#%s' % get_vct_config('VCT_NODE_PUBLIC_IPV4_AVAIL')
 NODES_NODE_DIRECT_IFACES_DFLT = get_vct_config('VCT_NODE_ISOLATED_PARENTS').split(' ')
@@ -103,3 +102,9 @@ SLICES_SLICE_EXP_DATA_NAME = None
 SLICES_SLIVER_EXP_DATA_DIR = '.'
 SLICES_SLIVER_EXP_DATA_NAME = None
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
+
+# State
+STATE_NODESTATE_SCHEDULE = 10
+STATE_NODESTATE_EXPIRE_WINDOW = 150
+STATE_SLIVERSTATE_SCHEDULE = 10
+STATE_SLIVERSTATE_EXPIRE_WINDOW = 150

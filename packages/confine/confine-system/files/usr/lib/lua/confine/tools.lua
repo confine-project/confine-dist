@@ -20,7 +20,7 @@ function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
 	local l = "[%s.%d] %s() %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
 	if err then
-		io.stderr:write(l)
+		io.stderr:write("ERROR "..l)
 	else
 		io.stdout:write(l)
 	end
@@ -199,6 +199,29 @@ function str2table( str, pattern )
 	
 	return t
 end
+
+function table2string( tree, separator, maxdepth )
+--	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
+	if not maxdepth then maxdepth = 1 end
+	if not separator then separator = " " end
+	if type(tree)~="table" then return tostring(tree) end
+	local result = ""
+	local k,v
+	for k,v in pairs(tree or {}) do
+			
+		if type(v) ~= "table"  then
+			result = (result=="" and result or result..separator) .. tostring(v)
+		else
+			assert( maxdepth > 1, "maxdepth reached!")
+			local sub_result = table2string(v, separator, (maxdepth - 1))
+			if sub_result ~= "" then
+				result = (result=="" and result or result..separator) .. sub_result
+			end
+		end
+	end
+	return result
+end
+
 
 function subfind(str, start_pattern, end_pattern )
 
