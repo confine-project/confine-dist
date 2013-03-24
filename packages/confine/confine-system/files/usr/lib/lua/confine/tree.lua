@@ -59,7 +59,7 @@ local function get_key(obj, def, parent)
 	
 	elseif type(obj) == "table" and parent=="interfaces" then
 		
-		return obj.nr or def
+		return tostring(obj.nr or def)
 
 
 	elseif type(obj) == "table" then
@@ -338,9 +338,9 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					if type(ncurr)=="table" then nv = ncurr[tk] end
 					local is_table = type(ov)=="table" or type(nv)=="table"
 	
-					--dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
-					--    pk, path, tk, pattern, cb(), task(),
-					--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30))
+					dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
+					    pk, path, (type(tk)=="number" and tk or '"'..tk..'"'), pattern, cb() or "ARGH", tostring(task() or "argh"),
+					    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30))
 					
 					assert( ov~=nil or nv~=nil )
 					
