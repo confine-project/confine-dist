@@ -324,7 +324,13 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/nr",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/name",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/type",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/parent",		crules.cb2_set}) --FIXME: parent_name
+	
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_get_template
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_get_template
@@ -832,7 +838,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/node/uri"})
 	table.insert(tmp_rules, {"/*/description"})
 	table.insert(tmp_rules, {"/*/properties"})
-	table.insert(tmp_rules, {"/*/properties/*"})
+	table.insert(tmp_rules, {"/*/properties/*", "iterate"})
 	table.insert(tmp_rules, {"/*/properties/*/*"})
 	table.insert(tmp_rules, {"/*/instance_sn"})
 	table.insert(tmp_rules, {"/*/template"})
@@ -840,20 +846,18 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/exp_data_uri"})
 	table.insert(tmp_rules, {"/*/exp_data_sha256"})
 	table.insert(tmp_rules, {"/*/interfaces"})
-	table.insert(tmp_rules, {"/*/interfaces/*"})
+	table.insert(tmp_rules, {"/*/interfaces/*", "iterate"})
 	table.insert(tmp_rules, {"/*/interfaces/*/nr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/name"})
 	table.insert(tmp_rules, {"/*/interfaces/*/type"})
-	table.insert(tmp_rules, {"/*/interfaces/*/parent_name"})
+	table.insert(tmp_rules, {"/*/interfaces/*/parent"}) --FIXME: parent_name
 	table.insert(tmp_rules, {"/*/interfaces/*/mac_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
-	table.insert(tmp_rules, {"/*/properties"})
-	table.insert(tmp_rules, {"/*/properties/*"})
 	table.insert(tmp_rules, {"/*/nr"})
 	table.insert(tmp_rules, {"/*/state"})
 	table.insert(tmp_rules, {"/*/errors"})
-	table.insert(tmp_rules, {"/*/errors/*"})
+	table.insert(tmp_rules, {"/*/errors/*", "iterate"})
 	table.insert(tmp_rules, {"/*/errors/*/member"})
 	table.insert(tmp_rules, {"/*/errors/*/message"})
 

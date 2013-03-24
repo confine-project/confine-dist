@@ -415,7 +415,7 @@ out_filter = {}
 tmp_rules = out_filter
 	table.insert(tmp_rules, {"/description"})
 	table.insert(tmp_rules, {"/properties"})
-	table.insert(tmp_rules, {"/properties/*"})
+	table.insert(tmp_rules, {"/properties/*", "iterate"})
 	table.insert(tmp_rules, {"/properties/*/*"})
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
@@ -440,7 +440,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses/*"})
+	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses/*", "iterate"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses/*/addr"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses/*/port"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/addresses/*/island"})
@@ -462,13 +462,13 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/soft_version"})
 	
 	table.insert(tmp_rules, {"/slivers"})
-	table.insert(tmp_rules, {"/slivers/*"})
+	table.insert(tmp_rules, {"/slivers/*", "iterate"})
 	table.insert(tmp_rules, {"/slivers/*/uri"})
 
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
 
 	table.insert(tmp_rules, {"/message"})
 	table.insert(tmp_rules, {"/errors"})
-	table.insert(tmp_rules, {"/errors/*"})
+	table.insert(tmp_rules, {"/errors/*", "iterate"})
 	table.insert(tmp_rules, {"/errors/*/member"})
 	table.insert(tmp_rules, {"/errors/*/message"})

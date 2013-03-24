@@ -51,19 +51,25 @@ function dump( tree, maxdepth, spaces )
 	print( as_string( tree, maxdepth, spaces) )
 end
 
-function get_key(obj, def)
+local function get_key(obj, def, parent)
 
 	if type(def) ~= "number" then
 		return def
-	end
-
-	if type(obj) == "table" then
+	
+	
+	elseif type(obj) == "table" and parent=="interfaces" then
 		
-		if obj.id and def and obj.id ~= def then
-			dbg("get_key(): WARNING - obj_id=%s def=%s should have been assigned already!!?", obj.id, def)
-		end
+		return obj.nr or def
+
+
+	elseif type(obj) == "table" then
 		
 		if obj.id then
+			
+			if def and obj.id ~= def then
+				dbg("get_key(): WARNING - obj_id=%s def=%s should have been assigned already!!?", obj.id, def)
+			end
+		
 			return obj.id
 		
 		elseif obj.uri then
@@ -121,14 +127,14 @@ function copy_recursive(t)
 	end
 end
 
-function copy_recursive_rebase_keys(t)
+function copy_recursive_rebase_keys(t, parent)
 	local k,v
 	local t2 = {}
 	for k,v in pairs(t or {}) do
 		if type(v) == "table" then
-			local v_key = get_key(v, k)
+			local v_key = get_key(v, k, parent)
 			assert(not t2[v_key], "copy_recursive_rebase_keys() key=%s for val=%s already used", tostring(v_key), tostring(v) )
-			t2[v_key] = copy_recursive_rebase_keys(v)
+			t2[v_key] = copy_recursive_rebase_keys(v, k)
 		else
 			t2[k] = v
 		end
@@ -163,7 +169,9 @@ function set_path_val ( tree, path, val, depth)
 	
 	if path:match("^%s$" %"/[^/]+/") then
 		
+		assert( not tree[tonumber(path_root)] )
 		tree[path_root] = val
+		
 		return val
 	
 	else
@@ -258,6 +266,7 @@ function filter(rules, itree, otree, path)
 	for pk,pv in ipairs(rules) do
 	
 		local pattern  = pv[1]
+		local iterate  = pv[2]
 		local pattern_ = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
 
 		local k
@@ -266,12 +275,14 @@ function filter(rules, itree, otree, path)
 			if (path..k):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
 				
 				local v = get_path_val(itree, path..k)
+				--local t = get_path_val(otree, path)
+				local i = iterate and (#otree+1) or k
 				
 				if type(v) == "table" then
-					get_path_val(otree, path)[k] = {}
-					filter(rules, itree, otree, path..k.."/")
+					otree[i] = {}
+					filter(rules, itree, otree[i], path..k.."/")
 				else
-					get_path_val(otree, path)[k] = v
+					otree[i] = v
 				end
 				
 			end
