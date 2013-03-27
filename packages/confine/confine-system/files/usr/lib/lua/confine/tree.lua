@@ -266,7 +266,7 @@ function filter(rules, itree, otree, path)
 	for pk,pv in ipairs(rules) do
 	
 		local pattern  = pv[1]
-		local iterate  = pv[2]
+		local approach  = pv[2]
 		local pattern_ = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
 
 		local k
@@ -275,8 +275,9 @@ function filter(rules, itree, otree, path)
 			if (path..k):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
 				
 				local v = get_path_val(itree, path..k)
-				--local t = get_path_val(otree, path)
-				local i = iterate and (#otree+1) or k
+				local i = (approach=="iterate" and (#otree+1)) or
+					  (approach=="number" and (tonumber(k))) or
+					  (approach=="number_p1" and (tonumber(k)+1)) or k
 				
 				if type(v) == "table" then
 					otree[i] = {}

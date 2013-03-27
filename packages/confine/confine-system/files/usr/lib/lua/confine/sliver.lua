@@ -181,6 +181,13 @@ IF_TYPES = {
 	
 }
 
+IF_TYPES_UCI = {
+	["private"] = "internal",
+	["management"] = "management",
+	["isolated"] = "isolated",
+	["public4"] = "public"
+	
+}
 
 function cb2_get_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_get_vlan_nr" end
@@ -217,6 +224,7 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 		
 		local failure = false
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."type/", "string", IF_TYPES ) or failure
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."nr/", "number" ) or failure
 		
 		if type(nval.name)~="string" or not nval.name:match("^[%a]+[^%c%s]*$") then
 			failure = true
@@ -495,7 +503,8 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			sv.exp_name and
 			sv.state and
 			sv.fs_template_url and
-			sv.if00_type and
+			sv.fs_template_type and
+			sv.if00_type=="private" and
 			sv.if00_name and
 			sv.api_instance_sn and
 			sv.api_slice_instance_sn and
@@ -504,7 +513,6 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			sv.api_tmpl_image_uri and
 			sv.api_tmpl_name and
 			sv.api_tmpl_node_archs and
-			sv.api_tmpl_type and
 --				sv.api_set_state and
 			sv.api_slice_uri and
 			true then
@@ -516,6 +524,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name
 			slv.local_slice.instance_sn = tonumber(sv.api_slice_instance_sn)
+			slv.local_slice.vlan_nr = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or cdata.null
 			slv.local_slice.local_group  = slv.local_slice.local_group or {}
 			slv.local_template = slv.local_template or {}
 			slv.local_template.id = sv.api_tmpl_id
@@ -524,8 +533,26 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.is_active = true
 			slv.local_template.name = sv.api_tmpl_name
 			slv.local_template.node_archs = tools.str2table(sv.api_tmpl_node_archs,"[^ ]+")
-			slv.local_template.type = sv.api_tmpl_type
+			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
+			
+			slv.interfaces = {}
+			local ifk,ifv
+			for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
+				if sv["if%s_type"%ifv] then
+					slv.interfaces[tostring( (tonumber(ifv, 16)) )] = {
+						nr          = tonumber(ifv, 16),
+						type        = sv["if%s_type"%ifv],
+						name        = sv["if%s_name"%ifv],
+						parent_name = sv["if%s_parent"%ifv],
+						mac_addr    = sv["if%s_mac"%ifv],
+						ipv4_addr   = sv["if%s_ipv4"%ifv],
+						ipv6_addr   = sv["if%s_ipv6"%ifv]
+					}
+				end
+			end		
+			
+			
 			slv.node = { uri = sys_conf.node_base_uri.."/node" }
 --				slv.set_state = sv.api_set_state
 			slv.slice = { uri = sv.api_slice_uri }
@@ -637,9 +664,35 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 		local sliver_desc = "config sliver '%s'\n" %uci_key
 		sliver_desc = sliver_desc.."	option fs_template_url 'file://%s%s'\n" %{TEMPLATE_DIR_RD,api_slv.local_template.image_sha256..".tgz"}
-		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %api_slv.local_slice.name:gsub("\n","")
-		sliver_desc = sliver_desc.."	option if00_type '%s'\n" %"internal"
-		sliver_desc = sliver_desc.."	option if00_name '%s'\n" %"priv"
+		sliver_desc = sliver_desc.."	option fs_template_type '%s'\n" %{api_slv.local_template.type}
+		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
+		
+		if type(api_slv.local_slice.vlan_nr)=="number" then
+			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.vlan_nr}
+		end
+		
+		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+")
+		ctree.dump (if_keys )
+		local ifk,ifv
+		for ifk,ifv in pairs( if_keys ) do
+			local i = api_slv.interfaces[tostring( (tonumber(ifv, 16)) )]
+			
+			dbg("ifk=%s ifv=%s i=%s type=%s name=%s parent=%s",
+			    tostring(ifk),tostring(ifv),tostring(i),tostring((i or {}).type),tostring((i or {}).name),tostring((i or {}).parent_name))
+			
+			if type(i)=="table" and type(i.type)=="string" and type(i.name)=="string" then
+				
+				sliver_desc = sliver_desc.."	option if%s_type '%s'\n" %{ifv, i.type}
+				sliver_desc = sliver_desc.."	option if%s_name '%s'\n" %{ifv, i.name}
+				if type(i.parent_name)=="string" then
+					sliver_desc = sliver_desc.."	option if%s_parent '%s'\n" %{ifv, i.parent_name}
+				end
+				
+			else
+				break
+			end
+		end		
+		
 		
 		local cmd = SLV_ALLOCATE_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n"
 		dbg(cmd)
@@ -655,7 +708,6 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
-				api_tmpl_type = api_slv.local_template.type
 			}
 			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
@@ -940,7 +992,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/exp_data_uri"})
 	table.insert(tmp_rules, {"/*/exp_data_sha256"})
 	table.insert(tmp_rules, {"/*/interfaces"})
-	table.insert(tmp_rules, {"/*/interfaces/*", "iterate"})
+	table.insert(tmp_rules, {"/*/interfaces/*", "number_p1"})
 	table.insert(tmp_rules, {"/*/interfaces/*/nr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/name"})
 	table.insert(tmp_rules, {"/*/interfaces/*/type"})
