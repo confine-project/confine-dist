@@ -42,12 +42,11 @@ start() {
 	fi
 
 	# Starting libvirtd daemon
+	echo "Starting libvirt daemon..."
 	exec /usr/sbin/libvirtd -d
 }
 
 stop() {
-	echo "Nothing to do"
+	echo "Stoping libvirt daemon..."
+	start-stop-daemon -K -p /var/run/libvirt.pid
 }
-
-
-
