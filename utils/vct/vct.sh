@@ -474,10 +474,10 @@ vct_system_install_server() {
 
 vct_system_purge_server() {
 	vct_sudo python server/manage.py stopservices --no-postgresql  || true
-	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start || true
-	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  || true
-	grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
-	grep "^confine" /etc/group  > /dev/null && vct_sudo delgroup confine  || true
+	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start # || true
+	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  # || true
+	#grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
+	#grep "^confine" /etc/group  > /dev/null && vct_sudo delgroup confine  || true
 	if [ -d $VCT_SERVER_DIR ]; then
 	    vct_do rm -rf $VCT_SERVER_DIR  || true
 	fi
@@ -700,12 +700,11 @@ EOF
     fi
 
 
-    if [ $CMD_INSTALL ] && [ -d $VCT_SERVER_DIR ] && ( ! [ "$VCT_SERVER" = "y" ] ||  [ $UPD_SERVER ] ); then
+    if [ $CMD_INSTALL ] && ( ! [ "$VCT_SERVER" = "y" ] ||  [ $UPD_SERVER ] ); then
 	echo "" >&2
-	echo "Purge server installation?" >&2
-	read -p "Please type 'purge' or anything else to skip: " QUERY >&2
+	read -p "Purge server installation (type 'y' or anything else to skip): " QUERY >&2
 
-	if [ "$QUERY" == "purge" ] ; then
+	if [ "$QUERY" == "y" ] ; then
 	    vct_system_purge_server
 	fi
     fi
