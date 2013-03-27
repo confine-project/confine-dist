@@ -228,19 +228,19 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 			ctree.set_path_val(otree,path.."name/", nval.name)
 		end
 		
-		if nval.parent==cdata.null and not nval.type:match(IF_TYPES.isolated) then
+		if nval.parent_name==cdata.null and not nval.type:match(IF_TYPES.isolated) then
 			
-			ctree.set_path_val(otree,path.."parent/", nval.parent)
+			ctree.set_path_val(otree,path.."parent_name/", nval.parent_name)
 			
-		elseif type(nval.parent)=="string" and nval.type:match(IF_TYPES.isolated) then
+		elseif type(nval.parent_name)=="string" and nval.type:match(IF_TYPES.isolated) then
 			
-			if not tools.get_table_by_key_val(otree.direct_ifaces, nval.parent) then
+			if not tools.get_table_by_key_val(otree.direct_ifaces, nval.parent_name) then
 				failure = true
-				add_lslv_err( otree, path.."parent/", "Not included in direct_ifaces", nval.parent)
+				add_lslv_err( otree, path.."parent_name/", "Not included in direct_ifaces", nval.parent_name)
 				
-			elseif tools.get_table_by_key_val(oslv.interfaces, nval.parent, "parent") then
+			elseif tools.get_table_by_key_val(oslv.interfaces, nval.parent_name, "parent_name") then
 				failure = true
-				add_lslv_err( otree, path.."parent/", "Already used for other isolated interface", nval.parent)
+				add_lslv_err( otree, path.."parent_name/", "Already used for other isolated interface", nval.parent_name)
 			end
 			
 			if type(oslv.local_slice.vlan_nr)~="number" then
@@ -249,11 +249,11 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 			end
 			
 			if not failure then
-				ctree.set_path_val(otree,path.."parent/", nval.parent)
+				ctree.set_path_val(otree,path.."parent_name/", nval.parent_name)
 			end
 		else
 			failure = true
-			add_lslv_err( otree, path, "Invalid", nval.parent )
+			add_lslv_err( otree, path.."parent_name/", "Invalid", nval.parent_name )
 		end
 		
 		if failure then
@@ -430,7 +430,7 @@ tmp_rules = register_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/nr",			crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/name",			crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/type",			crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/parent",		crules.cb2_set}) --FIXME: parent_name
+--	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/parent_name",		crules.cb2_set}) --FIXME: parent_name
 	
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_get_template
@@ -944,7 +944,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/interfaces/*/nr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/name"})
 	table.insert(tmp_rules, {"/*/interfaces/*/type"})
-	table.insert(tmp_rules, {"/*/interfaces/*/parent"}) --FIXME: parent_name (and search for parent)
+	table.insert(tmp_rules, {"/*/interfaces/*/parent_name"}) --FIXME: parent_name (and search for parent)
 	table.insert(tmp_rules, {"/*/interfaces/*/mac_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
