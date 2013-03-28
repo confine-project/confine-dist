@@ -155,7 +155,7 @@ function get_system_conf(sys_conf, arg)
 	conf.priv_ipv4_prefix      = uci.get("confine", "node", "priv_ipv4_prefix24") .. ".0/24"
 	conf.sliver_mac_prefix     = "0x" .. uci.get("confine", "node", "mac_prefix16"):gsub(":", "")
 	
-	conf.sliver_pub_ipv4       = uci.get("confine", "node", "sl_public_ipv4_proto")
+	conf.sl_pub_ipv4_proto     = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
 

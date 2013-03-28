@@ -36,6 +36,20 @@ SERVER = {
 	["start"]        = "start"
 }
 
+SLIVER_TYPES = {
+	["debian6"] = "^debian6$",
+	["openwrt-backfire"] = "^openwrt%-backfire$",
+	["openwrt-attitude-adjustment"] = "^openwrt%-attitude%-adjustment$"
+}
+
+IF_TYPES = {
+	["private"] = "^private$",
+	["management"] = "^management$",
+	["isolated"] = "^isolated$",
+	["public4"] = "^public4$"
+}
+
+
 local EXP_DATA_DIR_RD      = "/confine/exp_data/"
 local TEMPLATE_DIR_RD      = "/confine/templates/"
 
@@ -110,23 +124,23 @@ function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
 end
 
 
-function cb2_set_sliver_uri( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_sliver_uri" end
+function cb2_sliver_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_sliver_uri" end
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
 	
 	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..slv_key)
 end
 
-function cb2_set_node_uri( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_node_uri" end
+function cb2_node_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_node_uri" end
 
 	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/node")
 end
 
 
-function cb2_set_instance_sn( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_instance_sn" end
+function cb2_instance_sn( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_instance_sn" end
 
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
@@ -141,8 +155,8 @@ function cb2_set_instance_sn( rules, sys_conf, otree, ntree, path, begin, change
 end
 
 
-function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_template_uri" end
+function cb2_template_uri( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_template_uri" end
 
 	if begin then
 		dbg( "begin")
@@ -167,30 +181,9 @@ function cb2_set_template_uri( rules, sys_conf, otree, ntree, path, begin, chang
 end
 
 
-SLIVER_TYPES = {
-	["debian6"] = "^debian6$",
-	["openwrt-backfire"] = "^openwrt%-backfire$",
-	["openwrt-attitude-adjustment"] = "^openwrt%-attitude%-adjustment$"
-}
 
-IF_TYPES = {
-	["private"] = "^private$",
-	["management"] = "^management$",
-	["isolated"] = "^isolated$",
-	["public4"] = "^public4$"
-	
-}
-
-IF_TYPES_UCI = {
-	["private"] = "internal",
-	["management"] = "management",
-	["isolated"] = "isolated",
-	["public4"] = "public"
-	
-}
-
-function cb2_get_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_get_vlan_nr" end
+function cb2_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_vlan_nr" end
 	
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
@@ -205,8 +198,32 @@ function cb2_get_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
 	end
 end
 
-function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_get_interface" end
+function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
+	if not rules then return "cb2_lnode_sliver_pub_ipv4_avail" end
+
+	local sliver_pub_ipv4_avail = sys_conf.sl_pub_ipv4_total
+		
+	local slk,slv
+	for slk,slv in pairs(sys_conf.uci_slivers) do
+		local ifk,ifv
+		for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
+				
+			local itk = "if"..ifv.."_type"
+			local itv = sys_conf.uci_slivers[slk][itk] or ""
+						
+			if itv == "public4" or itv == "public" then
+				sliver_pub_ipv4_avail = sliver_pub_ipv4_avail - 1
+			end
+		end
+	end
+
+	otree.sliver_pub_ipv4_avail = sliver_pub_ipv4_avail
+	return sliver_pub_ipv4_avail
+end
+
+
+function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_interface" end
 	if not begin then return end
 	
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
@@ -214,7 +231,7 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
 	
-	if rules==register_rules and nval then
+	if (rules==register_rules or rules==alloc_rules) and nval then
 		
 		if nval then
 			ctree.set_path_val(otree,path, {})
@@ -223,8 +240,25 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 		end
 		
 		local failure = false
-		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."type/", "string", IF_TYPES ) or failure
+		failure = not crules.chk_or_err( add_lslv_err, otree, ntree, path.."type/", "string", IF_TYPES ) or failure
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."nr/", "number" ) or failure
+		
+		
+		if ( nval.type:match(IF_TYPES.private) or nval.type:match(IF_TYPES.management) or nval.type:match(IF_TYPES.public4) ) and
+			(tools.get_table_by_key_val(oslv.interfaces, nval.type, "type") ) then
+			
+			failure = true
+			add_lslv_err( otree, path.."type/", "Only one interface of this type supported", nval.type)
+			
+		elseif nval.type:match(IF_TYPES.public4) and rules==alloc_rules and cb2_lnode_sliver_pub_ipv4_avail(rules, sys_conf, otree) < 1 then
+			
+			failure = true
+			add_lslv_err( otree, path.."type/", "No available public ipv4 address", nval.type)
+			
+		else
+			ctree.set_path_val(otree,path.."type/", nval.type)
+		end
+		
 		
 		if type(nval.name)~="string" or not nval.name:match("^[%a]+[^%c%s]*$") then
 			failure = true
@@ -235,6 +269,7 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 		else
 			ctree.set_path_val(otree,path.."name/", nval.name)
 		end
+		
 		
 		if nval.parent_name==cdata.null and not nval.type:match(IF_TYPES.isolated) then
 			
@@ -251,7 +286,7 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 				add_lslv_err( otree, path.."parent_name/", "Already used for other isolated interface", nval.parent_name)
 			end
 			
-			if type(oslv.local_slice.vlan_nr)~="number" then
+			if type(oslv.local_slice.vlan_nr)~="number" and rules==alloc_rules then
 				failure = true
 				add_lslv_err( otree, path.."type/", "No vlan_nr defined", nval.type)
 			end
@@ -266,15 +301,12 @@ function cb2_get_interface ( rules, sys_conf, otree, ntree, path, begin, changed
 		
 		if failure then
 			ctree.set_path_val( otree, path, nil )
-		end
-		
-	elseif rules==alloc_rules then
-		
+		end		
 	end
 end
 
-function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_get_template" end
+function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_template" end
 	if not begin then return end
 	
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
@@ -356,8 +388,8 @@ function cb2_get_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	end	
 end
 
-function cb2_get_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_get_exp_data" end
+function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_exp_data" end
 	
 
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
@@ -417,47 +449,41 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_set_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_get_vlan_nr})
 
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_set_sliver_uri})
-	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_set_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/node",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_set_node_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_node_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_get_interface})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/nr",			crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/name",			crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/type",			crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*/parent_name",		crules.cb2_set}) --FIXME: parent_name
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	
-	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/description",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs/*",	crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_get_template
-	table.insert(tmp_rules, {"/local_slivers/*/template",				cb2_set_template_uri})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_set_template_uri
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_get_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/description",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs/*",	crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_template
+--	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
+	table.insert(tmp_rules, {"/local_slivers/*/template",				cb2_template_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_template_uri
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",						crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/uri",					rules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",					crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",	 			ssh.cb2_set_lgroup_role})
+--	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",	 			ssh.cb2_set_sliver_lgroup_role})
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			crules.cb2_nop}) --handled by set_local_group_role
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
 --	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
@@ -468,9 +494,13 @@ tmp_rules = register_rules
 
 
 tmp_rules = alloc_rules
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_get_template})
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_get_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
+--FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})

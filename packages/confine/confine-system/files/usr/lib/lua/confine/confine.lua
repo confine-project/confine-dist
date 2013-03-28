@@ -89,7 +89,7 @@ function main_loop( sys_conf )
 		if not system.get_system_conf( sys_conf ) then break end
 		
 		dbg("getting local node...")
-		local_node = cnode.get_local_node(sys_conf, local_node)
+		local_node = cnode.get_new_cycle_lnode(sys_conf, local_node)
 		assert(local_node)
 		cdata.file_put( local_node, system.node_state_file )
 		
