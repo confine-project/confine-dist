@@ -345,8 +345,8 @@ end
 
 
 
-function cb2_set_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_lsrv_mgmt_net" end
+function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_mgmt_net" end
 	if begin then return true end
 
 	local old = ctree.get_path_val(otree,path)

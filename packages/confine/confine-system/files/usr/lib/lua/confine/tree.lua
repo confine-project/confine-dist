@@ -57,10 +57,13 @@ local function get_key(obj, def, parent)
 		return def
 	
 	
+	elseif type(obj) == "string" and parent=="auth_tokens" then
+		
+		return tostring(def)
+
 	elseif type(obj) == "table" and parent=="interfaces" then
 		
 		return tostring(obj.nr or def)
-
 
 	elseif type(obj) == "table" then
 		
@@ -94,7 +97,7 @@ local function get_key(obj, def, parent)
 		
 	end
 	
-	return obj
+	return def
 end
 
 
@@ -131,12 +134,14 @@ function copy_recursive_rebase_keys(t, parent)
 	local k,v
 	local t2 = {}
 	for k,v in pairs(t or {}) do
+			
+		local v_key = get_key(v, k, parent)
+		assert(not t2[k] and not t2[v_key], "copy_recursive_rebase_keys() key=%s for val=%s key=%s already used", tostring(v_key), tostring(v), tostring(k))
+		
 		if type(v) == "table" then
-			local v_key = get_key(v, k, parent)
-			assert(not t2[v_key], "copy_recursive_rebase_keys() key=%s for val=%s already used", tostring(v_key), tostring(v) )
 			t2[v_key] = copy_recursive_rebase_keys(v, k)
 		else
-			t2[k] = v
+			t2[v_key] = v
 		end
 	end
 	return t2
@@ -188,7 +193,7 @@ function get_path_val ( tree, path, depth)
 	depth = depth or 0
 
 	
-	assert( tree )
+	assert( tree~=nil )
 	assert( type(path)=="string" )
 	assert( path:len() >= 1 )
 	
@@ -212,13 +217,15 @@ function get_path_val ( tree, path, depth)
 		
 		assert( type(tree)=="table" or tree==cdata.null )
 		
-		if type(tree)=="table" and tree[path_root] then
-		
-			return get_path_val( tree[path_root], path_new, depth+1)
-		
-		elseif type(tree)=="table" and tonumber(path_root) and tree[tonumber(path_root)] then
+		if type(tree)=="table" and tonumber(path_root) and tree[tonumber(path_root)]~=nil then
+			
+			assert( tree[tostring(path_root)]==nil )
 			
 			return get_path_val( tree[tonumber(path_root)], path_new, depth+1)
+			
+		elseif type(tree)=="table" and tree[path_root]~=nil then
+		
+			return get_path_val( tree[path_root], path_new, depth+1)
 			
 		else
 			return nil
@@ -297,7 +304,7 @@ end
 
 function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 	
-	assert(cb and sys_conf and rules and otree and ntree and path)
+	assert(cb and rules and otree and ntree and path)
 	lvl = lvl or 0
 	local up_changed = false
 	local ocurr = get_path_val(otree, path)
@@ -311,7 +318,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 	
 		local pattern     = pv[1]
 		local task        = pv[2]
-		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s" %{tostring(pattern), tostring(task)} )
+		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s pk=%s" %{tostring(pattern), tostring(task), tostring(pk) } )
 		local pattern_key = pattern:match("%*$") or pattern:match("[^/]+$")
 		local pattern_    = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
 --		local pattern_    = pattern:gsub("/%s$" %pattern_key,"/") -- DOES NOT WORK!!
@@ -338,14 +345,18 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					if type(ocurr)=="table" then ov = ocurr[tk] end
 					if type(ncurr)=="table" then nv = ncurr[tk] end
 					local is_table = type(ov)=="table" or type(nv)=="table"
+					local down_changed = false
 	
-					dbg( "pk=%s path=%s tk=%s pattern=%s cb=%s task=%s ov=%s nv=%s",
-					    pk, path, (type(tk)=="number" and tk or '"'..tk..'"'), pattern, cb() or "ARGH", tostring(task() or "argh"),
-					    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30))
+					--dbg( "beg %s %-15s %s%s %s => %s (pattern=%s %s %s)",
+					--    is_table and "TBL" or "VAL", tostring((task() or "???")), path, (type(tk)=="number" and tk or '"'..tk..'"'),
+					--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
+					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 					
 					assert( ov~=nil or nv~=nil )
+					assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil))
+					assert( ov==nil or ov==get_path_val(otree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
+					assert( nv==nil or nv==get_path_val(ntree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
 					
-					local down_changed = false
 					
 					if is_table then
 						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
@@ -358,12 +369,20 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					up_changed = up_changed or down_changed
 					up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
 					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --otree vs ntree changed
+					
+					--dbg( "end %s %-15s %s%s %s => %s (pattern=%s %s %s)",
+					--    is_table and "TBL" or "VAL", tostring(task() or "???"), path, (type(tk)=="number" and tk or '"'..tk..'"'),
+					--    cdata.val2string((type(ocurr)=="table" and ocurr or {})[tk]):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
+					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
+					
+					assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
+
 				end
 			end
 			
 			if unmatched and pattern_key ~= "*" then
-				dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s",
-				    lvl, tostring(pk), tostring(path), tostring(pattern), tostring(pattern_key))
+				--dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s",
+				--    lvl, tostring(pk), tostring(path), tostring(pattern), tostring(pattern_key))
 				cb( task, rules, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
 				up_changed = up_changed or (get_path_val(otree,path..pattern_key.."/")) --otree changed
 			end

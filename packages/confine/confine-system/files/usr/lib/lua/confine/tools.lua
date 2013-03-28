@@ -18,7 +18,7 @@ logsize = 1000
 
 function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
-	local l = "[%s.%d] %s() %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
+	local l = "[%s.%d] %-7s %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
 	if err then
 		io.stderr:write("ERROR "..l)
 	else
@@ -137,7 +137,7 @@ function mkdirr( path, mode )
 			first = first + pos
 			local dir = string.sub(path, 1, first)
 			if not lucifs.isdirectory(dir) then
-				dbg("mkdir "..dir)
+				--dbg("mkdir "..dir)
 				nixio.fs.mkdir( dir, mode )
 			end
 			assert( lucifs.isdirectory(dir), "Failed creating dir=%s" %dir )

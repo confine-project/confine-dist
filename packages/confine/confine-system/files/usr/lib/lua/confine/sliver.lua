@@ -16,6 +16,7 @@ local ctree  = require "confine.tree"
 local crules = require "confine.rules"
 local cnode  = require "confine.node"
 local csystem= require "confine.system"
+local ssh    = require "confine.ssh"
 local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
 local err    = tools.err
@@ -42,6 +43,13 @@ SLIVER_TYPES = {
 	["openwrt-attitude-adjustment"] = "^openwrt%-attitude%-adjustment$"
 }
 
+SLIVER_AUTH_FILES = {
+	["debian6"] = "/rootfs/root/.ssh/authorized_keys",
+	["openwrt-backfire"] = "/rootfs/etc/dropbear/authorized_keys",
+	["openwrt-attitude-adjustment"] = "/rootfs/etc/dropbear/authorized_keys"
+}
+
+
 IF_TYPES = {
 	["private"] = "^private$",
 	["management"] = "^management$",
@@ -50,8 +58,6 @@ IF_TYPES = {
 }
 
 
-local EXP_DATA_DIR_RD      = "/confine/exp_data/"
-local TEMPLATE_DIR_RD      = "/confine/templates/"
 
 local SLV_ALLOCATE_BIN = "/usr/sbin/confine_sliver_allocate"
 local SLV_DEPLOY_BIN   = "/usr/sbin/confine_sliver_deploy"
@@ -355,12 +361,12 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 			return
 		end
 
-		tools.mkdirr( TEMPLATE_DIR_RD )
+		tools.mkdirr( sys_conf.sliver_template_dir )
 		
 		local uri = oval.image_uri
 --TESTME:	local uri = "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
 		local sha = oval.image_sha256
-		local dst = TEMPLATE_DIR_RD..sha
+		local dst = sys_conf.sliver_template_dir..sha
 		
 		if nixio.fs.stat(dst) then
 			if ssl.dgst_sha256(dst) ~= sha then
@@ -372,7 +378,7 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 		end
 		
 		if not nixio.fs.stat(dst) then
-			--TODO: check for TEMPLATE_DIR_RD size limit and remove unused files and links
+			--TODO: check for sys_conf.sliver_template_dir size limit and remove unused files and links
 			if cdata.http_get_raw(uri, dst) then
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
@@ -412,14 +418,14 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 		local uri = oslv and oslv.exp_data_uri
 		local sha = oslv and oslv.exp_data_sha256
-		local dst = EXP_DATA_DIR_RD..sha
+		local dst = sys_conf.sliver_exp_data_dir..sha
 		
 		if not uri or not sha then
 			dbg( add_lslv_err(otree, path, "missing uri or sha", oval) )
 			return
 		end
 				
-		tools.mkdirr( EXP_DATA_DIR_RD )
+		tools.mkdirr( sys_conf.sliver_exp_data_dir )
 		
 		if nixio.fs.stat(dst) then
 			if ssl.dgst_sha256(dst) ~= sha then
@@ -429,7 +435,7 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		end
 		
 		if not nixio.fs.stat(dst) then
-			--TODO: check for EXP_DATA_DIR_RD size limit and remove unused files
+			--TODO: check for sys_conf.sliver_exp_data_dir size limit and remove unused files
 			if cdata.http_get_raw(uri, dst) then
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
@@ -442,21 +448,24 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	end
 end
 
+
+function cb2_lsliver_lgroup_role( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_lsliver_lgroup_role" end
+	
+	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	
+	return ssh.sys_set__lgroup_role( sys_conf.sliver_system_dir..("%.2x"%{oslv.nr})..SLIVER_AUTH_FILES[oslv.local_template.type], false, otree, ntree, path, begin, changed )
+end
+
+
 local tmp_rules
 
-
 tmp_rules = register_rules
-	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
 
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_instance_sn})
-	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 	table.insert(tmp_rules, {"/local_slivers/*/node",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_node_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
@@ -481,32 +490,31 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_template_uri
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",						crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/uri",					rules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",					crules.cb2_set})
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",	 			ssh.cb2_set_sliver_lgroup_role})
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			crules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens",	crules.cb2_nop}) --handled by set_local_group_role
---	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens/*",	crules.cb2_nop}) --handled by set_local_group_role
-----
 
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
+	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
+	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})
+
+	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
 
 
 tmp_rules = alloc_rules
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 
 tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -519,10 +527,25 @@ tmp_rules = undeploy_rules
 tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",				cb2_lsliver_lgroup_role})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_admin",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens",	crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens/*",	crules.cb2_set})
+	
+	
 
 tmp_rules = stop_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})	
 
 
 
@@ -530,7 +553,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 
 	local sv = sys_conf.uci_slivers[sk]
 	
-	ctree.dump(sys_conf.uci_slivers)
+	--ctree.dump(sys_conf.uci_slivers)
 	
 	assert(type(otree.local_slivers)=="table")
 	
@@ -564,7 +587,11 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_slice.name = sv.exp_name
 			slv.local_slice.instance_sn = tonumber(sv.api_slice_instance_sn)
 			slv.local_slice.vlan_nr = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or cdata.null
-			slv.local_slice.local_group  = slv.local_slice.local_group or {}
+
+			-- sys_get_lsliver_lslice_lgroup()
+			-- slv.local_slice.local_group  = ssh.sys_get__lgroup( sys_conf.sliver_system_dir..sv.sliver_nr..SLIVER_AUTH_FILES[sv.fs_template_type], false)
+			
+			-- sys_get_lsliver_ltemplate()
 			slv.local_template = slv.local_template or {}
 			slv.local_template.id = sv.api_tmpl_id
 			slv.local_template.image_sha256 = sv.api_tmpl_image_sha256
@@ -575,6 +602,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 			
+			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
 			local ifk,ifv
 			for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
@@ -613,9 +641,9 @@ end
 
 function sys_get_lslivers( sys_conf, otree )
 	
-	dbg("-------------------")
-	ctree.dump( sys_conf.uci_slivers )
-	dbg("-------------------")
+	--dbg("-------------------")
+	--ctree.dump( sys_conf.uci_slivers )
+	--dbg("-------------------")
 	
 	otree.local_slivers = otree.local_slivers or {}
 
@@ -702,7 +730,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 	elseif next_state==NODE.allocated and uci_state==nil then
 		
 		local sliver_desc = "config sliver '%s'\n" %uci_key
-		sliver_desc = sliver_desc.."	option fs_template_url 'file://%s%s'\n" %{TEMPLATE_DIR_RD,api_slv.local_template.image_sha256..".tgz"}
+		sliver_desc = sliver_desc.."	option fs_template_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_template.image_sha256..".tgz"}
 		sliver_desc = sliver_desc.."	option fs_template_type '%s'\n" %{api_slv.local_template.type}
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		
@@ -711,7 +739,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		end
 		
 		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+")
-		ctree.dump (if_keys )
+		--ctree.dump (if_keys )
 		local ifk,ifv
 		for ifk,ifv in pairs( if_keys ) do
 			local i = api_slv.interfaces[tostring( (tonumber(ifv, 16)) )]
@@ -903,7 +931,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 		ntree.local_slivers[key] = nil
 	end
 	
-	ctree.dump(otree.local_slivers[key] or {})
+	--ctree.dump(otree.local_slivers[key] or {})
 
 	if ntree.local_slivers[key] or otree.local_slivers[key] then
 	
@@ -982,6 +1010,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 					break
 				end
 	
+	
 
 			elseif (oslv.state==NODE.started) and
 				(not nslv or
@@ -990,6 +1019,11 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				
 				if not slv_iterate( iargs, stop_rules, NODE.started, NODE.deployed, nil) then break end
 				
+			elseif (oslv.state==NODE.started and nslv.set_state==SERVER.start) then
+				
+				if not slv_iterate( iargs, start_rules, NODE.started, NODE.started, nil) then break end
+
+
 			else
 				break
 			end

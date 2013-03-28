@@ -66,12 +66,19 @@ function cb2_nop( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_nop" end
 end
 
-function cb2_null( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_null" end
+function cb2_set_null( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_null" end
 	
 	ctree.set_path_val(otree, path, null)
 end
 
+function cb2_set_empty_table( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_empty_table" end
+	
+	if begin then
+		ctree.set_path_val(otree, path, {})
+	end
+end
 
 function cb2_log( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_log" end
@@ -106,30 +113,31 @@ function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed, misc, i
 	
 	if not rules then return "cb2" end
 	
+	local max_val_len = 28
+	
 	assert( type(otree)=="table" )
 	assert( type(ntree)=="table" )
 	
 	local oldv = ctree.get_path_val(otree,path)
-	local olds = data.val2string(oldv)--:gsub("\n","")--:sub(1,28)
+	local olds = data.val2string(oldv):gsub("\n",""):sub(1,max_val_len)
 	local newv = ctree.get_path_val(ntree,path)
-	local news = data.val2string(newv)--:gsub("\n","")--:sub(1,28)
+	local news = data.val2string(newv):gsub("\n",""):sub(1,max_val_len)
 	local is_table = type(oldv)=="table" or type(newv)=="table"
 
 	
-	--dbg( "cb2() path=%s begin=%s changed=%s old=%s new=%s", path, tostring(begin), tostring(changed), olds, news)
-	--if not is_table and (oldv ~= newv) then
-	--	dbg( " %-15s %-50s %s => %s", task(), path, olds, news)
-	--end
+	--dbg( "%s %s %-15s %-50s %s => %s",
+	--    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
+	--    task(), path, olds, news)
 
 	local report = task( rules, sys_conf, otree, ntree, path, begin, changed )
 	
-	local outv = ctree.get_path_val(otree,path), is_table
-	local outs = data.val2string(outv)--:sub(1,28)
+	local outv = ctree.get_path_val(otree,path)
+	local outs = data.val2string(outv):sub(1,max_val_len)
 
 	if oldv ~= outv or (oldv ~= newv and not is_table) or changed or report then
-		dbg( "%s %s %-15s %-50s %s => %s ==> %s",
+		dbg( "%s %s %-15s %-50s %s %s => %s ==> %s",
 		    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
-		    task(), path, olds, news, outs)
+		    task(), path, (oldv==nil and newv==nil and "UNMATCHED" or ""), olds, news, outs)
 	end
 	
 end

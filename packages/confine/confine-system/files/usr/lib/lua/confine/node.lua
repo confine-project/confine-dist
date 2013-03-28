@@ -160,7 +160,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.local_server          = tinc.get_lserver(sys_conf)
 	node.local_gateways        = tinc.get_lgateways(sys_conf)
 	
-	node.local_group           = ssh.get_node_local_group(sys_conf)
+--	node.local_group           = ssh.sys_get__lgroup(sys_conf.ssh_node_auth_file, true)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
 	
 	node.local_slivers	   = sliver.sys_get_lslivers( sys_conf, cached_node )
@@ -280,6 +280,12 @@ end
 
 
 
+function cb2_lnode_lgroup_role( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_lnode_lgroup_role" end
+	
+	return ssh.sys_set__lgroup_role( sys_conf.ssh_node_auth_file, true, otree, ntree, path, begin, changed )
+end
+
 
 in_rules2 = {}
 tmp_rules = in_rules2
@@ -321,7 +327,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net",		tinc.cb2_set_mgmt_net})
+	table.insert(tmp_rules, {"/local_server/mgmt_net",		tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/backend",	crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/native",	crules.cb2_nop})
@@ -345,7 +351,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/description",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",		tinc.cb2_set_mgmt_net})
+	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",		tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/addr",	crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/backend",	crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/native",	crules.cb2_nop})
@@ -367,19 +373,19 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
 --FIXME	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
-	table.insert(tmp_rules, {"/local_group",						ssh.cb2_set_node_lgroup}) --"CB_GET_LOCAL_GROUP"})
+	table.insert(tmp_rules, {"/local_group",						crules.cb2_set}) --must exist
 	table.insert(tmp_rules, {"/local_group/uri",						crules.cb2_set})
-	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_nop}) --must exist
-	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			ssh.cb2_set_node_lgroup_role})
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_admin",				crules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_nop}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		crules.cb2_nop}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_set}) --must exist
+	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			cb2_lnode_lgroup_role})
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_admin",				crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens/*",		crules.cb2_set}) --handled by set_local_group_role
 --	
-	table.insert(tmp_rules, {"/group",				crules.cb2_nop}) --handled by ssh.cb2_set_lgroup
-	table.insert(tmp_rules, {"/group/uri",				crules.cb2_nop}) --handled by ssh.cb2_set_lgroup
+	table.insert(tmp_rules, {"/group",				crules.cb2_set})
+	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
 	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})

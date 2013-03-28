@@ -166,6 +166,14 @@ function get_system_conf(sys_conf, arg)
 --	conf.uci = {}
 --	conf.uci.confine           = uci.get_all("confine")
 	conf.uci_slivers           = uci.get_all("confine-slivers")
+	
+	conf.sliver_system_dir     = uci.get("lxc", "general", "lxc_images_path").."/"
+	
+	local EXP_DATA_DIR_RD      = "/confine/exp_data/"
+	conf.sliver_exp_data_dir   = EXP_DATA_DIR_RD -- uci.get("lxc", "general", "lxc_templates_path").."/"
+
+	local TEMPLATE_DIR_RD      = "/confine/templates/"
+	conf.sliver_template_dir   = TEMPLATE_DIR_RD -- uci.get("lxc", "general", "lxc_templates_path").."/"
 
 	data.file_put( conf, system_state_file )
 
