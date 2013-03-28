@@ -456,6 +456,7 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
 	table.insert(tmp_rules, {"/local_slivers/*/node",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_node_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
@@ -497,6 +498,7 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
@@ -504,18 +506,23 @@ tmp_rules = alloc_rules
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_null})
 
 tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
 
 tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
 
 tmp_rules = stop_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
 
 
 
@@ -534,6 +541,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			sv.state and
 			sv.fs_template_url and
 			sv.fs_template_type and
+			sv.sliver_nr and
 			sv.if00_type=="private" and
 			sv.if00_name and
 			sv.api_instance_sn and
@@ -550,6 +558,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			local id = tostring(tonumber(sk, 16))
 			local slv = otree.local_slivers[id] or {}
 			
+			slv.nr = tonumber(sv.sliver_nr, 16)
 			slv.instance_sn = tonumber(sv.api_instance_sn)
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name

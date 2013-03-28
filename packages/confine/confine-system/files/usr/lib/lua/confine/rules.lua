@@ -66,6 +66,13 @@ function cb2_nop( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_nop" end
 end
 
+function cb2_null( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_null" end
+	
+	ctree.set_path_val(otree, path, null)
+end
+
+
 function cb2_log( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_log" end
 	return true
