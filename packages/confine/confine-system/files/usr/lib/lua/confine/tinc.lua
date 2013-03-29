@@ -28,9 +28,9 @@ local function get_mgmt_nets(sys_conf, all)
 	local node_name = "node_" .. sys_conf.id
 	
 	local hosts = nixio.fs.dir( sys_conf.tinc_hosts_dir )
-	if not (type(hosts)=="table" and hosts["server"] and hosts[node_name]) then
-		tools.err("Missing hosts in "..sys_conf.tinc_hosts_dir)
-	end
+	--if not (type(hosts)=="table" and hosts["server"] and hosts[node_name]) then
+	--	tools.err("Missing hosts in "..sys_conf.tinc_hosts_dir)
+	--end
 	local name
 	for name in hosts do
 			

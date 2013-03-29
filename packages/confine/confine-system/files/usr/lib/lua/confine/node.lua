@@ -431,7 +431,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri"})
 
 	table.insert(tmp_rules, {"/priv_ipv4_prefix"})
-	table.insert(tmp_rules, {"/direct_ifaces/*"})
+	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})
 	table.insert(tmp_rules, {"/sliver_mac_prefix"})	
 	

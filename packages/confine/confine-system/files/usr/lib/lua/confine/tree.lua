@@ -65,9 +65,9 @@ local function get_key(obj, def, parent)
 		
 		return tostring(obj.nr or def)
 
-	elseif type(obj) == "table" and parent=="addresses" then
-		
-		return tostring(def)
+	--elseif type(obj) == "table" and parent=="addresses" then
+	--	
+	--	return tostring(def)
 
 	elseif type(obj) == "table" then
 		
@@ -92,13 +92,11 @@ local function get_key(obj, def, parent)
 		elseif obj.name then
 			return obj.name
 		
-		else
-			return def
 		end
 		
 	end
 	
-	return def
+	return tostring(def)
 end
 
 
@@ -379,7 +377,11 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					--    cdata.val2string((type(ocurr)=="table" and ocurr or {})[tk]):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
 					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 					
-					assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
+					--assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
+					assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil),
+					       "path=%s type(tk)=%s \nas number:\n%s as string:\n%s"%{path..tk.."/", type(tk),
+												     as_string((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]),
+												     as_string((type(ocurr)=="table" and ocurr or {})[tostring(tk)])})
 
 				end
 			end

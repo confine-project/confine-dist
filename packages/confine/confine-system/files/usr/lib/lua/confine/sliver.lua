@@ -599,7 +599,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.image_uri = sv.api_tmpl_image_uri
 			slv.local_template.is_active = true
 			slv.local_template.name = sv.api_tmpl_name
-			slv.local_template.node_archs = tools.str2table(sv.api_tmpl_node_archs,"[^ ]+")
+			slv.local_template.node_archs = ctree.copy_recursive_rebase_keys(tools.str2table(sv.api_tmpl_node_archs,"[^ ]+"), "node_archs" )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 			
@@ -1106,7 +1106,7 @@ tmp_rules = template_out_filter
 	table.insert(tmp_rules, {"/*/description"})
 	table.insert(tmp_rules, {"/*/type"})
 	table.insert(tmp_rules, {"/*/node_archs"})
-	table.insert(tmp_rules, {"/*/node_archs/*"})
+	table.insert(tmp_rules, {"/*/node_archs/*", "iterate"})
 	table.insert(tmp_rules, {"/*/is_active"})
 	table.insert(tmp_rules, {"/*/image_uri"})
 	table.insert(tmp_rules, {"/*/image_sha256"})
