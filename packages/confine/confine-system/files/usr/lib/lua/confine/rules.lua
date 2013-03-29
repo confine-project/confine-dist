@@ -31,22 +31,21 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
 	local val = ctree.get_path_val( ntree, path )
 	local success = false
 	
-	if type(val)==valtype then
-		
-		if patterns then
-			assert( type(patterns)=="table" )
-			local i,v
-			for i,v in pairs(patterns) do
-				if (type(val)=="string" and val:match(v)) or (val==v) then
-					success=true
-					break
-				end
+	if patterns then
+		assert( type(patterns)=="table" )
+		local i,v
+		for i,v in pairs(patterns) do
+			if (type(val)=="string" and type(v)=="string" and val:match(v)) or (val==v) then
+				success=true
+				break
 			end
-		else
-			success=true
 		end
 		
+	elseif type(val)==valtype then
+		
+		success=true
 	end
+		
 	
 	if success then
 		if not no_set then

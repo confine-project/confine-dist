@@ -21,6 +21,8 @@ local ssl    = require "confine.ssl"
 local dbg    = tools.dbg
 local err    = tools.err
 
+local null   = cdata.null
+
 NODE = {
 	["registered"] 	 = "registered",
 	["fail_alloc"]   = "fail_alloc",
@@ -178,7 +180,7 @@ function cb2_template_uri( rules, sys_conf, otree, ntree, path, begin, changed )
 			ctree.set_path_val( otree, path, { uri = oslv.local_template.uri } )
 		else
 			dbg( add_lslv_err( otree, path, "Invalid server template", nil))
-			ctree.set_path_val( otree, path, cdata.null )
+			ctree.set_path_val( otree, path, null )
 		end
 	end
 	
@@ -194,13 +196,13 @@ function cb2_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
 	
-	if nval==cdata.null or (type((tonumber(nval)))=="number" and tonumber(nval) > 0xFF and tonumber(nval) <= 0xFFF ) then
+	if nval==null or (type((tonumber(nval)))=="number" and tonumber(nval) > 0xFF and tonumber(nval) <= 0xFFF ) then
 		if nval~=oval then
 			ctree.set_path_val( otree, path, nval )
 		end
 	else
 		dbg( add_lslv_err( otree, path, "Invalid", nval) )
-		ctree.set_path_val( otree, path, cdata.null )
+		ctree.set_path_val( otree, path, null )
 	end
 end
 
@@ -277,7 +279,7 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 		end
 		
 		
-		if nval.parent_name==cdata.null and not nval.type:match(IF_TYPES.isolated) then
+		if nval.parent_name==null and not nval.type:match(IF_TYPES.isolated) then
 			
 			ctree.set_path_val(otree,path.."parent_name/", nval.parent_name)
 			
@@ -364,7 +366,6 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 		tools.mkdirr( sys_conf.sliver_template_dir )
 		
 		local uri = oval.image_uri
---TESTME:	local uri = "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
 		local sha = oval.image_sha256
 		local dst = sys_conf.sliver_template_dir..sha
 		
@@ -407,30 +408,33 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 	if rules==register_rules then
 		
 		if key=="exp_data_uri" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} )
+			crules.set_or_err( add_lslv_err, otree, ntree, path, nil, {null, "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} )
 		end
 		
 		if key=="exp_data_sha256" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, "string", {"^[%x]+$"})
+			crules.set_or_err( add_lslv_err, otree, ntree, path, nil, {null, "^[%x]+$"} )
 		end
 		
-	elseif rules==alloc_rules then
+	elseif rules==alloc_rules and oslv then
 		
-		local uri = oslv and oslv.exp_data_uri
-		local sha = oslv and oslv.exp_data_sha256
-		local dst = sys_conf.sliver_exp_data_dir..sha
+		local uri = oslv.exp_data_uri
+		local sha = oslv.exp_data_sha256
 		
-		if not uri or not sha then
+		if type(uri)~="string" or type(sha)~="string" then
 			dbg( add_lslv_err(otree, path, "missing uri or sha", oval) )
 			return
 		end
-				
+
+		local dst = sys_conf.sliver_exp_data_dir..sha
+		
 		tools.mkdirr( sys_conf.sliver_exp_data_dir )
 		
 		if nixio.fs.stat(dst) then
 			if ssl.dgst_sha256(dst) ~= sha then
 				dbg( "file=%s does not match given sha256 digest!", dst)
 				nixio.fs.remover( dst )
+			else
+				nixio.fs.symlink( dst, dst..".tgz" )
 			end
 		end
 		
@@ -440,6 +444,8 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
 					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nval) )
+				else
+					nixio.fs.symlink( dst, dst..".tgz" )
 				end
 			else
 				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, nval) )
@@ -477,8 +483,6 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
-	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
-	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
@@ -495,8 +499,9 @@ tmp_rules = register_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
 	table.insert(tmp_rules, {"/local_slivers/*/template",				cb2_template_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_nop}) --handled by cb2_template_uri
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
+
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
 
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
@@ -511,7 +516,7 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
---FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -587,7 +592,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name
 			slv.local_slice.instance_sn = tonumber(sv.api_slice_instance_sn)
-			slv.local_slice.vlan_nr = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or cdata.null
+			slv.local_slice.vlan_nr = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or null
 
 			-- sys_get_lsliver_lslice_lgroup()
 			-- slv.local_slice.local_group  = ssh.sys_get__lgroup( sys_conf.sliver_system_dir..sv.sliver_nr..SLIVER_AUTH_FILES[sv.fs_template_type], false)
@@ -602,6 +607,9 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.node_archs = ctree.copy_recursive_rebase_keys(tools.str2table(sv.api_tmpl_node_archs,"[^ ]+"), "node_archs" )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
+
+			slv.exp_data_uri = sv.api_exp_data_uri or null
+			slv.exp_data_sha256 = sv.api_exp_data_sha256 or null
 			
 			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
@@ -735,6 +743,10 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option fs_template_type '%s'\n" %{api_slv.local_template.type}
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		
+		if api_slv.exp_data_sha256~=null then
+			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_exp_data_dir,api_slv.exp_data_sha256..".tgz"}
+		end
+		
 		if type(api_slv.local_slice.vlan_nr)=="number" then
 			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.vlan_nr}
 		end
@@ -776,6 +788,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
+				api_exp_data_uri = (api_slv.exp_data_uri~=null) and api_slv.exp_data_uri or nil,
+				api_exp_data_sha256 = (api_slv.exp_data_sha256~=null) and api_slv.exp_data_sha256 or nil
 			}
 			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
