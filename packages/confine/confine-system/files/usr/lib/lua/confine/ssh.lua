@@ -180,39 +180,15 @@ function sys_set__lgroup_role( auth_file, tech_not_researcher, otree, ntree, pat
 		
 		ctree.set_path_val(otree, path, {})
 				
-	elseif not begin and changed and new then
+	elseif not begin and old and new and changed then
 		
 		dbg("updating auth_tokens for path=%s", path)
 		del_ssh_keys(auth_file, user_id)
 		
-		if old and (old.is_admin or (tech_not_researcher and old.is_technician or old.is_researcher)) and old.local_user and old.local_user.is_active then
+		if (old.is_admin or (tech_not_researcher and old.is_technician or old.is_researcher)) and old.local_user and old.local_user.is_active then
 			
 			add_ssh_keys(auth_file, user_id, auth_token_to_rsa( old.local_user.auth_tokens ))
 		end
-
-		--if (new.is_admin or (tech_not_researcher and new.is_technician or new.is_researcher)) and new.local_user and new.local_user.is_active then
-		--	
-		--	dbg("merging auth_tokens for path=%s", path)
-		--	
-		--	local new_tokens = auth_token_to_rsa( new.local_user.auth_tokens )
-		--	local old_tokens = old and old.local_user and old.local_user.auth_tokens or {}
-		--	
-		--	if ctree.iterate(function() end, {[1]={"/*", function() end}}, nil, old_tokens, new_tokens, "/") then --just scan for changes
-		--
-		--		if old then
-		--			del_ssh_keys(auth_file, user_id)
-		--		end
-		--		
-		--		add_ssh_keys(auth_file, user_id, new_tokens)
-		--	end
-		--	
-		--else	
-		--	if old then
-		--		del_ssh_keys(auth_file, user_id)
-		--	end
-		--end
-		
-		--ctree.set_path_val( otree, path, ((sys_get__lgroup(auth_file, true)).user_roles)[user_id])
 		
 	end
 	

@@ -65,6 +65,10 @@ local function get_key(obj, def, parent)
 		
 		return tostring(obj.nr or def)
 
+	elseif type(obj) == "table" and parent=="addresses" then
+		
+		return tostring(def)
+
 	elseif type(obj) == "table" then
 		
 		if obj.id then
@@ -88,9 +92,6 @@ local function get_key(obj, def, parent)
 		elseif obj.name then
 			return obj.name
 		
-		elseif obj.ip_addr
-			then return obj.ip_addr
-			
 		else
 			return def
 		end
@@ -353,7 +354,10 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 					
 					assert( ov~=nil or nv~=nil )
-					assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil))
+					assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil),
+					       "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"%{path..tk.."/", type(tk),
+												     as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]),
+												     as_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
 					assert( ov==nil or ov==get_path_val(otree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
 					assert( nv==nil or nv==get_path_val(ntree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
 					

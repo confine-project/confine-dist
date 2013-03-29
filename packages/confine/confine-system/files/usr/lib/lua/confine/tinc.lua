@@ -84,19 +84,28 @@ local function get_mgmt_nets(sys_conf, all)
 	return nets
 end
 
-function get_node_mgmt_net( sys_conf )
-	return ((get_mgmt_nets( sys_conf, true) or {})["node_"..sys_conf.id]) or cdata.null
+function get_node_mgmt_net( sys_conf, cached_net )
+	local net = ((get_mgmt_nets( sys_conf, true) or {})["node_"..sys_conf.id]) or cdata.null
+	
+	if type(net)=="table" and type(cached_net)=="table" then
+		net.native = cached_net.native
+		if type(net.tinc_client)=="table" and type(cached_net.tinc_client)=="table" then
+			net.tinc_client.island = cached_net.tinc_client.island
+		end
+	end
+	
+	return net
 end
-
-function get_lserver( sys_conf )
-	return ((get_mgmt_nets( sys_conf, false) or {})["server"]) or cdata.null
-end
-
-function get_lgateways( sys_conf )
-	local gateways = get_mgmt_nets( sys_conf, false) or {}
-	gateways.server = nil
-	return gateways
-end
+--
+--function get_lserver( sys_conf )
+--	return ((get_mgmt_nets( sys_conf, false) or {})["server"]) or cdata.null
+--end
+--
+--function get_lgateways( sys_conf )
+--	local gateways = get_mgmt_nets( sys_conf, false) or {}
+--	gateways.server = nil
+--	return gateways
+--end
 
 
 
@@ -168,113 +177,131 @@ local function check_tinc_conf( sys_conf )
 end
 
 
-local function del_mgmt_net(sys_conf, net)
+local function add_mgmt_net(sys_conf, net)
 
-	assert( net and net.tinc_server and net.tinc_server.name)
+	assert( sys_conf and net)
+
+	local address = net.addr
+	local backend = net[net.backend]
 	
-	if net.tinc_server.name == "node_"..sys_conf.id then
-		dbg("NOT removing own tinc host="..sys_conf.tinc_hosts_dir..net.tinc_server.name)
+	if backend.is_active~=false then
+
+		tools.mkdirr(sys_conf.tinc_hosts_dir)
+	
+		local file = sys_conf.tinc_hosts_dir .. backend.name
+		
+		local out = io.open(file, "w")
+		assert(out, "Failed to open %s" %file)
+		
+		if type(backend.addresses)=="table" then
+			local k,v
+			for k,v in pairs(backend.addresses) do
+				out:write( "Address = "..v.addr.." "..v.port.."\n")
+--				out:write( "Port = "   ..v.port.."\n")
+			end
+		end
+		out:write( "Subnet = "..address.."/128".."\n" )
+		out:write( backend.pubkey.."\n" )
+	
+		out:close()
+		
+		check_tinc_conf(sys_conf)
+	end
+	
+	return true	
+end
+
+local function del_mgmt_net(sys_conf, name)
+
+	assert( type(name)=="string")
+	
+	if name == "node_"..sys_conf.id then
+		dbg("NOT removing own tinc host="..sys_conf.tinc_hosts_dir..name)
 	else
-		pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..net.tinc_server.name )
+		pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..name )
 		check_tinc_conf(sys_conf)
 		return true
 	end
 end
 
 
-
-local function add_mgmt_net(sys_conf, otree, ntree, path)
-
-	assert( sys_conf and otree and ntree and path)
-	local nval = ctree.get_path_val(ntree,path)
-	local oval = ctree.get_path_val(otree,path)
-	assert( nval and not oval )
-
-	ctree.set_path_val(otree, path, {})
-
-	local failure = false
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."addr", "string", {"[%x]+:.*:[%x]+"} ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc_server$"} ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), {cdata.null} ) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server", "table") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses", "table") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1", "table") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", {"^[%d]+%.[%d]+%.[%d]+%.[%d]+$"}) or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/port", "number") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/is_active", "boolean") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/name", "string") or failure
-	failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", {"^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}}) or failure
+function cb2_mgmt_backend_name( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_mgmt_backend_name" end
 	
-	
-	if failure then
-		ctree.set_path_val( otree, path, nil )
-		return false
-	else
-		
-		ctree.set_path_val(otree, path.."tinc_server/addresses/1/island", ctree.copy_recursive(nval.tinc_server.addresses[1].island) )
-		
-		if nval.tinc_server.is_active then
-	
-			tools.mkdirr(sys_conf.tinc_hosts_dir)
-		
-			local file = sys_conf.tinc_hosts_dir .. nval.tinc_server.name
-			
-			local out = io.open(file, "w")
-			assert(out, "Failed to open %s" %file)
-			
-			out:write( "Address = "..nval.tinc_server.addresses[1].addr.."\n")
-			out:write( "Port = "..nval.tinc_server.addresses[1].port.."\n")
-			out:write( "Subnet = "..nval.addr.."/128".."\n" )
-			out:write( nval.tinc_server.pubkey.."\n" )
-		
-			out:close()
-			
-			check_tinc_conf(sys_conf)
-		end
-		
---		ctree.dump(ctree.get_path_val(otree,path))
-				
-		return true
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+
+	if type(old)=="string" and type(new)=="string" and old~=new then
+		del_mgmt_net(sys_conf, old)
 	end
 end
-
-
 
 
 
 function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_mgmt_net" end
-	if begin then return true end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
 	assert( type(old)=="table" or type(new)=="table" )
-	
-	if not begin and not old and new then
 
-		if add_mgmt_net( sys_conf, otree, ntree, path) then
---			ctree.set_path_val( otree, path, get_mgmt_nets(sys_conf)[new.tinc_server.name])
+	if begin and not new and old then
+
+		del_mgmt_net( sys_conf, old.tinc_server.name)
+		ctree.set_path_val(otree, path, nil)
+		
+	elseif begin and new then
+		
+		if not old then
+			dbg("adding empty mgmt_net")
+			ctree.set_path_val(otree, path, {})
+			dbg("added empty mgmt_net")
 		end
 		
-	elseif not begin and old and not new then
+		local failure = false
+		failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."addr", "string", {"[%x]+:.*:[%x]+"} ) or failure
+		failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc_server$", "^tinc_client$"} ) or failure
 
-		if del_mgmt_net( sys_conf, old) then
-			ctree.set_path_val(otree, path, nil)
+		if new.backend=="tinc_server" then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), {cdata.null} ) or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server", "table") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses", "table") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1", "table") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/addr", "string", {"^[%d]+%.[%d]+%.[%d]+%.[%d]+$"}) or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/addresses/1/port", "number") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/is_active", "boolean") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/name", "string") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server/pubkey", "string", {"^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}}) or failure
+		else
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_server", type(cdata.null), {cdata.null} ) or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_client", "table") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_client/name", "string") or failure
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_client/pubkey", "string", {"^%s.*%s$"%{ssl.RSA_HEADER,ssl.RSA_TRAILER}}) or failure
 		end
 		
-	elseif not begin and old and new and changed then
 		
-		local backup_tree = ctree.copy_recursive(otree)
+		if failure then
+			err("Invalid mgmt_net path=%s! Keeping old!")
+			--if old then
+			--	del_mgmt_net( sys_conf, old.tinc_server.name)
+			--end
+			ctree.set_path_val( otree, path, nil )
+		end
+
 		
-		if del_mgmt_net( sys_conf, old) then
-			
-			if add_mgmt_net( sys_conf, otree, ntree, path) then
---				ctree.set_path_val( otree, path, get_mgmt_nets(sys_conf)[new.tinc_server.name] )
-			elseif add_mgmt_net( sys_conf, otree, backup_tree, path) then
-				dbg("Failed! Restored old connect_to name=%s ip=%s", old.tinc_server.name, old.tinc_server[1].addr)
-			end
-			
+	elseif not begin and new and old and changed then
+		
+		dbg("apply mgmt_net")
+
+		if old.backend and old[old.backend] then			
+			del_mgmt_net( sys_conf, old[old.backend].name )
+			add_mgmt_net( sys_conf, old )
+		else
+			ctree.set_path_val( otree, path, nil )
 		end
 	end
+	
+	return true
 end
+
 

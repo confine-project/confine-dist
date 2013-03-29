@@ -472,6 +472,13 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
+
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
+	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
+	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
@@ -491,12 +498,6 @@ tmp_rules = register_rules
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
 
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
-	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
-	--table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
@@ -505,11 +506,11 @@ tmp_rules = register_rules
 tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 --FIXME	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
 
 tmp_rules = dealloc_rules
