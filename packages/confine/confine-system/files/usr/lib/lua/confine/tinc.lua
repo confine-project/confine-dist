@@ -98,72 +98,6 @@ function get_lgateways( sys_conf )
 	return gateways
 end
 
---local function get_connects (sys_conf)
---	
---	local connects = {}
---	local node_name = "node_" .. sys_conf.id
---	
---	--dbg("canon_ipv6 test=%s", tools.canon_ipv6("8::8/128"))
---	
---	local file
---	for file in nixio.fs.dir( sys_conf.tinc_hosts_dir ) do
---			
---		if file ~= node_name then
---			
---			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..file )
---			
-----			dbg( sys_conf.tinc_hosts_dir..file.." = "..content )
---			
---			local subnet = content and tools.subfind(content,"Subnet","\n")
---			
---			if subnet then
---				subnet = subnet:gsub(" ",""):gsub("Subnet=",""):gsub("\n","")
---				if tools.canon_ipv6(subnet) ~= tools.canon_ipv6(sys_conf.mgmt_ipv6_prefix48.."::2/128") then
---					subnet = nil
---				end
---			end
---			
---			if subnet then
---				
---				--dbg("get_local_node_tinc file=%s: %s\nsubnet=%s %s",
---				--    file, content or "", tools.canon_ipv6(subnet), tools.canon_ipv6(sys_conf.mgmt_ipv6_prefix48.."::2/128"))
---
---				local ip_addr  = tools.subfind(content,"Address","\n")
---				local port     = tools.subfind(content,"Port","\n") or (ip_addr and ip_addr:match(" [%d]+[^.]+\n"))
---				local pubkey   = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
---				local name     = file
---
---				if ip_addr and pubkey and name then
---					connects[name] = {
---						ip_addr  = ip_addr:match("[%d]+%.[%d]+%.[%d]+%.[%d]+"),
---						port     = tonumber( (port and (port:match("[%d]+"))) or TINC_PORT ),
---						pubkey   = pubkey,
---						name     = name
---					}
---				end
---				
---			end
---		end
---	end
---	
---	return connects
---end
-
---function get (sys_conf, cached_tinc)
---
---	local tinc = {}
---	
---	tinc.name             = "node_" .. sys_conf.id
---	
---	tinc.pubkey           = tools.subfind(nixio.fs.readfile( sys_conf.tinc_node_key_pub ),ssl.RSA_HEADER,ssl.RSA_TRAILER)
---	
---	tinc.island           = cached_tinc and cached_tinc.island
---
---	tinc.connect_to       = get_connects(sys_conf)
---	
---	
---	return tinc
---end
 
 
 local function renew_tinc_conf (sys_conf, nets)
@@ -247,16 +181,6 @@ local function del_mgmt_net(sys_conf, net)
 	end
 end
 
---function del_connect (sys_conf, connect)
---	
---	if connect.name then
---		pcall( nixio.fs.remove, sys_conf.tinc_hosts_dir..connect.name )
---		check_tinc_conf(sys_conf)
---		return true
---	else
---		return false
---	end
---end
 
 
 local function add_mgmt_net(sys_conf, otree, ntree, path)
@@ -314,33 +238,6 @@ local function add_mgmt_net(sys_conf, otree, ntree, path)
 	end
 end
 
---function add_connect (sys_conf, connect)
---	
---	if connect.ip_addr and connect.port and connect.pubkey and tools.subfind(connect.pubkey,ssl.RSA_HEADER,ssl.RSA_TRAILER) and connect.name then
---	
---		tools.mkdirr(sys_conf.tinc_hosts_dir)
---	
---		local file = sys_conf.tinc_hosts_dir .. connect.name
---		
---		local out = io.open(file, "w")
---		assert(out, "Failed to open %s" %file)
---		
---		out:write( "Address = "..connect.ip_addr.."\n")
---		out:write( "Port = "..connect.port.."\n")
---		out:write( "Subnet = "..sys_conf.mgmt_ipv6_prefix48.."::2/128".."\n" )
---		out:write( connect.pubkey.."\n" )
---	
---		out:close()
---		
---		check_tinc_conf(sys_conf)
---				
---		return true
---	else
---		dbg("ERROR: add_connect() Invalid connect_to parameters")
---		return false
---	end
---end
-
 
 
 
@@ -381,36 +278,3 @@ function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 	end
 end
 
---function cb2_set_tinc( rules, sys_conf, otree, ntree, path, begin, changed )
---	if not rules then return "cb2_set_tinc" end
---
---	local old = ctree.get_path_val(otree,path)
---	local new = ctree.get_path_val(ntree,path)
---	local key = ctree.get_path_leaf(path)
---	assert( type(old)=="table" or type(new)=="table" )
---	
---	if begin and not old and new then
---
---		if add_connect( sys_conf, new) then
---			ctree.set_path_val( otree, path, get_connects(sys_conf)[key])
---		end
---		
---	elseif not begin and old and not new then
---
-----		if del_connect( sys_conf, old) then
-----			ctree.set_path_val(otree,path,nil)
-----		end
---		
---	elseif not begin and old and new and changed then
---		
---		if del_connect( sys_conf, old) then
---			
---			if add_connect( sys_conf, new) then
---				ctree.set_path_val( otree, path, get_connects(sys_conf)[key] )
---			elseif add_connect( sys_conf, old) then
---				dbg("CB_SET_TINC: failed! Restored old connect_to name=%s ip=%s", old.name, old.ip_addr)
---			end
---			
---		end
---	end
---end
