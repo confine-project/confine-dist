@@ -17,9 +17,9 @@ local dbg    = tools.dbg
 function get_url_keys( url )
 	local api_first, api_last = url:find("/api")
 	local full_key = api_last and url:sub(api_last+1) or url
-	local base_key = full_key:sub( full_key:find( "/[%l]+/" ) )
-	local index_first,index_last = full_key:find( "/[%d]+[-]*[%d]*" )
-	local index_key = index_first and full_key:sub( index_first+1, index_last)
+	local base_key = full_key:match( "/[%l]+/" )
+--	local index_key = (full_key:match( "/[%d]+[-]?[%d]*$" ) or ""):gsub("/","")
+	local index_key = (full_key:match( "/[%d]+$" ) or ""):gsub("/","")
 	
 	return base_key, index_key
 end

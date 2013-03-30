@@ -96,24 +96,24 @@ local function add_lslv_err( tree, path, msg, val )
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
 	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key.."/")
 	
-	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..tostring(val) })
-	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), tostring(val)
+	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..cdata.val2string(val) })
+	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), cdata.val2string(val)
 end
 
 
 function cb2_set_state( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_set_state" end
 
-	local oval = ctree.get_path_val(otree,path)
-	local nval = ctree.get_path_val(ntree,path)
-	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
-	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
-	local key  = ctree.get_path_leaf(path)
-	local is_table = type(oval)=="table" or type(nval)=="table"
-	
+	local oval        = ctree.get_path_val(otree,path)
+	local nval        = ctree.get_path_val(ntree,path)
+	local oslv        = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
+	local nslv        = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
+	local is_table    = type(oval)=="table" or type(nval)=="table"
 	
 	if not nval or SERVER[nval] then
+		
 		if nval and nval ~= oval then
+			
 			ctree.set_path_val(otree, path, nval)
 		end
 		
@@ -421,7 +421,7 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		local sha = oslv.exp_data_sha256
 		
 		if type(uri)~="string" or type(sha)~="string" then
-			dbg( add_lslv_err(otree, path, "missing uri or sha", oval) )
+			dbg( "missing exp_data_uri=%s or exp_data_sha256=%s", cdata.val2string(uri), cdata.val2string(sha) )
 			return
 		end
 
