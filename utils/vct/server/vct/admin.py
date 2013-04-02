@@ -25,11 +25,16 @@ def local_files_form_factory(model_class, field_name, base_class=forms.ModelForm
         field = model_class._meta.get_field_by_name(field_name)[0]
         choices = tuple( (name, name) for name in os.listdir(path) )
         if field.blank:
-            choices = (('', '---------'),) + choices
+            choices = (('empty', '---------'),) + choices
             self.fields[field_name].required = False
         self.fields[field_name].widget = forms.widgets.Select(choices=choices)
+
+    def clean_field(self):
+        value = self.cleaned_data.get(field_name)
+        return value if value != 'empty' else ''
     
     attributes['__init__'] = __init__
+    attributes['clean_' + field_name] = clean_field
     return type('VCTLocalFileForm', (base_class,), attributes)
 
 

@@ -404,8 +404,9 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
-#    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
+    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data,pki/ca}
+    # Don't know why /pki gets created as root.. but here a quick fix:
+    vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     
     # executes pip commands on /tmp because of garbage they generate
     local CURRENT=$(pwd) && cd /tmp
@@ -428,7 +429,9 @@ vct_system_install_server() {
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
-    vct_sudo python server/manage.py setupapache
+    # Setup https certificate for the management network
+    vct_sudo python server/manage.py setuppki --org_name VCT --noinput
+    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
     vct_sudo python server/manage.py setupfirmware
     
