@@ -48,5 +48,5 @@ start() {
 
 stop() {
 	echo "Stoping libvirt daemon..."
-	start-stop-daemon -K -p /var/run/libvirt.pid
+	start-stop-daemon -K -p /var/run/libvirtd.pid
 }
