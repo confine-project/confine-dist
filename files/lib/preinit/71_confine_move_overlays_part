@@ -1,7 +1,0 @@
-#!/bin/sh
-
-move_conf() {
-    mount -o move /rom/conf /conf
-}
-
-boot_hook_add preinit_mount_root move_conf
