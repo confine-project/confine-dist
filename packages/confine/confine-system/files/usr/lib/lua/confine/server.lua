@@ -58,6 +58,7 @@ function get_server_node(sys_conf)
 	
 	
 	node.local_server   = data.http_get_keys_as_table("/server/", sys_conf.server_base_uri ,cert_file, cache)
+	
 	node.local_gateways = {}
 	local gateways = data.http_get_keys_as_table("/gateways/", sys_conf.server_base_uri ,cert_file, nil)
 	local gw_idx, gw_uri
@@ -98,9 +99,14 @@ function get_server_node(sys_conf)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
-		if not sliver_obj.exp_data_uri or sliver_obj.exp_data_uri==data.null then
+		if not sliver_obj.exp_data_uri or sliver_obj.exp_data_uri==data.null or sliver_obj.exp_data_uri=="" then
 			sliver_obj.exp_data_uri = slice_obj.exp_data_uri
 			sliver_obj.exp_data_sha256 = slice_obj.exp_data_sha256
+		end
+		
+		if not ( type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 ) then
+			sliver_obj.exp_data_uri = data.null
+			sliver_obj.exp_data_sha256 = data.null
 		end
 		
 		if not sliver_obj.set_state or sliver_obj.set_state==data.null then

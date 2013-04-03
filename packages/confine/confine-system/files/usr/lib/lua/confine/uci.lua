@@ -10,35 +10,42 @@ module( "confine.uci", package.seeall )
 local tools  = require "confine.tools"
 local dbg    = tools.dbg
 
-local uci    = require "luci.model.uci".cursor()
+local lucim  = require "luci.model.uci"
 
 
 
-local function dirty( config )
-	local uci_changes = uci.changes("confine")
-	if uci_changes.confine then
-		dbg("confine config has uncomiited changes:")
+function is_clean( config )
+	
+	local uci = lucim.cursor()
+
+	local uci_changes = uci.changes( config )
+	if uci_changes[config] then
+		dbg("config=%s has uncomiited changes:", config )
 		luci.util.dumptable(uci_changes)
-		return true
+		return false
 	end
-	return false
+	return uci
 end
 
 function set( config, section, option, val)
 
-	assert( not dirty(config), "uci.set config=%s DIRTY when setting option=%s"
+	local uci = is_clean(config)
+	assert( uci, "uci.set config=%s DIRTY when setting option=%s"
 	       %{tostring(config), tostring(section).."."..tostring(option).."."..tostring(val)})
 
-	if uci:set( config, section, option, val ) and uci:commit( config ) then
-		return true
-	else
-		return false
-	end
+	assert( uci:set( config, section, option, val ) and uci:commit( config ) and
+	       uci:set( config, section, option, val ) and uci:commit( config ) and --FIXME: WTF!!!!!!!!!!!!!
+	       uci:get( config, section, option )==tostring(val),
+		"%s.%s.%s NOT %s" %{ tostring(config),tostring(section),tostring(option),tostring(val)})
+	
+	return true
+	       
 end
 
 function get( config, section, option, default )
 
-	assert( not dirty(config), "uci.get config=%s DIRTY when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
+	local uci = is_clean(config)
+	assert( uci, "uci.get config=%s DIRTY when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
 
 	local val = uci:get( config, section, option)
 	
@@ -53,19 +60,64 @@ end
 
 function get_all( config, section )
 
-	if dirty( config ) then
-		return false
-	elseif section then
+	local uci = is_clean(config)
+	assert( uci )
+	
+	dbg("config=%s, section=%s", tostring(config), tostring(section))
+	
+	if section then
+		
 		return uci:get_all( config, section)
 	else
 		return uci:get_all( config )
 	end
 end
 
+function set_section_opts( config, section, values )
+	
+	local uci = is_clean(config)
+	assert( uci )
+	dbg("")
 
---function get_dirty( config, section, option )
---	
---	assert( dirty(config), "uci.get config=%s uncomitted when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
---
---	return uci:get( config, section, option)
---end
+	for ok,ov in pairs( values ) do
+		if type(ok)=="string" and not ok:match("^%.") then
+			dbg( "%s.%s.%s=%s", config,section,ok,ov )
+			assert( set( config, section, ok, tostring(ov) ) )
+			--assert( get( config, section, ok )==tostring(ov), "%s.%s.%s NOT %s" %{ config,section,ok,ov} )
+		end
+	end
+	
+	return true
+end
+
+function set_all( config, sections )
+
+	assert()
+	assert( type(config)=="string" and type(sections)=="table" )
+
+	local uci = is_clean(config)
+	assert( uci )
+
+	local sk,sv
+	for sk,sv in pairs( get_all( config ) or {} ) do
+		uci:delete( config, sk )
+	end
+	
+	for sk,sv in pairs( sections ) do
+		uci:set( config, sk, sv[".type"] )
+		local ok,ov
+		for ok,ov in pairs( sv ) do
+			if type(ok)=="string" and not ok:match("^%.") then
+				uci:set( config, sk, ok, ov )
+			end
+		end
+	end
+	
+	if uci:save( config ) then
+		return uci:commit( config )
+	else
+		uci:revert( config )
+		return false
+	end
+end
+

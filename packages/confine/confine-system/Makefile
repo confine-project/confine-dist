@@ -139,9 +139,7 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
-	$(CP)  ./files/lxc/scripts/openwrt-confine-dhcp.sh $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
-	$(CP)  ./files/lxc/scripts/debian-confine-dhcp.sh  $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
@@ -163,6 +161,7 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_undeploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove

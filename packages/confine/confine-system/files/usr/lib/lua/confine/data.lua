@@ -66,7 +66,7 @@ function file_put( data, file, dir )
 	elseif data then
 		local k,v
 		for k,v in pairs(data) do
-			file_put( v, k, dir )
+			file_put( v, "index.html", dir .. k .. "/" )
 		end
 	end
 end
@@ -114,7 +114,7 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 	local cached             = cache and cache[base_key] and ((index_key and cache[base_key][index_key]) or (not index_key and cache[base_key])) or false
 	
 	url = base_uri..base_key..(index_key or "")
-	dbg("%6s url=%-60s", cached and "cached" or "wget", url)
+	dbg("%6s url=%-60s base_key=%s index_key=%s", cached and "cached" or "wget", url, tostring(base_key), tostring(index_key))
 	
 	if cached then
 		
