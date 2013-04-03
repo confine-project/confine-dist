@@ -14,6 +14,7 @@ local sig     = require "signal"
 local uci     = require "confine.uci"
 local tools   = require "confine.tools"
 local data    = require "confine.data"
+local ctree   = require "confine.tree"
 local null    = data.null
 
 
@@ -85,7 +86,7 @@ end
 
 function get_system_conf(sys_conf, arg)
 
---	if uci.dirty( "confine" ) then return false end
+	if not uci.is_clean("confine") or not uci.is_clean("confine-slivers") then return false end
 	
 	local conf = sys_conf or {}
 	local flags = {}
@@ -155,24 +156,32 @@ function get_system_conf(sys_conf, arg)
 	conf.priv_ipv4_prefix      = uci.get("confine", "node", "priv_ipv4_prefix24") .. ".0/24"
 	conf.sliver_mac_prefix     = "0x" .. uci.get("confine", "node", "mac_prefix16"):gsub(":", "")
 	
-	conf.sliver_pub_ipv4       = uci.get("confine", "node", "sl_public_ipv4_proto")
+	conf.sl_pub_ipv4_proto     = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
 
-	conf.direct_ifaces         = tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+")
+	conf.direct_ifaces         = ctree.copy_recursive_rebase_keys(tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+"), "direct_ifaces")
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
 
 --	conf.uci = {}
 --	conf.uci.confine           = uci.get_all("confine")
 	conf.uci_slivers           = uci.get_all("confine-slivers")
+	
+	conf.sliver_system_dir     = uci.get("lxc", "general", "lxc_images_path").."/"
+	
+	local EXP_DATA_DIR_RD      = "/confine/exp_data/"
+	conf.sliver_exp_data_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
+
+	local TEMPLATE_DIR_RD      = "/confine/templates/"
+	conf.sliver_template_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
 
 	data.file_put( conf, system_state_file )
 
 	return conf
 end
 
-function set_system_conf( sys_conf, opt, val)
+function set_system_conf( sys_conf, opt, val, section)
 	
 	assert(opt and type(opt)=="string", "set_system_conf()")
 	
@@ -252,15 +261,20 @@ function set_system_conf( sys_conf, opt, val)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "uci_slivers" and
-		type(val) == "table" and
-		uci.set_all( "confine-slivers", val) then
+	elseif opt=="uci_sliver" and
+		type(val)=="table" and type(section)=="string" and
+		uci.set_section_opts( "confine-slivers", section, val) then
 		
 		return get_system_conf(sys_conf)
+	--elseif opt == "uci_slivers" and
+	--	type(val) == "table" and
+	--	uci.set_all( "confine-slivers", val) then
+	--	
+	--	return get_system_conf(sys_conf)
 		
 	end
 		
-	assert(false, "ERR_SETUP: Invalid opt=%s val=%s" %{opt, tostring(val)})
+	assert(false, "ERR_SETUP: Invalid opt=%s val=%s section=%s" %{opt, tostring(val), tostring(section)})
 	
 end
 

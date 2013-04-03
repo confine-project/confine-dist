@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
-VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_04-x86.img.gz"
+VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-bare-bones_06-x86.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -78,7 +78,7 @@ VCT_NODE_MAC_DB=./vct.nodes.local
 
 VCT_SERVER="y" ## any other value disables the controller installation and usage
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.8a43' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_VERSION='0.8.7a0' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################

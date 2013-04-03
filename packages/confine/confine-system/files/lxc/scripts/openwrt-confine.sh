@@ -1,27 +1,29 @@
 customize_rootfs() {
-    SL_NAME=$1
+	CT_NR=$1
+	
+	rm -rf $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/init.d/firewall
+	
+	local MY_NODE="$( uci_get confine.node.id )"
+	local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
+	local TMP_SLICE=
+	local SL_ID=
+	for TMP_SLICE in $TMP_SLICES ; do
+		if [ "$(uci_get confine-slivers.$TMP_SLICE.sliver_nr soft,quiet )" = "$CT_NR" ] ; then
+			SL_ID=$TMP_SLICE
+			break
+		fi
+	done
+	
+	[ "$SL_ID" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES"
+	
+	
+    
 
-    rm -rf $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/init.d/firewall
+	#uci_set network.loopback.bla=blub path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
 
-    local MY_NODE="$( uci_get confine.node.id )"
-    local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
-    local TMP_SLICE=
-    local MY_SLICE=
-    for TMP_SLICE in $TMP_SLICES ; do
-		
-	if [ "$(uci_get confine-slivers.$TMP_SLICE.sliver_nr soft,quiet )" = "$SL_NAME" ] ; then
-	    MY_SLICE=$TMP_SLICE
-	    break;
-	fi
-    done
-
-    [ "$MY_SLICE" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES" 
-
-#    uci_set network.loopback.bla=blub path=$LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config
-
-    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/system
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/system
 config system
-        option hostname ${MY_SLICE}_${MY_NODE}
+        option hostname ${SL_ID}_${MY_NODE}
         option timezone UTC
 
 config timeserver ntp
@@ -34,7 +36,7 @@ EOF
 
 
 
-    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/inittab
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/inittab
 ::sysinit:/etc/init.d/rcS S boot
 ::shutdown:/etc/init.d/rcS K stop
 console::askfirst:/bin/ash --login
@@ -49,17 +51,111 @@ EOF
 
 
 
-    cat <<EOF > $LXC_IMAGES_PATH/$SL_NAME/rootfs/etc/config/network
+
+	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
+	local TMP_KEY=
+	local PUBLIC4_KEY=
+	local MGMT_KEY=
+	local PUBLIC4_PROTO="$(uci_get confine.node.sl_public_ipv4_proto)"
+	
+	for TMP_KEY in $IF_KEYS; do
+		local TMP_TYPE="$(uci_get confine-slivers.$SL_ID.if${TMP_KEY}_type soft,quiet)"
+		if [ "$TMP_TYPE" ]; then
+			if [ "$TMP_TYPE" = "public" ]; then
+				PUBLIC4_KEY=$TMP_KEY
+				MGMT_KEY=$TMP_KEY
+			fi
+			if [ "$TMP_TYPE" = "public4" ]; then
+				PUBLIC4_KEY=$TMP_KEY
+			fi
+			if [ "$TMP_TYPE" = "management" ]; then
+				MGMT_KEY=$TMP_KEY
+			fi
+		else
+			break
+		fi
+	done
+
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
 config 'interface' 'loopback'
         option 'ifname' 'lo'
         option 'proto' 'static'
         option 'ipaddr' '127.0.0.1'
         option 'netmask' '255.0.0.0'
+	
+EOF
 
-config 'interface' 'public0'
-        option 'ifname'  'pub0'
-        option 'proto'   'dhcp'
+	if [ "$PUBLIC4_KEY" ] && [ "$PUBLIC4_PROTO" = "dhcp" ]; then
+		
+		local PUBLIC4_NAME="$(uci_get confine-slivers.$SL_ID.if${PUBLIC4_KEY}_name)"
+		
+		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
+config 'interface' 'public4'
+	option 'ifname'  "$PUBLIC4_NAME"
+	option 'proto'   'dhcp'
 
 EOF
+	fi
+
+	if [ "$MGMT_KEY" ]; then
+		
+		local MGMT_NAME="$(uci_get confine-slivers.$SL_ID.if${MGMT_KEY}_name)"
+		local MGMT_ADDR="$(uci_get confine-slivers.$SL_ID.if${MGMT_KEY}_ipv6)"
+		local MGMT_GW="$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):$MY_NODE::2"
+		
+		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
+config 'interface' 'managemet'
+	option 'ifname'    "$MGMT_NAME"
+        option 'proto'     'static'
+        option 'ip6addr'   "$MGMT_ADDR"
+        option 'ip6gw'     "$MGMT_GW"
+
+EOF
+	fi
+
+
+
+
+	cp $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/uhttpd $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/uhttpd.orig
+	uci_set uhttpd.main.listen_http='0.0.0.0:80 [::]:80'    path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set uhttpd.main.listen_https='0.0.0.0:443 [::]:443' path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+
+
+
+
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
+
+	uci_show confine-slice-attributes | \
+	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
+	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
+
+	local USER_PUBKEY="$( uci_get confine-slivers.$SL_ID.user_pubkey soft,quiet )"
+
+	#mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
+	#[ "$USER_PUBKEY" ] && echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/authorized_keys	    
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/dropbear/
+	[ "$USER_PUBKEY" ] && echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/dropbear/authorized_keys
+	    
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh
+#!/bin/sh
+
+echo "Backung up uci-default scripts"
+
+mkdir -p /etc/uci-applied-defaults
+cp /etc/uci-defaults/* /etc/uci-applied-defaults/
+EOF
+
+
+# set random passwd (FIXME: not working!):
+	local PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
+	cat <<EOF1 > /dev/null # $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/random-passwd.sh
+#!/bin/sh
+echo "Setting random passwd=$PASSWD (disabling telnet, enabling ssh authorized key login)"
+passwd <<EOF2
+$PASSWD
+$PASSWD
+EOF2
+EOF1
 
 }
