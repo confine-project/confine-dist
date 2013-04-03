@@ -22,42 +22,61 @@ function add_error( tree, path, msg, val )
 
 	tree.errors = tree.errors or {}
 
-	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..tostring(val) })
-	return "Error path=%s msg=%s val=%s" , path, tostring(msg), tostring(val)
+	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..data.val2string(val) })
+	return "Error path=%s msg=%s val=%s" , path, tostring(msg), data.val2string(val)
 end
 
-function set_or_err( err_func, otree, ntree, path, valtype, ... )
+function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
 	
 	local val = ctree.get_path_val( ntree, path )
 	local success = false
 	
-	if type(val)==valtype then
-		
-		if arg.n==0 then
-			success=true
-		else
-			local i,v
-			for i,v in ipairs(arg) do
-				if (type(val)=="string" and val:match(v)) or (val==v) then
-					success=true
-					break
-				end
+	if patterns then
+		assert( type(patterns)=="table" )
+		local i,v
+		for i,v in pairs(patterns) do
+			if (type(val)=="string" and type(v)=="string" and val:match(v)) or (val==v) then
+				success=true
+				break
 			end
 		end
 		
+	elseif type(val)==valtype then
+		
+		success=true
 	end
+		
 	
 	if success then
-		ctree.set_path_val(otree, path, type(val)=="table" and {} or val)
+		if not no_set then
+			ctree.set_path_val(otree, path, type(val)=="table" and {} or val)
+		end
 		return val
 	else
 		dbg( err_func( otree, path, "Invalid", val) )
 	end
 end
 
+function chk_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
+	return set_or_err( err_func, otree, ntree, path, valtype, pattern, true )
+end
 
 function cb2_nop( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_nop" end
+end
+
+function cb2_set_null( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_null" end
+	
+	ctree.set_path_val(otree, path, null)
+end
+
+function cb2_set_empty_table( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_empty_table" end
+	
+	if begin then
+		ctree.set_path_val(otree, path, {})
+	end
 end
 
 function cb2_log( rules, sys_conf, otree, ntree, path )
@@ -89,34 +108,35 @@ function cb2_set( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 end
 
-function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed )
+function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed, misc, is_val )
 	
 	if not rules then return "cb2" end
+	
+	local max_val_len = 28
 	
 	assert( type(otree)=="table" )
 	assert( type(ntree)=="table" )
 	
 	local oldv = ctree.get_path_val(otree,path)
-	local olds = data.val2string(oldv):gsub("\n",""):sub(1,28)
+	local olds = data.val2string(oldv):gsub("\n",""):sub(1,max_val_len)
 	local newv = ctree.get_path_val(ntree,path)
-	local news = data.val2string(newv):gsub("\n",""):sub(1,28)
+	local news = data.val2string(newv):gsub("\n",""):sub(1,max_val_len)
 	local is_table = type(oldv)=="table" or type(newv)=="table"
 
 	
-	--dbg( "cb2() path=%s begin=%s changed=%s old=%s new=%s", path, tostring(begin), tostring(changed), olds, news)
-	--if not is_table and (oldv ~= newv) then
-	--	dbg( " %-15s %-50s %s => %s", task(), path, olds, news)
-	--end
+	--dbg( "%s %s %-15s %-50s %s => %s",
+	--    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
+	--    task(), path, olds, news)
 
 	local report = task( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 	local outv = ctree.get_path_val(otree,path)
-	local outs = data.val2string(outv):sub(1,28)
+	local outs = data.val2string(outv):sub(1,max_val_len)
 
 	if oldv ~= outv or (oldv ~= newv and not is_table) or changed or report then
-		dbg( " %s %-15s %-50s %s => %s ==> %s",
-		    (is_table and (begin and "BEG" or (changed and "CHG" or "END")) or "VAL"),
-		    task(), path, olds, news, outs)
+		dbg( "%s %s %-15s %-50s %s %s => %s ==> %s",
+		    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
+		    task(), path, (oldv==nil and newv==nil and "UNMATCHED" or ""), olds, news, outs)
 	end
 	
 end

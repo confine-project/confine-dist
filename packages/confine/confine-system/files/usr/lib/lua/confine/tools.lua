@@ -13,18 +13,25 @@ local nixio   = require "nixio"
 
 
 logfile = false
+logsize = 1000
 
 
-function dbg_(nl, err, fmt, ...)
+function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
-	local l = "[%d.%3d] %s() %s%s" %{os.time(), (t.utime + t.stime + t.cutime + t.cstime), debug.getinfo(2).name or "???", string.format(fmt,...), nl and "\n" or "" }
+	local l = "[%s.%d] %-7s %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
 	if err then
-		io.stderr:write(l)
+		io.stderr:write("ERROR "..l)
 	else
 		io.stdout:write(l)
 	end
 	
 	if logfile then
+		
+		local stat = nixio.fs.stat(logfile)
+		if stat and stat.size > logsize then
+			nixio.fs.move(logfile, logfile..".old")
+		end
+		
 		local out = io.open(logfile, "a")
 		assert(out, "Failed to open %s" %logfile)
 		out:write(l)
@@ -38,11 +45,11 @@ function dbg_(nl, err, fmt, ...)
 end
 
 function dbg(fmt, ...)
-	dbg_(true, false, fmt, ...)
+	dbg_(true, false, debug.getinfo(2).name or "???", fmt, ...)
 end
 
 function err(fmt, ...)
-	dbg_(true, true, fmt, ...)
+	dbg_(true, true, debug.getinfo(2).name or "???", fmt, ...)
 end
 
 --- Extract flags from an arguments list.
@@ -130,7 +137,7 @@ function mkdirr( path, mode )
 			first = first + pos
 			local dir = string.sub(path, 1, first)
 			if not lucifs.isdirectory(dir) then
-				dbg("mkdir "..dir)
+				--dbg("mkdir "..dir)
 				nixio.fs.mkdir( dir, mode )
 			end
 			assert( lucifs.isdirectory(dir), "Failed creating dir=%s" %dir )
@@ -192,6 +199,29 @@ function str2table( str, pattern )
 	
 	return t
 end
+
+function table2string( tree, separator, maxdepth )
+--	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
+	if not maxdepth then maxdepth = 1 end
+	if not separator then separator = " " end
+	if type(tree)~="table" then return tostring(tree) end
+	local result = ""
+	local k,v
+	for k,v in pairs(tree or {}) do
+			
+		if type(v) ~= "table"  then
+			result = (result=="" and result or result..separator) .. tostring(v)
+		else
+			assert( maxdepth > 1, "maxdepth reached!")
+			local sub_result = table2string(v, separator, (maxdepth - 1))
+			if sub_result ~= "" then
+				result = (result=="" and result or result..separator) .. sub_result
+			end
+		end
+	end
+	return result
+end
+
 
 function subfind(str, start_pattern, end_pattern )
 

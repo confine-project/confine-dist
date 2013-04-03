@@ -29,10 +29,22 @@ local require_node_cert   = false
 
 local function get_local_base( sys_conf, node )
 	local base = {}
-	base.uri                   = sys_conf.node_base_uri.."/"
-	base.node_uri              = node.uri
-	base.slivers_uri           = sys_conf.node_base_uri.."/slivers"
-	base.templates_uri         = sys_conf.node_base_uri.."/templates"
+
+	base.uri		= sys_conf.node_base_uri.."/"
+
+	base.confine_params	= {
+		debug_ipv6_prefix	= sys_conf.debug_ipv6_prefix,
+		priv_ipv6_prefix	= sys_conf.priv_ipv6_prefix
+		}
+	base.testbed_params	= {
+		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
+		priv_ipv4_prefix_dflt 	= sys_conf.priv_ipv4_prefix,
+		sliver_mac_prefix_dflt	= sys_conf.sliver_mac_prefix
+		}
+
+	base.node_uri		= node.uri
+	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
+	base.templates_uri	= sys_conf.node_base_uri.."/templates"
 
 	return base	
 end
@@ -77,7 +89,7 @@ function main_loop( sys_conf )
 		if not system.get_system_conf( sys_conf ) then break end
 		
 		dbg("getting local node...")
-		local_node = cnode.get_local_node(sys_conf, local_node)
+		local_node = cnode.get_new_cycle_lnode(sys_conf, local_node)
 		assert(local_node)
 		cdata.file_put( local_node, system.node_state_file )
 		
@@ -107,7 +119,7 @@ function main_loop( sys_conf )
 				
 				if not success then
 					dbg( crules.add_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
-					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
 				end
 					
 			end
@@ -125,7 +137,7 @@ function main_loop( sys_conf )
 				end
 					
 				if v.message:sub(1,9)~="ERR_RETRY" or (sys_conf.retry_limit~=0 and sys_conf.retry_limit < err_cnt) then
-					cnode.set_node_state(sys_conf, local_node, cnode.STATE.setup)
+					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
 				end
 			end
 		else
@@ -136,7 +148,6 @@ function main_loop( sys_conf )
 		upd_node_rest_conf( sys_conf, local_node )
 
 
-			
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
 			if tools.stop then break end
@@ -144,7 +155,7 @@ function main_loop( sys_conf )
 			iteration = iteration + 1
 			
 			if sys_conf.interactive then
-				tools.dbg_(false, "Press enter for next iteration:")
+				tools.dbg_(false, false, "main_loop", "Press enter for next iteration:")
 				io.read()
 			else
 				tools.sleep(sys_conf.interval)
@@ -168,6 +179,7 @@ if system.check_pid() then
 	sig.signal(sig.SIGTERM, tools.handler)
 	
 	local sys_conf = system.get_system_conf( nil, arg )
+	assert(sys_conf)
 	
 	pcall(nixio.fs.remover, system.rest_confine_dir)
 	tools.mkdirr(system.rest_confine_dir)

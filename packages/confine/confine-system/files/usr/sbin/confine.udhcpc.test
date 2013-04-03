@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ "$ip" ]; then
-	echo "result: interface=$interface router=$router dns=$dns serverid=$serverid ip=$ip lease=$lease"
+	echo "result: interface=$interface router=$router dns=$dns serverid=$serverid ip=$ip netmask=${subnet:-255.255.255.0} addr=$ip/$(ipcalc.sh $ip ${subnet:-255.255.255.0} | grep PREFIX | cut -d '=' -f 2) lease=$lease"
 fi
 
 
