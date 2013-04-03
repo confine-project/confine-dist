@@ -1,13 +1,17 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=libvirt
-PKG_VERSION:=1.0.2
+#PKG_VERSION:=1.0.2
+PKG_VERSION:=0.9.8
 PKG_RELEASE:=2
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://libvirt.org/sources/
-PKG_MD5SUM:=7e268ed702c4331d393e5b43449cae13
+#v1.0.2
+#PKG_MD5SUM:=7e268ed702c4331d393e5b43449cae13
+#v0.9.8
+PKG_MD5SUM:=5bb74092e469d773c3d63128a8c57501
 
 PKG_INSTALL:=1
 
@@ -23,11 +27,16 @@ define Package/libvirt
             +libdevmapper +libnl +libgcrypt +librpc +libxml2 \
             +gzip +tar
 
+#TO DO: Check and remove unneeded dependencies
+
 endef
 
 TARGET_CFLAGS += -fno-stack-protector
 
-CONFIGURE_VARS += BLKID_LIBS="-lblkid -luuid" gl_cv_warn_c__fstack_protector_all=no
+CONFIGURE_VARS += BLKID_LIBS="-lblkid -luuid -lm" \
+                  gl_cv_warn__fstack_protector_all=no \
+                  gl_cv_warn_c__fstack_protector_all=no \
+
 
 define Package/libvirt/description
 	Libvirt is an open source API, daemon and management tool for managing platform virtualization.
