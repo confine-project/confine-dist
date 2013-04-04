@@ -430,7 +430,7 @@ vct_system_install_server() {
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
     # Setup https certificate for the management network
-    vct_sudo python server/manage.py setuppki --org_name VCT --noinput
+    vct_do python server/manage.py setuppki --org_name VCT --noinput
     vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
     vct_sudo python server/manage.py setupfirmware
