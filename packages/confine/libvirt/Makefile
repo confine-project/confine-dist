@@ -33,7 +33,7 @@ define Package/libvirt
   TITLE:=Libvirt Virtualization API
   URL:=http://libvirt.org
   DEPENDS:= +gnutls-utils +libgnutls +libgnutls-extra +libgnutls-openssl +certtool \
-            +libdevmapper +libnl +libgcrypt +librpc +libxml2 \
+            +libdevmapper +libnl +libgcrypt +librpc +libxml2 +dmidecode \
             +gzip +tar
 
 #TO DO: Check and remove unneeded dependencies
