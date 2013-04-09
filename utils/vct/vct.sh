@@ -186,7 +186,7 @@ vct_system_config_check() {
 
 
 # Typical cases:
-# VCT_NODE_TEMPLATE_URL="http://distro.confine-project.eu/rd-images/openwrt-x86-generic-combined-ext4.img.tgz"
+# VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4.img.tgz"
 # VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_NODE_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
@@ -526,7 +526,7 @@ vct_system_install_check() {
     fi
 
     # check uci binary
-    local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
+    local UCI_URL="http://media.confine-project.eu/vct/uci.tgz"
 
     local UCI_INSTALL_DIR="/usr/local/bin"
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
