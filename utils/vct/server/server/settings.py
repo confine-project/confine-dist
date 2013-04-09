@@ -113,3 +113,7 @@ STATE_SLIVERSTATE_EXPIRE_WINDOW = 150
 PKI_CA_PRIV_KEY_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/key.priv')
 PKI_CA_PUB_KEY_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/key.pub')
 PKI_CA_CERT_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/cert')
+
+# Maintenance operations
+MAINTENANCE_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa')
+MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.pub')
