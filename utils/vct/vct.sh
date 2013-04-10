@@ -186,7 +186,7 @@ vct_system_config_check() {
 
 
 # Typical cases:
-# VCT_NODE_TEMPLATE_URL="http://distro.confine-project.eu/rd-images/openwrt-x86-generic-combined-ext4.img.tgz"
+# VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4.img.tgz"
 # VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_NODE_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
@@ -404,8 +404,9 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data}
-#    vct_sudo chown -R $VCT_USER {$VCT_SERVER_DIR,server}
+    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data,pki/ca}
+    # Don't know why /pki gets created as root.. but here a quick fix:
+    vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     
     # executes pip commands on /tmp because of garbage they generate
     local CURRENT=$(pwd) && cd /tmp
@@ -428,7 +429,9 @@ vct_system_install_server() {
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
-    vct_sudo python server/manage.py setupapache
+    # Setup https certificate for the management network
+    vct_do python server/manage.py setuppki --org_name VCT --noinput
+    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
     vct_sudo python server/manage.py setupfirmware
     
@@ -523,7 +526,7 @@ vct_system_install_check() {
     fi
 
     # check uci binary
-    local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
+    local UCI_URL="http://media.confine-project.eu/vct/uci.tgz"
 
     local UCI_INSTALL_DIR="/usr/local/bin"
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
