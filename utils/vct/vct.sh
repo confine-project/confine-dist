@@ -429,11 +429,6 @@ vct_system_install_server() {
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
-    # Setup https certificate for the management network
-    vct_do python server/manage.py setuppki --org_name VCT --noinput
-    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
-
-    vct_sudo python server/manage.py setupfirmware
     
     # We need postgres to be online, just making sure it is.
     vct_sudo service postgresql start
@@ -446,6 +441,12 @@ vct_system_install_server() {
     
     vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
     python server/manage.py updatetincd
+
+    # Setup https certificate for the management network
+    vct_do python server/manage.py setuppki --org_name VCT --noinput
+    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
+
+    vct_sudo python server/manage.py setupfirmware
     
     vct_sudo python server/manage.py startservices --no-tinc
     vct_sudo $VCT_TINC_START
