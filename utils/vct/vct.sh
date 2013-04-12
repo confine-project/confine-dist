@@ -448,7 +448,7 @@ vct_system_install_server() {
 
     vct_sudo python server/manage.py setupfirmware
     
-    vct_sudo python server/manage.py restartservices --no-tinc
+    vct_sudo python server/manage.py restartservices --no-tinc --no-postgres
     vct_sudo $VCT_TINC_START
     
     if [[ $CURRENT_VERSION != false ]]; then
