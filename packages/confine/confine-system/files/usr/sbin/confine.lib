@@ -743,7 +743,7 @@ confine_sliver_allocate() {
 		if [ "$IF_TYPE" = "internal" ] || [ "$IF_TYPE" = "private" ]; then
 
 		    local IF_PRIV_IPV4=$( uci_get confine.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
-		    local IF_PRIV_IPV6=$( uci_get confine-defaults.confine.priv_ipv6_prefix48 ):0:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:0/64
+		    local IF_PRIV_IPV6=$( uci_get confine-defaults.confine.priv_ipv6_prefix48 ):0:1000:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$IF_PRIV_IPV4  path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_PRIV_IPV6  path=$OUT_DIR
@@ -752,7 +752,7 @@ confine_sliver_allocate() {
 
 		elif [ "$IF_TYPE" = "public" ]; then
 
-		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:${IF_KEY}/64
+		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:10${IF_KEY}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6        path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4        path=$OUT_DIR
@@ -765,7 +765,7 @@ confine_sliver_allocate() {
 
 		elif [ "$IF_TYPE" = "management" ]; then
 
-		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}:${IF_KEY}/64
+		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:10${IF_KEY}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6        path=$OUT_DIR
 		    
