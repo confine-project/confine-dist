@@ -243,14 +243,14 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 	
 end
 
-function cb2_set_setup( rules, sys_conf, otree, ntree, path )
+function cb2_set_setup( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
 	if not rules then return "cb2_setup" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
 
 	if old ~= new then
-		dbg( crules.add_error(otree, path, "Invalid Value", new) )
+		dbg( crules.add_error(otree, path, "%s"%{type(error_msg)=="string" and error_msg or "Invalid "}, new) )
 		set_node_state( sys_conf, otree, STATE.debug, path )
 		return true
 	end
@@ -320,13 +320,13 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn/cndb_cached_on",			crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
-	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
-	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
-	table.insert(tmp_rules, {"/arch",				cb2_set_setup})
-	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup})
+	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
+	table.insert(tmp_rules, {"/cert", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"})
+	table.insert(tmp_rules, {"/arch",				cb2_set_setup, "differs from predefined RD hardware!"})
+	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with physical connectivity to CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with IPs reserved in CD!"})
 
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/addr",			crules.cb2_nop})

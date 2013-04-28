@@ -22,8 +22,8 @@ function add_error( tree, path, msg, val )
 
 	tree.errors = tree.errors or {}
 
-	table.insert(tree.errors, { member=path, message=tostring(msg).." value="..data.val2string(val) })
-	return "Error path=%s msg=%s val=%s" , path, tostring(msg), data.val2string(val)
+	table.insert(tree.errors, { member=path, message="Value="..data.val2string(val).." "..tostring(msg) })
+	return "Error path=%s value=%s msg=%s" , path, tostring(msg), data.val2string(val)
 end
 
 function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
@@ -128,7 +128,7 @@ function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed, misc, i
 	--    is_val and "VAL" or "TBL", is_table and ((begin and "BEG" or (changed and "CHG" or "END"))) or "VAL",
 	--    task(), path, olds, news)
 
-	local report = task( rules, sys_conf, otree, ntree, path, begin, changed )
+	local report = task( rules, sys_conf, otree, ntree, path, begin, changed, misc )
 	
 	local outv = ctree.get_path_val(otree,path)
 	local outs = data.val2string(outv):sub(1,max_val_len)

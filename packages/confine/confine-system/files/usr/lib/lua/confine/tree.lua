@@ -303,7 +303,7 @@ end
 
 
 
-function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
+function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 	
 	assert(cb and rules and otree and ntree and path)
 	lvl = lvl or 0
@@ -319,6 +319,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 	
 		local pattern     = pv[1]
 		local task        = pv[2]
+		local misc	  = pv[3]
 		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s pk=%s" %{tostring(pattern), tostring(task), tostring(pk) } )
 		local pattern_key = pattern:match("%*$") or pattern:match("[^/]+$")
 		local pattern_    = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
@@ -363,9 +364,9 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, misc, lvl)
 					
 					
 					if is_table then
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc)
-						down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", misc, lvl+1)
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc, false)
+						down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", unused, lvl+1)
+						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc, false)
 					else
 						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc, true)
 					end
