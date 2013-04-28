@@ -2,7 +2,7 @@ src-link openwrt @PACKAGE_DIR@/openwrt
 src-link confine @PACKAGE_DIR@/confine
 #src-svn packages svn://svn.openwrt.org/openwrt/packages
 src-svn xwrt http://x-wrt.googlecode.com/svn/trunk/package
-src-svn luci http://svn.luci.subsignal.org/luci/trunk/contrib/package
+src-svn luci src-svn luci http://svn.luci.subsignal.org/luci/trunk
 #src-svn phone svn://svn.openwrt.org/openwrt/feeds/phone
 #src-svn efl svn://svn.openwrt.org/openwrt/feeds/efl
 #src-svn desktop svn://svn.openwrt.org/openwrt/feeds/desktop
