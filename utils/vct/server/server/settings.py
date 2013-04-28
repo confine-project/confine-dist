@@ -62,7 +62,7 @@ STATIC_ROOT = os.path.join(VCT_SERVER_ROOT, 'static')
 
 
 # Install / uninstall modules
-INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct', prepend=True)
+INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'gis')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'issues')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'registration')
@@ -117,3 +117,8 @@ PKI_CA_CERT_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/cert')
 # Maintenance operations
 MAINTENANCE_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa')
 MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.pub')
+
+# Branding
+SITE_NAME = 'VCT'
+SITE_VERBOSE_NAME = 'VCT Testbed Management'
+

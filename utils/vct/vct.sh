@@ -448,7 +448,7 @@ vct_system_install_server() {
 
     vct_sudo python server/manage.py setupfirmware
     
-    vct_sudo python server/manage.py restartservices --no-tinc --no-postgres
+    vct_sudo python server/manage.py startservices --no-tinc
     vct_sudo $VCT_TINC_START
     
     if [[ $CURRENT_VERSION != false ]]; then
@@ -908,7 +908,7 @@ EOF
     if [ "$VCT_SERVER" = "y" ]; then
         # check if controller system and management network is running:
 	[ $CMD_INIT ] && vct_tinc_stop
-	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices --no-tinc
+	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices
 	[ $CMD_INIT ] && vct_sudo $VCT_TINC_START
     else
         # check if tinc management network is running:
