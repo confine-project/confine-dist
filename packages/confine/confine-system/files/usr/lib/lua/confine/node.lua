@@ -126,7 +126,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	local node = cached_node
 	
-	node.errors                = nil
+	node.errors                = {}
 	
 	node.uri                   = sys_conf.node_base_uri.."/node"
 	node.id                    = sys_conf.id
@@ -259,7 +259,9 @@ end
 function cb2_set_state( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_set_state" end
 	
-	if otree.errors then
+	assert(not otree.errors or type(otree.errors)=="table")
+	
+	if otree.errors and tools.get_table_items(otree.errors)>0 then
 		
 		sys_conf.err_cnt = sys_conf.err_cnt + 1
 		
@@ -415,7 +417,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-
+	
 
 
 out_filter = {}

@@ -109,7 +109,7 @@ function main_loop( sys_conf )
 		--dbg("tree fingerprint is %08x", lmo.hash(util.serialize_data(server_node)))
 	
 		dbg("processing input")
-		if not local_node.errors then
+		if not local_node.errors or tools.get_table_items(local_node.errors)==0 then
 			if( sys_conf.debug ) then
 				ctree.iterate( crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 			else
@@ -124,22 +124,6 @@ function main_loop( sys_conf )
 			end
 		end
 		
-		--if local_node.errors then
-		--	
-		--	err_cnt = err_cnt + 1
-		--	
-		--	local k,v
-		--	for k,v in pairs( local_node.errors ) do
-		--		
-		--		if v.message:sub(1,9)=="ERR_RETRY" and (sys_conf.retry_limit==0 or sys_conf.retry_limit >= err_cnt) then
-		--			v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.retry_limit})
-		--		else
-		--			cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
-		--		end
-		--	end
-		--else
-		--	err_cnt = 0
-		--end
 		
 		cdata.file_put( local_node, system.node_state_file )
 		upd_node_rest_conf( sys_conf, local_node )
