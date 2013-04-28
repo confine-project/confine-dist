@@ -76,7 +76,6 @@ end
 
 function main_loop( sys_conf )
 	local local_node
-	local err_cnt = 0
 	local iteration = 1
 	
 	while true do
@@ -125,24 +124,22 @@ function main_loop( sys_conf )
 			end
 		end
 		
-		if local_node.errors then
-			
-			err_cnt = err_cnt + 1
-			
-			local k,v
-			for k,v in pairs( local_node.errors ) do
-				
-				if v.message:sub(1,9)=="ERR_RETRY" then
-					v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.retry_limit})
-				end
-					
-				if v.message:sub(1,9)~="ERR_RETRY" or (sys_conf.retry_limit~=0 and sys_conf.retry_limit < err_cnt) then
-					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
-				end
-			end
-		else
-			err_cnt = 0
-		end
+		--if local_node.errors then
+		--	
+		--	err_cnt = err_cnt + 1
+		--	
+		--	local k,v
+		--	for k,v in pairs( local_node.errors ) do
+		--		
+		--		if v.message:sub(1,9)=="ERR_RETRY" and (sys_conf.retry_limit==0 or sys_conf.retry_limit >= err_cnt) then
+		--			v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{err_cnt, sys_conf.retry_limit})
+		--		else
+		--			cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
+		--		end
+		--	end
+		--else
+		--	err_cnt = 0
+		--end
 		
 		cdata.file_put( local_node, system.node_state_file )
 		upd_node_rest_conf( sys_conf, local_node )

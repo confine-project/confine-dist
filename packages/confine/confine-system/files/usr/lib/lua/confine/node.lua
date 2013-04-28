@@ -61,7 +61,7 @@ end
 
 function set_node_state( sys_conf, node, val, path)
 
-	dbg("old=%s new=%s %s" %{node.state, val, (path or "")})
+	dbg("old=%s new=%s path=%s" %{node.state, val, (path or "")})
 	
 	assert( STATE[val], "set_node_state(): Illegal node state=%s" %{tostring(val)})
 
@@ -258,6 +258,26 @@ end
 
 function cb2_set_state( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_set_state" end
+	
+	if otree.errors then
+		
+		sys_conf.err_cnt = sys_conf.err_cnt + 1
+		
+		local k,v
+		for k,v in pairs( otree.errors ) do
+			
+			if v.message:sub(1,9)=="ERR_RETRY" and (sys_conf.retry_limit==0 or sys_conf.retry_limit >= sys_conf.err_cnt) then
+				v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{sys_conf.err_cnt, sys_conf.retry_limit})
+			else
+				set_node_state(sys_conf, otree, STATE.debug, path)
+				return
+			end
+		end
+	else
+		sys_conf.err_cnt = 0
+	end
+		
+		
 	set_node_state( sys_conf, otree, otree.set_state, path )
 end
 

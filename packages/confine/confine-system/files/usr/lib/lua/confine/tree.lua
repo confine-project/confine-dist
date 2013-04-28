@@ -182,8 +182,10 @@ function set_path_val ( tree, path, val, depth)
 		local path_new = path:sub(path_root:len()+2)
 		
 		assert(path_root and path_new)
-		assert( tree[path_root] and type(tree[path_root])=="table", "path=%s key=%s does not exist in tree=%s" %{path, path_root, tostring(tree)} )
-		return set_path_val( tree[path_root], path_new, val, depth+1)
+		if tree[path_root] then
+			assert( type(tree[path_root])=="table", "path=%s key=%s does not exist as table in tree=%s" %{path, path_root, tostring(tree)} )
+			return set_path_val( tree[path_root], path_new, val, depth+1)
+		end
 	end
 end
 

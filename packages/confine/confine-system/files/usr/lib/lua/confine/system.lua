@@ -107,6 +107,7 @@ function get_system_conf(sys_conf, arg)
 	conf.count		   = conf.count       or tonumber(flags["count"])    or 0
 	conf.interval 		   = conf.interval    or tonumber(flags["interval"]) or tonumber(uci.get("confine", "node", "interval"))    or 60
 	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"])    or tonumber(uci.get("confine", "node", "retry_limit")) or 0
+	conf.err_cnt		   = conf.err_cnt     or 0
 	conf.logfile               = conf.logfile     or flags["logfile"]  or uci.get("confine", "node", "logfile")     or LOG_FILE
 	if conf.logfile then tools.logfile = conf.logfile end
 

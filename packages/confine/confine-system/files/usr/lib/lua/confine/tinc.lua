@@ -244,7 +244,7 @@ function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
-	assert( type(old)=="table" or type(new)=="table" )
+	--assert( type(old)=="table" or type(new)=="table" )
 
 	if begin and not new and old then
 
@@ -282,7 +282,7 @@ function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 		
 		if failure then
-			err("Invalid mgmt_net path=%s! Keeping old!")
+			tools.err("Invalid mgmt_net path=%s! Keeping old!", path)
 			--if old then
 			--	del_mgmt_net( sys_conf, old.tinc_server.name)
 			--end
