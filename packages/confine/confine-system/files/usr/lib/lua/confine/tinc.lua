@@ -44,6 +44,7 @@ local function get_mgmt_nets(sys_conf, all)
 			if type(content)=="string" then
 				local subnet = tools.subfind(content,"Subnet","\n")
 				subnet = subnet and subnet:gsub(" ",""):gsub("Subnet=",""):gsub("\n","")
+				subnet = subnet and subnet:gsub("/[%d]+$","")
 --				subnet = subnet and subnet:match("^[%x]+:.*/[%d]+")
 --				dbg(tostring(subnet))
 				subnet = subnet and tools.canon_ipv6(subnet) and subnet
@@ -66,7 +67,7 @@ local function get_mgmt_nets(sys_conf, all)
 					} 
 					
 					nets[name] = {
-						addr		= subnet,
+						addr		= is_mine and sys_conf.mgmt_ipv6_addr or subnet,
 						backend		= is_mine and "tinc_client" or "tinc_server",
 						native		= cdata.null,
 						tinc_client	= is_mine and tinc or cdata.null,

@@ -124,6 +124,7 @@ function get_system_conf(sys_conf, arg)
 
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
 	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
+	conf.mgmt_ipv6_addr	   = conf.mgmt_ipv6_prefix48..(":%x::2"%{conf.id})
 
 	conf.priv_ipv6_prefix      = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48")).."::/48"
 	conf.debug_ipv6_prefix     = (uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")).."::/48"
