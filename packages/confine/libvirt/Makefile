@@ -45,6 +45,10 @@ TARGET_CFLAGS += -fno-stack-protector
 CONFIGURE_VARS += BLKID_LIBS="-lblkid -luuid -lm" \
                   gl_cv_warn__fstack_protector_all=no \
                   gl_cv_warn_c__fstack_protector_all=no \
+                  ac_cv_path_IP_PATH="/usr/sbin/ip" \
+                  ac_cv_path_IPTABLES_PATH="/usr/sbin/iptables" \
+                  ac_cv_path_IP6TABLES_PATH="/usr/sbin/ip6tables" \
+                  ac_cv_path_EBTABLES_PATH="/usr/sbin/ebtables"
 
 
 define Package/libvirt/description
