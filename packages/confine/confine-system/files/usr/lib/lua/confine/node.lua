@@ -61,7 +61,7 @@ end
 
 function set_node_state( sys_conf, node, val, path)
 
-	dbg("old=%s new=%s %s" %{node.state, val, (path or "")})
+	dbg("old=%s new=%s path=%s" %{node.state, val, (path or "")})
 	
 	assert( STATE[val], "set_node_state(): Illegal node state=%s" %{tostring(val)})
 
@@ -126,7 +126,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	local node = cached_node
 	
-	node.errors                = nil
+	node.errors                = {}
 	
 	node.uri                   = sys_conf.node_base_uri.."/node"
 	node.id                    = sys_conf.id
@@ -243,14 +243,14 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 	
 end
 
-function cb2_set_setup( rules, sys_conf, otree, ntree, path )
+function cb2_set_setup( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
 	if not rules then return "cb2_setup" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
 
 	if old ~= new then
-		dbg( crules.add_error(otree, path, "Invalid Value", new) )
+		dbg( crules.add_error(otree, path, "%s"%{type(error_msg)=="string" and error_msg or "Invalid "}, new) )
 		set_node_state( sys_conf, otree, STATE.debug, path )
 		return true
 	end
@@ -258,6 +258,28 @@ end
 
 function cb2_set_state( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_set_state" end
+	
+	assert(not otree.errors or type(otree.errors)=="table")
+	
+	if otree.errors and tools.get_table_items(otree.errors)>0 then
+		
+		sys_conf.err_cnt = sys_conf.err_cnt + 1
+		
+		local k,v
+		for k,v in pairs( otree.errors ) do
+			
+			if v.message:sub(1,9)=="ERR_RETRY" and (sys_conf.retry_limit==0 or sys_conf.retry_limit >= sys_conf.err_cnt) then
+				v.message:gsub("ERR_RETRY","ERR_RETRY (%d/%d)"%{sys_conf.err_cnt, sys_conf.retry_limit})
+			else
+				set_node_state(sys_conf, otree, STATE.debug, path)
+				return
+			end
+		end
+	else
+		sys_conf.err_cnt = 0
+	end
+		
+		
 	set_node_state( sys_conf, otree, otree.set_state, path )
 end
 
@@ -298,13 +320,13 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn/cndb_cached_on",			crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
-	table.insert(tmp_rules, {"/id", 				cb2_set_setup}) --conflict
-	table.insert(tmp_rules, {"/cert", 				cb2_set_setup})
-	table.insert(tmp_rules, {"/arch",				cb2_set_setup})
-	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup})
+	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
+	table.insert(tmp_rules, {"/cert", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"})
+	table.insert(tmp_rules, {"/arch",				cb2_set_setup, "differs from predefined RD hardware!"})
+	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with physical connectivity to CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
+	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with IPs reserved in CD!"})
 
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/addr",			crules.cb2_nop})
@@ -395,7 +417,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-
+	
 
 
 out_filter = {}

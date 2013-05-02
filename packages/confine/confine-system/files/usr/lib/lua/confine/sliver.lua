@@ -1046,6 +1046,11 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 			
 			i = i + 1
 		end
+
+		
+		if otree.local_slivers[key] and not otree.local_slivers[key].errors then
+			otree.local_slivers[key].errors = {}
+		end
 		
 		dbg("finished   i=%s sliver=%s node_state=%s server_sliver_state=%s node_sliver_state=%s err=%s",
 			i, key, otree.state, tostring((ntree.local_slivers[key] or {}).set_state), tostring((otree.local_slivers[key] or {}).state), ctree.as_string((otree.local_slivers[key] or {}).errors) )

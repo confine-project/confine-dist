@@ -107,6 +107,7 @@ function get_system_conf(sys_conf, arg)
 	conf.count		   = conf.count       or tonumber(flags["count"])    or 0
 	conf.interval 		   = conf.interval    or tonumber(flags["interval"]) or tonumber(uci.get("confine", "node", "interval"))    or 60
 	conf.retry_limit           = conf.retry_limit or tonumber(flags["retry"])    or tonumber(uci.get("confine", "node", "retry_limit")) or 0
+	conf.err_cnt		   = conf.err_cnt     or 0
 	conf.logfile               = conf.logfile     or flags["logfile"]  or uci.get("confine", "node", "logfile")     or LOG_FILE
 	if conf.logfile then tools.logfile = conf.logfile end
 
@@ -124,6 +125,7 @@ function get_system_conf(sys_conf, arg)
 
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
 	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
+	conf.mgmt_ipv6_addr	   = conf.mgmt_ipv6_prefix48..(":%x::2"%{conf.id})
 
 	conf.priv_ipv6_prefix      = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48")).."::/48"
 	conf.debug_ipv6_prefix     = (uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")).."::/48"
