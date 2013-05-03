@@ -735,16 +735,15 @@ confine_sliver_allocate() {
 		local IF_PARENT=$( uci_get $SRC_CFG.$SL_ID.if${IF_KEY}_parent soft,quiet,path=$SRC_DIR )
 		local IF_ISO_PARENTS="$( uci_get confine.node.rd_if_iso_parents soft,quiet )"
 		
-		uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
-		uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
-		uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
-		
 		
 		if [ "$IF_TYPE" = "internal" ] || [ "$IF_TYPE" = "private" ]; then
 
 		    local IF_PRIV_IPV4=$( uci_get confine.node.priv_ipv4_prefix24 ).$(( 16#${CT_NR} ))/25
 		    local IF_PRIV_IPV6=$( uci_get confine-defaults.confine.priv_ipv6_prefix48 ):0:1000:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$IF_PRIV_IPV4  path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_PRIV_IPV6  path=$OUT_DIR
 
@@ -754,28 +753,38 @@ confine_sliver_allocate() {
 
 		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:10${IF_KEY}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6        path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4        path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6  path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4  path=$OUT_DIR
 		    
 
 		elif [ "$IF_TYPE" = "public4" ]; then
 
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4        path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4  path=$OUT_DIR
 		    
 
 		elif [ "$IF_TYPE" = "management" ]; then
 
 		    local IF_MGMT_IPV6=$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):${NODE_ID}:10${IF_KEY}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/64
 		    
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6        path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6  path=$OUT_DIR
 		    
 		    
-		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_PARENT" ]; then
-
-		    if [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
-			uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
-		    fi
-
+		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_PARENT" ] && [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
+		    
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
+		    
 		else
 		    err $FUNCNAME "Failed allocating sliver_id=$SL_ID if_type=$IF_TYPE" soft
 		    continue
@@ -903,8 +912,11 @@ confine_sliver_undeploy() {
 	confine_sliver_stop $SL_ID > /dev/null
 	
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
+	if ! [ "$CT_NR" ]; then
+		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SL_ID" "quiet,soft")
+	fi
 
-	if  [ "$CT_NR" ] && [ "$( uci_get confine-slivers.$SL_ID.state )" = "deployed" ]; then
+	if [ "$CT_NR" ] && [ "$( uci_get confine-slivers.$SL_ID.state )" = "deployed" ]; then
 
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/rootfs
 	    uci_set confine-slivers.$SL_ID.state=allocated
@@ -1010,8 +1022,9 @@ confine_sliver_deploy() {
 
 confine_sliver_firewall_stop() {
 
-    local SL_ID=$( check_slice_id $1 )
-    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+#    local SL_ID=$( check_slice_id $1 )
+#    local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
+    local CT_NR=$1
 
     local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 
@@ -1035,7 +1048,7 @@ confine_sliver_firewall_restart() {
     local SL_ID=$( check_slice_id $1 )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr )
 
-    confine_sliver_firewall_stop $SL_ID
+    confine_sliver_firewall_stop $CT_NR
 
     local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 
@@ -1134,7 +1147,7 @@ confine_sliver_stop() {
 		lxc.lib lxc_stop $CT_NR
 	    fi
 
-	    confine_sliver_firewall_stop $SL_ID
+	    confine_sliver_firewall_stop $CT_NR
 	    
 	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
 		uci_set confine-slivers.$SL_ID.state=deployed
@@ -1164,10 +1177,14 @@ confine_sliver_remove() {
 	check_slice_id $SLIVER_ARG ); do
 
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
+	if ! [ "$CT_NR" ]; then
+		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SLICE_ID" "quiet,soft")
+		err $FUNCNAME "Failed retrieving container_nr=$CT_NR for slice_id=$SLICE_ID" soft
+	fi	
 	
 	if [ "$CT_NR" ] ; then
 	    lxc.lib lxc_stop $CT_NR
-    	    confine_sliver_firewall_stop $SLICE_ID
+       	    confine_sliver_firewall_stop $CT_NR
 	    lxc.lib lxc_purge $CT_NR
 	fi
 
