@@ -101,7 +101,7 @@ function get_system_conf(sys_conf, arg)
 		help()
 		return
 	end
-		
+
 	conf.debug          	   = conf.debug       or flags["debug"]              or false
 	conf.interactive	   = conf.interactive or flags["interactive"]        or false
 	conf.count		   = conf.count       or tonumber(flags["count"])    or 0
@@ -180,6 +180,11 @@ function get_system_conf(sys_conf, arg)
 
 	data.file_put( conf, system_state_file )
 
+	if conf.sys_state ~= "started" then
+		tools.err("Confine system config NOT in state=started (current state=%s)!", conf.sys_state)
+		stop()
+	end
+
 	return conf
 end
 
@@ -206,7 +211,7 @@ function set_system_conf( sys_conf, opt, val, section)
 		uci.set("confine", "node", "state", val) then
 		
 		if val=="failure" then
-			os.exec()
+			stop()
 		end
 		
 		return get_system_conf(sys_conf)
