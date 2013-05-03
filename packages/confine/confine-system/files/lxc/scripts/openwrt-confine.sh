@@ -54,6 +54,7 @@ EOF
 
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 	local TMP_KEY=
+	local PRIVATE_KEY=
 	local PUBLIC4_KEY=
 	local MGMT_KEY=
 	local PUBLIC4_PROTO="$(uci_get confine.node.sl_public_ipv4_proto)"
@@ -68,6 +69,9 @@ EOF
 			if [ "$TMP_TYPE" = "public4" ]; then
 				PUBLIC4_KEY=$TMP_KEY
 			fi
+			if [ "$TMP_TYPE" = "private" ]; then
+				PRIVATE_KEY=$TMP_KEY
+			fi
 			if [ "$TMP_TYPE" = "management" ]; then
 				MGMT_KEY=$TMP_KEY
 			fi
@@ -77,24 +81,45 @@ EOF
 	done
 
 	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
-config 'interface' 'loopback'
-        option 'ifname' 'lo'
-        option 'proto' 'static'
-        option 'ipaddr' '127.0.0.1'
-        option 'netmask' '255.0.0.0'
-	
 EOF
+
+	uci_set network.loopback="interface"  		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set network.loopback.ifname="lo"  		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set network.loopback.proto="static"  	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set network.loopback.ipaddr="127.0.0.1"  	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set network.loopback.netmask="255.0.0.0"  	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+
+	if [ "$PRIVATE_KEY" ]; then
+		
+		local PRIVATE_NAME="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_name)"
+		local PRIVATE_IPV4="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_ipv4 | cut -d'/' -f1)"
+		local PRIVATE_GWV4="$(echo $PRIVATE_IPV4 | awk -F'.' '{print $1"."$2"."$3".126"}')"
+		local PRIVATE_IPV6="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_ipv6)"
+		
+		uci_set network.private="interface"  			path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.private.ifname="$PRIVATE_NAME"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.private.proto="static"			path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.private.ip6addr="$PRIVATE_IPV6"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.private.ipaddr="$PRIVATE_IPV4"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.private.netmask='255.255.255.128'	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		
+		if ! [ "$PUBLIC4_KEY" ]; then
+			uci_set network.private.gateway="$PRIVATE_GWV4"	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+			
+			#uci_set dhcp.@dnsmasq[0].server="$PRIVATE_GWV4"	path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+			if [ "$(uci changes dhcp)" == "" ]; then
+				uci -c $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config add_list dhcp.@dnsmasq[0].server="$PRIVATE_GWV4" && uci -c $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config commit dhcp || true
+			fi
+		fi
+	fi
 
 	if [ "$PUBLIC4_KEY" ] && [ "$PUBLIC4_PROTO" = "dhcp" ]; then
 		
 		local PUBLIC4_NAME="$(uci_get confine-slivers.$SL_ID.if${PUBLIC4_KEY}_name)"
 		
-		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
-config 'interface' 'public4'
-	option 'ifname'  "$PUBLIC4_NAME"
-	option 'proto'   'dhcp'
-
-EOF
+		uci_set network.public4="interface"  			path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.public4.ifname="$PUBLIC4_NAME"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.public4.proto="dhcp"			path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
 	fi
 
 	if [ "$MGMT_KEY" ]; then
@@ -103,14 +128,11 @@ EOF
 		local MGMT_ADDR="$(uci_get confine-slivers.$SL_ID.if${MGMT_KEY}_ipv6)"
 		local MGMT_GW="$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):$MY_NODE::2"
 		
-		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network
-config 'interface' 'managemet'
-	option 'ifname'    "$MGMT_NAME"
-        option 'proto'     'static'
-        option 'ip6addr'   "$MGMT_ADDR"
-        option 'ip6gw'     "$MGMT_GW"
-
-EOF
+		uci_set network.management="interface"  		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.management.ifname="$MGMT_NAME"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.management.proto="static"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.management.ip6addr="$MGMT_ADDR"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+		uci_set network.management.ip6gw="$MGMT_GW"		path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
 	fi
 
 
