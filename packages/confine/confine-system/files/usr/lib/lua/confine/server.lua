@@ -11,6 +11,7 @@ module( "confine.server", package.seeall )
 local data    = require "confine.data"
 local tree    = require "confine.tree"
 local tools   = require "confine.tools"
+local csliver = require "confine.sliver"
 local dbg     = tools.dbg
 
 
@@ -109,7 +110,10 @@ function get_server_node(sys_conf)
 			sliver_obj.exp_data_sha256 = data.null
 		end
 		
-		if not sliver_obj.set_state or sliver_obj.set_state==data.null then
+		if not sliver_obj.set_state or sliver_obj.set_state==data.null or
+			(slice_obj.set_state==csliver.SERVER.register) or
+			(slice_obj.set_state==csliver.SERVER.deploy and (sliver_obj.set_state==csliver.SERVER.start))
+			then
 			sliver_obj.set_state = slice_obj.set_state
 		end
 
