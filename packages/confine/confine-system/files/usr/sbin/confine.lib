@@ -609,6 +609,13 @@ confine_node_enable() {
 	ip link show dev dm-internal >/dev/null 2>&1 || ip link add dm-internal type dummy
 	ip link show dev dm-local    >/dev/null 2>&1 || ip link add dm-local    type dummy
 
+	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24 )
+
+	iptables -L POSTROUTING -t nat -n | \
+		grep -e "MASQUERADE *all *-- *${NODE_PRIV_IPV4_PREFIX24}.0/25 *0.0.0.0/0" >/dev/null || \
+		iptables -I POSTROUTING -t nat -o br-local -s ${NODE_PRIV_IPV4_PREFIX24}.0/25 -j MASQUERADE
+
+
 
 	confine_tinc_stop
 	confine_tinc_start
