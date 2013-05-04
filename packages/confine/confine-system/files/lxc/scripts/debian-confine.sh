@@ -22,6 +22,7 @@ customize_rootfs() {
 
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 	local TMP_KEY=
+	local PRIVATE_KEY=
 	local PUBLIC4_KEY=
 	local MGMT_KEY=
 	local PUBLIC4_PROTO="$(uci_get confine.node.sl_public_ipv4_proto)"
@@ -36,6 +37,9 @@ customize_rootfs() {
 			if [ "$TMP_TYPE" = "public4" ]; then
 				PUBLIC4_KEY=$TMP_KEY
 			fi
+			if [ "$TMP_TYPE" = "private" ]; then
+				PRIVATE_KEY=$TMP_KEY
+			fi
 			if [ "$TMP_TYPE" = "management" ]; then
 				MGMT_KEY=$TMP_KEY
 			fi
@@ -45,13 +49,51 @@ customize_rootfs() {
 	done
 
 
-    cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
+	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
 
 auto lo
 iface lo inet loopback
 
 EOF
 
+
+	if [ "$PRIVATE_KEY" ]; then
+		
+		local PRIVATE_NAME="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_name)"
+		local PRIVATE_IPV4="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_ipv4 | cut -d'/' -f1)"
+		local PRIVATE_GWV4="$(echo $PRIVATE_IPV4 | awk -F'.' '{print $1"."$2"."$3".126"}')"
+		local PRIVATE_IPV6="$(uci_get confine-slivers.$SL_ID.if${PRIVATE_KEY}_ipv6)"
+		
+		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
+auto $PRIVATE_NAME
+iface $PRIVATE_NAME inet6 static
+pre-up ip link set $PRIVATE_NAME down
+address $( echo $PRIVATE_IPV6 | awk -F'/' '{print $1}' )
+netmask $( echo $PRIVATE_IPV6 | awk -F'/' '{print $2}' )
+
+iface $PRIVATE_NAME inet static
+address $PRIVATE_IPV4
+netmask 255.255.255.128
+EOF
+		if ! [ "$PUBLIC4_KEY" ]; then
+			cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
+gateway $PRIVATE_GWV4
+
+EOF
+		else
+			cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
+
+EOF
+		fi
+		
+
+		rm -rf $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/resolv.conf
+		cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/resolv.conf
+nameserver $PRIVATE_GWV4
+EOF
+	fi
+
+	
 	if [ "$PUBLIC4_KEY" ] && [ "$PUBLIC4_PROTO" = "dhcp" ]; then
 		
 		local PUBLIC4_NAME="$(uci_get confine-slivers.$SL_ID.if${PUBLIC4_KEY}_name)"
