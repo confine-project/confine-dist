@@ -77,7 +77,7 @@ local function get_key(obj, def, parent)
 				dbg("get_key(): WARNING - obj_id=%s def=%s should have been assigned already!!?", obj.id, def)
 			end
 		
-			return obj.id
+			return tostring(obj.id)
 		
 		elseif obj.uri then
 			
@@ -274,7 +274,8 @@ function filter(rules, itree, otree, path)
 	for pk,pv in ipairs(rules) do
 	
 		local pattern  = pv[1]
-		local approach  = pv[2]
+		local key_form = pv[2]
+		local val_form = pv[3]
 		local pattern_ = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
 
 		local k
@@ -283,15 +284,15 @@ function filter(rules, itree, otree, path)
 			if (path..k):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
 				
 				local v = get_path_val(itree, path..k)
-				local i = (approach=="iterate" and (#otree+1)) or
-					  (approach=="number" and (tonumber(k))) or
-					  (approach=="number_p1" and (tonumber(k)+1)) or k
+				local i = (key_form=="iterate" and (#otree+1)) or
+					  (key_form=="number" and (tonumber(k))) or
+					  (key_form=="number_p1" and (tonumber(k)+1)) or k
 				
 				if type(v) == "table" then
 					otree[i] = {}
 					filter(rules, itree, otree[i], path..k.."/")
 				else
-					otree[i] = v
+					otree[i] = (val_form=="number" and (tonumber(v))) or v
 				end
 				
 			end

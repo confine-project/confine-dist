@@ -336,7 +336,7 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 
 --		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/",         "string", {"^https?://.*/[%d]+$"} ) or failure
 		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+$") then
-			local id = tonumber(((nval.uri:match("/[%d]+$")):gsub("/","")))
+			local id = ((nval.uri:match("/[%d]+$")):gsub("/",""))
 			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id  )
 			ctree.set_path_val( otree, path.."id/", id )
 		else
@@ -1110,7 +1110,7 @@ function get_templates( otree )
 		for k,lslv in pairs(otree.local_slivers) do
 			local id = lslv.local_template and lslv.local_template.id
 			if id then
-				templates[id] = lslv.local_template
+				templates[(tostring(id))] = lslv.local_template
 			end
 		end
 	end
@@ -1120,6 +1120,7 @@ end
 template_out_filter = {}
 tmp_rules = template_out_filter
 	table.insert(tmp_rules, {"/*"})
+	table.insert(tmp_rules, {"/*/id", nil, "number"})
 	table.insert(tmp_rules, {"/*/uri"})
 	table.insert(tmp_rules, {"/*/name"})
 	table.insert(tmp_rules, {"/*/description"})
