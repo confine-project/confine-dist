@@ -1116,6 +1116,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
 	table.insert(tmp_rules, {"/*/nr"})
 	table.insert(tmp_rules, {"/*/state"})
+	table.insert(tmp_rules, {"/*/set_state"})
 	table.insert(tmp_rules, {"/*/errors"})
 	table.insert(tmp_rules, {"/*/errors/*", "iterate"})
 	table.insert(tmp_rules, {"/*/errors/*/member"})
