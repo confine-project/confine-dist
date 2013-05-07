@@ -22,7 +22,7 @@ function add_error( tree, path, msg, val )
 
 	tree.errors = tree.errors or {}
 
-	table.insert(tree.errors, { member=path, message="Value="..data.val2string(val).." "..tostring(msg) })
+	table.insert(tree.errors, { member=(path:gsub("/$","")), message="Value="..data.val2string(val).." "..tostring(msg) })
 	return "Error path=%s value=%s msg=%s" , path, tostring(msg), data.val2string(val)
 end
 
