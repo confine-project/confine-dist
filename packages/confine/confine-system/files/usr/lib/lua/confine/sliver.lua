@@ -671,8 +671,9 @@ end
 
 
 
-function remove_slivers( sys_conf, otree, slv_key, next_state)
---	assert(false)
+function reset_slivers( sys_conf, otree, slv_key, next_state)
+	
+	assert(not next_state or next_state==NODE.registered)
 	
 	if slv_key then
 		
@@ -682,6 +683,10 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 		
 		if next_state then
 			dbg("only uci_sliver=%s" %tostring(slv_key))
+			local k,v
+			for k,v in pairs(otree.local_slivers[slv_key]) do
+				otree.local_slivers[slv_key][k] = nil
+			end
 			otree.local_slivers[slv_key].state = next_state
 		else
 			dbg("sliver=%s" %tostring(slv_key))
@@ -725,13 +730,13 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 
 	if next_state==nil then
 		
-		remove_slivers( sys_conf, otree, slv_key, nil )
+		reset_slivers( sys_conf, otree, slv_key, nil )
 		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 		
 	elseif next_state==NODE.registered then
 		
-		remove_slivers( sys_conf, otree, slv_key, next_state )
+		reset_slivers( sys_conf, otree, slv_key, NODE.registered )
 		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 	
@@ -903,9 +908,9 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 	
 	dbg( "sliver=%s start_state=%s success_state=%s error_state=%s", key, tostring(start_state), tostring(success_state), tostring(error_state) )
 	
-	if start_state then
+	if start_state~=oslv.state then
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, start_state ) then
-			remove_slivers( a.sys_conf, a.otree, key)
+			reset_slivers( a.sys_conf, a.otree, key, nil)
 			return false
 		end
 	end
@@ -927,16 +932,16 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 	elseif oslv.errors then
 		assert( error_state )
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state ) then
-			remove_slivers( a.sys_conf, a.otree, key)
+			reset_slivers( a.sys_conf, a.otree, key, nil)
 			return false
 		end
 
-	else
+	elseif success_state~=oslv.state then
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, success_state ) then
 			dbg( add_lslv_err(a.otree, a.path, "Failed state transition"))
 			assert( error_state )
 			if not sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state ) then
-				remove_slivers( a.sys_conf, a.otree, key)
+				reset_slivers( a.sys_conf, a.otree, key, nil)
 				return false
 			end
 		end
