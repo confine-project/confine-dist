@@ -514,6 +514,10 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
+	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
@@ -533,6 +537,10 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -547,6 +555,10 @@ tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
@@ -636,10 +648,10 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 						nr          = tonumber(ifv, 16),
 						type        = sv["if%s_type"%ifv],
 						name        = sv["if%s_name"%ifv],
-						parent_name = sv["if%s_parent"%ifv],
+						parent_name = sv["if%s_parent"%ifv] or null,
 						mac_addr    = sv["if%s_mac"%ifv],
-						ipv4_addr   = sv["if%s_ipv4"%ifv] and sv["if%s_ipv4"%ifv]:gsub("/[%d]+$",""),
-						ipv6_addr   = sv["if%s_ipv6"%ifv] and sv["if%s_ipv6"%ifv]:gsub("/[%d]+$","")
+						ipv4_addr   = sv["if%s_ipv4"%ifv] and sv["if%s_ipv4"%ifv]:gsub("/[%d]+$","") or null,
+						ipv6_addr   = sv["if%s_ipv6"%ifv] and sv["if%s_ipv6"%ifv]:gsub("/[%d]+$","") or null
 					}
 				end
 			end		
