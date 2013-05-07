@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
-VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4-bare-bones_07-x86.img.gz"
+VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4-bare-bones_08-x86.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
