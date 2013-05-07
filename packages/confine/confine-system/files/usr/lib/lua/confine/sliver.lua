@@ -638,8 +638,8 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 						name        = sv["if%s_name"%ifv],
 						parent_name = sv["if%s_parent"%ifv],
 						mac_addr    = sv["if%s_mac"%ifv],
-						ipv4_addr   = sv["if%s_ipv4"%ifv],
-						ipv6_addr   = sv["if%s_ipv6"%ifv]
+						ipv4_addr   = sv["if%s_ipv4"%ifv] and sv["if%s_ipv4"%ifv]:gsub("/[%d]+$",""),
+						ipv6_addr   = sv["if%s_ipv6"%ifv] and sv["if%s_ipv6"%ifv]:gsub("/[%d]+$","")
 					}
 				end
 			end		
