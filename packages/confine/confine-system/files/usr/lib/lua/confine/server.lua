@@ -77,14 +77,18 @@ function get_server_node(sys_conf)
 	local sliver_idx, sliver_uri
 	for sliver_idx, sliver_uri in pairs(node.slivers) do
 
-		local sliver_obj,sliver_id = data.http_get_keys_as_table(sliver_uri.uri, sys_conf.server_base_uri, cert_file, cache)
-		assert(sliver_obj and sliver_id, "Unable to retrieve referenced sliver_url=%s" %sliver_uri.uri)
+		local sliver_obj,sliver_uri_id = data.http_get_keys_as_table(sliver_uri.uri, sys_conf.server_base_uri, cert_file, cache)
+		assert(sliver_obj and sliver_uri_id, "Unable to retrieve referenced sliver_url=%s" %sliver_uri.uri)
 		assert(sliver_obj.slice, "Sliver response does not define slice")
-		node.local_slivers[sliver_id] = sliver_obj
 
 		local slice_obj,slice_id = data.http_get_keys_as_table(sliver_obj.slice.uri, sys_conf.server_base_uri, cert_file, cache)
 		assert(slice_obj and slice_id, "Unable to retrieve referenced slice_url=%s" %sliver_obj.slice.uri )
 		sliver_obj.local_slice = slice_obj
+		
+		sliver_obj.uri_id = sliver_uri_id
+		
+		node.local_slivers[slice_id] = sliver_obj
+
 
 		if type(sliver_obj.template)=="table" and sliver_obj.template.uri then
 			local template_obj = data.http_get_keys_as_table(sliver_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)

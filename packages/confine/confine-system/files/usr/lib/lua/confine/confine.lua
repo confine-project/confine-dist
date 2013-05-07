@@ -62,7 +62,7 @@ local function upd_node_rest_conf( sys_conf, node )
 	
 	pcall(nixio.fs.remover, system.rest_slivers_dir)
 	if node.local_slivers then
-		cdata.file_put(ctree.filter(sliver.out_filter, node.local_slivers), nil, system.rest_slivers_dir)
+		cdata.file_put(ctree.filter(sliver.out_filter, node.slivers), nil, system.rest_slivers_dir)
 	end
 
 end
