@@ -925,11 +925,11 @@ confine_sliver_undeploy() {
 
 	if [ "$CT_NR" ] && [ "$( uci_get confine-slivers.$SL_ID.state )" = "deployed" ]; then
 
-	    rm -rf $LXC_IMAGES_PATH/$CT_NR/rootfs
+	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
 	    uci_set confine-slivers.$SL_ID.state=allocated
 	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	        
-	else
+	elif ! [ "$CT_NR" ] || [ "$( uci_get confine-slivers.$SL_ID.state )" != "allocated" ]; then
 	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID or NOT in deployed state" soft
 	fi
     done

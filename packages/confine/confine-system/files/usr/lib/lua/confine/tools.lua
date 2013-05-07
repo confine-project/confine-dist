@@ -52,6 +52,16 @@ function err(fmt, ...)
 	dbg_(true, true, debug.getinfo(2).name or "???", fmt, ...)
 end
 
+
+
+function execute(cmd)
+	dbg(cmd)
+	local result = os.execute(cmd)
+	dbg("return code = %s",result)
+	return result
+end
+
+
 --- Extract flags from an arguments list.
 -- Given string arguments, extract flag arguments into a flags set.
 -- For example, given "foo", "--tux=beep", "--bla", "bar", "--baz",

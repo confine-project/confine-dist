@@ -512,6 +512,7 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
@@ -529,6 +530,8 @@ tmp_rules = deploy_rules
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 
 tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -639,7 +642,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			otree.local_slivers[id] = slv
 		else
 			dbg("WARNING: corrupted uci_sliver=%s",sk)
-			assert((os.execute( SLV_REMOVE_BIN .. " " .. sk ) == 0), "Failed removing corrupted uci_sliver=%s %s",sk, ctree.as_string(sv) )
+			assert((tools.execute( SLV_REMOVE_BIN .. " " .. sk ) == 0), "Failed removing corrupted uci_sliver=%s %s",sk, ctree.as_string(sv) )
 			sys_conf.uci_slivers[sk] = nil
 		end
 	else
@@ -674,7 +677,7 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 	if slv_key then
 		
 		local uci_key = "%.12x" %tonumber(slv_key)
-		assert((os.execute( SLV_REMOVE_BIN.." "..uci_key )==0), "Failed removing uci_sliver=%s", uci_key )
+		assert((tools.execute( SLV_REMOVE_BIN.." "..uci_key )==0), "Failed removing uci_sliver=%s", uci_key )
 		sys_conf.uci_slivers[uci_key] = nil
 		
 		if next_state then
@@ -691,7 +694,7 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 	else
 		
 		dbg("removing all")
-		assert((os.execute( SLV_REMOVE_BIN.." all" )==0), "Failed removing all slivers" )
+		assert((tools.execute( SLV_REMOVE_BIN.." all" )==0), "Failed removing all slivers" )
 		sys_conf.uci_slivers = {}
 		otree.local_slivers = {}
 		
@@ -723,18 +726,25 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 	if next_state==nil then
 		
 		remove_slivers( sys_conf, otree, slv_key, nil )
-		dbg( "next_state=%s uci_state=%s lslivers=%s", tostring(next_state), tostring(uci_state), ctree.as_string(otree.local_slivers) )
+		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 		
 	elseif next_state==NODE.registered then
 		
 		remove_slivers( sys_conf, otree, slv_key, next_state )
-		dbg( "next_state=%s uci_state=%s lslivers=%s", tostring(next_state), tostring(uci_state), ctree.as_string(otree.local_slivers) )
+		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 	
 	elseif next_state==NODE.allocated and uci_state==NODE.allocated then
-		api_slv.state = next_state
-		return true
+		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key )==0 then
+			local sliver_opts = {
+				api_slice_instance_sn = api_slv.local_slice.instance_sn,
+			}
+			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
+			sys_get_lsliver( sys_conf, otree, uci_key )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
+			return true
+		end
 	
 	elseif next_state==NODE.allocated and uci_state==nil then
 		
@@ -774,9 +784,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		end		
 		
 		
-		local cmd = SLV_ALLOCATE_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n"
-		dbg(cmd)
-		if os.execute( cmd )==0 then
+		if tools.execute( SLV_ALLOCATE_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n" )==0 then
 		
 			local sliver_opts = {
 				api = "confine",
@@ -793,16 +801,20 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 			}
 			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
-			dbg( "next_state=%s uci_state=%s lslivers=%s", tostring(next_state), tostring(uci_state), ctree.as_string(otree.local_slivers) )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 			return true
 		end			
 		
 	elseif next_state==NODE.allocated and uci_state==NODE.deployed then
 		
-		if os.execute( SLV_UNDEPLOY_BIN.." "..uci_key )==0 then
-			dbg("uci_slivers=%s", ctree.as_string( csystem.get_system_conf( sys_conf ).uci_slivers ) )
+		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key )==0 then
+			
+			local sliver_opts = {
+				api_slice_instance_sn = api_slv.local_slice.instance_sn,
+			}
+			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
-			dbg( "next_state=%s uci_state=%s lslivers=%s", tostring(next_state), tostring(uci_state), ctree.as_string(otree.local_slivers) )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 			return true
 		end
 		
@@ -812,26 +824,29 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 	
 	
 	elseif next_state==NODE.deployed and uci_state==NODE.deployed then
-		api_slv.state = next_state
-		return true
+		if tools.execute( SLV_STOP_BIN.." "..uci_key )==0 then
+			csystem.get_system_conf( sys_conf )
+			sys_get_lsliver( sys_conf, otree, uci_key )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
+			return true
+		end
 		
 	elseif next_state==NODE.deployed and uci_state==NODE.allocated then
 		
 		local sliver_desc = "config sliver '%s_%.4x'\n" %{uci_key,sys_conf.id}
-		local cmd = SLV_DEPLOY_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n"
-		dbg(cmd)
-		if os.execute( cmd )==0 then
+		if tools.execute( SLV_DEPLOY_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n" )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
-			dbg( "next_state=%s uci_state=%s lslivers=%s", tostring(next_state), tostring(uci_state), ctree.as_string(otree.local_slivers) )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 			return true
 		end
 		
 	elseif next_state==NODE.deployed and uci_state==NODE.started then
 		
-		if os.execute( SLV_STOP_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_STOP_BIN.." "..uci_key )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 			return true
 		end
 		
@@ -846,9 +861,10 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.started and uci_state==NODE.deployed then
 		
-		if os.execute( SLV_START_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_START_BIN.." "..uci_key )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
+			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 			return true
 		end
 		
@@ -857,8 +873,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		return true
 	end
 
-	err( "next_state=%s api_state=%s uci_state=%s slivers=%s",
-	    tostring(next_state), tostring(api_slv.state), tostring(uci_state), ctree.as_string(otree.local_slivers))
+	err( "next_state=%s slivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers))
 		
 	return false
 end
@@ -965,8 +980,8 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 			
 			assert( (ntree.local_slivers[key] or otree.local_slivers[key]) and nslv==ntree.local_slivers[key] and oslv==otree.local_slivers[key] )
 			assert( i <= imax )
-	
-			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1)) then
+
+			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1) or not NODE[oslv.state]) then
 				
 				if nslv then
 					if not slv_iterate( iargs, register_rules, NODE.registered, NODE.registered, NODE.registered) then break end
@@ -992,7 +1007,8 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 	
 			elseif (oslv.state==NODE.allocated or (oslv.state==NODE.fail_deploy and i==1)) and 
 				(not nslv or
-				 nslv.instance_sn > oslv.instance_sn or nslv.set_state==SERVER.register) then
+				 nslv.instance_sn ~= oslv.instance_sn or
+				 nslv.set_state==SERVER.register) then
 				
 				if not slv_iterate( iargs, dealloc_rules, NODE.allocated, NODE.registered, nil) then break end
 				
