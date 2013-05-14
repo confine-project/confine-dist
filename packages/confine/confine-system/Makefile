@@ -137,6 +137,8 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
+	$(CP)  ./files/etc/uci-defaults/sysupgrade-recover-backup.sh $(1)/etc/uci-defaults/
+
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
