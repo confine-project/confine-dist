@@ -3,7 +3,7 @@
 mkdir -p /tmp/boot
 mount -t ext2 -o rw,noatime /dev/sda1 /tmp/boot
 
-if [ -f /tmp/boot/fstaB ]; then
+if [ -f /tmp/boot/fstab ]; then
     mv /tmp/boot/fstab /etc/config/fstab
     /etc/init.d/fstab start
     reboot -f
