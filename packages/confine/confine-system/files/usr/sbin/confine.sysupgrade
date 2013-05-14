@@ -160,12 +160,6 @@ umount /dev/sda1
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
-# What to do after reboot:
-# mount -t ext2 -o rw,noatime /dev/sda1 /mnt
-# mv /mnt/fstab /etc/config/fstab
-# /etc/init.d/fstab start
-# reboot
-
 else
     if [ $SAVE_CONFIG -gt 0 ]; then
         add_conffiles "$CONFFILES"
@@ -178,12 +172,6 @@ umount /dev/sda1
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
-# What to do after reboot:
-# mount -t ext2 -o rw,noatime /dev/sda1 /mnt
-# tar -C / -xzf /mnt/conf.tgz
-# rm /mnt/conf.tgz
-# reboot
-
     else
         run_ramfs "zcat \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
