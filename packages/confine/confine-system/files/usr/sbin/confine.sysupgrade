@@ -1,6 +1,7 @@
 #!/bin/sh
 
 SAVE_CONFIG=0
+IGNORE_FSTAB=0
 HELP=0
 
 CONFFILES=/tmp/conf.files
@@ -9,6 +10,7 @@ CONF_TAR=/tmp/conf.tgz
 while [ -n "$1" ]; do
     case "$1" in
         -b) SAVE_CONFIG=1;;
+        -n) IGNORE_FSTAB=1;;
         -h|--help) HELP=1; break;;
         -*)
             echo "Invalid option: $1"
@@ -21,10 +23,14 @@ done
 
 [ -z "$*" -o $HELP -gt 0 ] && {
     cat <<EOF
-Usage: $0 [options] <gzipped image file> [<device>]
+Usage: $0 [options] <image file> [<device>]
 
 Options:
-    -b           backup the configuration files
+    -b           backup the configuration files (if currently not using
+                     an overlay)
+    -n           don't keep the partition table and fstab (if currently
+                     using an overlay)
+
     -h / --help  display this help
 
 <device> defaults to /dev/sda.
@@ -34,6 +40,17 @@ EOF
 }
 
 IMAGE=$1
+case "$IMAGE" in
+    *.tgz|*.tar.gz|*.gzip)
+        CMD="zcat" ;;
+    *.tbz|*.tbz2|*.tb2|*.tar.bz2)
+        CMD="bzcat" ;;
+    *.txz|*.tar.xz)
+        CMD="xzcat" ;;
+    *)
+        CMD="cat" ;;
+esac
+
 RAM_ROOT=/tmp/root
 DEVICE=${2:-/dev/sda}
 
@@ -85,12 +102,11 @@ pivot() { # <new_root> <old_root>
 }
 
 run_ramfs() { # <command> [...]
-    install_bin /bin/busybox /bin/ash /bin/sh /bin/mount /bin/umount    \
-        /sbin/pivot_root /usr/bin/wget /sbin/reboot /bin/sync /bin/dd   \
-        /bin/grep /bin/cp /bin/mv /bin/tar /usr/bin/md5sum "/usr/bin/[" \
-        /bin/vi /bin/ls /bin/cat /usr/bin/awk /usr/bin/hexdump          \
-        /bin/sleep /bin/zcat /usr/bin/bzcat /usr/bin/printf /usr/bin/wc \
-        /bin/mkdir
+    install_bin /bin/busybox /bin/ash /bin/sh /bin/mount /bin/umount \
+        /sbin/pivot_root /sbin/reboot /bin/sync /bin/dd              \
+        /bin/grep /bin/cp /bin/mv /bin/tar "/usr/bin/["              \
+        /bin/vi /bin/ls /bin/cat /usr/bin/awk /bin/mkdir             \
+        /bin/sleep /bin/zcat /usr/bin/bzcat /usr/bin/xzcat           \
 
     install_file /etc/resolv.conf
 
@@ -148,33 +164,81 @@ grep /cgroup /proc/mounts > /dev/null && umount /cgroup
 grep /home /proc/mounts > /dev/null && umount /home
 
 if [ -b ${DEVICE}4 ]; then
-    [ -f /rom/etc/config/fstab ] && cp /rom/etc/config/fstab /tmp/fstab ||\
-        cp /etc/config/fstab /tmp/fstab
-    run_ramfs "dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
-zcat \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
-sync
-mount /dev/sda1 /mnt
-cp /tmp/fstab /mnt/fstab
-umount /dev/sda1
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
-else
     if [ $SAVE_CONFIG -gt 0 ]; then
-        add_conffiles "$CONFFILES"
-        tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
-        run_ramfs "zcat \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
+        [ -f /rom/etc/config/fstab ] && cp /rom/etc/config/fstab /tmp/fstab ||\
+            cp /etc/config/fstab /tmp/fstab
+        run_ramfs "
+echo dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
+dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
+
+echo $CMD \\\"$IMAGE\\\" | dd of=$DEVICE bs=4096 conv=fsync
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+
+echo dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
+dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
+
+echo sync
 sync
+
+echo mount /dev/sda1 /mnt
 mount /dev/sda1 /mnt
-cp \"$CONF_TAR\" /mnt
+
+echo cp /tmp/fstab /mnt/fstab
+cp /tmp/fstab /mnt/fstab
+
+echo umount /dev/sda1
 umount /dev/sda1
+
+echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     else
-        run_ramfs "zcat \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
+        run_ramfs "
+echo $CMD \\\"$IMAGE\\\" | dd of=$DEVICE bs=4096 conv=fsync
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+
+echo sync
 sync
+
+echo reboot -f
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+    fi
+else
+    if [ $SAVE_CONFIG -gt 0 ]; then
+        add_conffiles "$CONFFILES"
+        tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
+        run_ramfs "
+echo $CMD \\\"$1\\\" | dd of=$DEVICE bs=4096 conv=fsync
+$CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
+
+echo sync
+sync
+
+echo mount /dev/sda1 /mnt
+mount /dev/sda1 /mnt
+
+echo cp \\\"$CONF_TAR\\\" /mnt
+cp \"$CONF_TAR\" /mnt
+
+echo umount /dev/sda1
+umount /dev/sda1
+
+echo reboot -f
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+    else
+        run_ramfs "
+echo $CMD \\\"$1\\\" | dd of=$DEVICE bs=4096 conv=fsync
+$CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
+
+echo sync
+sync
+
+echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
