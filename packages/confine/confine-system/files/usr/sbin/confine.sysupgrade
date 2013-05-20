@@ -1,4 +1,4 @@
-#!/bin/sh
+!/bin/sh
 
 SAVE_CONFIG=0
 IGNORE_FSTAB=0
@@ -161,17 +161,21 @@ sleep 4
 kill_remaining KILL
 
 grep /cgroup /proc/mounts > /dev/null && umount /cgroup
-grep /home /proc/mounts > /dev/null && umount /home
+grep /home /proc/mounts > /dev/null && {
+    mount -o ro,remount /home
+    umount -l /home
+}
 
 if [ -b ${DEVICE}4 ]; then
     if [ $SAVE_CONFIG -gt 0 ]; then
-        [ -f /rom/etc/config/fstab ] && cp /rom/etc/config/fstab /tmp/fstab ||\
-            cp /etc/config/fstab /tmp/fstab
+        [ -f /rom/etc/config/fstab ]\
+            && cp /rom/etc/config/fstab /tmp/fstab\
+            || cp /etc/config/fstab /tmp/fstab
         run_ramfs "
 echo dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 
-echo $CMD \\\"$IMAGE\\\" | dd of=$DEVICE bs=4096 conv=fsync
+echo $CMD \\\"$IMAGE\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 
 echo dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
@@ -195,7 +199,7 @@ sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     else
         run_ramfs "
-echo $CMD \\\"$IMAGE\\\" | dd of=$DEVICE bs=4096 conv=fsync
+echo $CMD \\\"$IMAGE\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 
 echo sync
@@ -211,7 +215,7 @@ else
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
         run_ramfs "
-echo $CMD \\\"$1\\\" | dd of=$DEVICE bs=4096 conv=fsync
+echo $CMD \\\"$1\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
 $CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
 
 echo sync
