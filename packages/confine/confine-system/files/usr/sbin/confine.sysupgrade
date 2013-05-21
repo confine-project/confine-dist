@@ -178,7 +178,7 @@ sync
 
 mount -t ext2 -o rw,noatime /dev/sda1 /mnt
 cp /tmp/fstab /mnt/fstab
-umount /mnt
+umount /dev/sda1
 
 reboot -f
 sleep 5
@@ -193,7 +193,7 @@ sync
 
 mount -t ext2 -o rw,noatime /dev/sda1 /mnt
 cp \"$CONF_TAR\" /mnt
-umount /mnt
+umount /dev/sda1
 
 reboot -f
 sleep 5
