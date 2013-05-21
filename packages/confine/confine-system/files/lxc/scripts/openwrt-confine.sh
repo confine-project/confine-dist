@@ -3,6 +3,11 @@ customize_rootfs() {
 	
 	rm -rf $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/init.d/firewall
 	
+	local TELNET="$( ls $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/rc.d | grep telnet )"
+	if [ "$TELNET" ]; then
+		rm -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/rc.d/$TELNET
+	fi
+
 	local MY_NODE="$( uci_get confine.node.id )"
 	local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
 	local TMP_SLICE=
@@ -167,6 +172,7 @@ echo "Backung up uci-default scripts"
 mkdir -p /etc/uci-applied-defaults
 cp /etc/uci-defaults/* /etc/uci-applied-defaults/
 EOF
+
 
 
 # set random passwd (FIXME: not working!):
