@@ -1,4 +1,4 @@
-!/bin/sh
+#!/bin/sh
 
 SAVE_CONFIG=0
 IGNORE_FSTAB=0
@@ -171,41 +171,24 @@ if [ -b ${DEVICE}4 ]; then
         [ -f /rom/etc/config/fstab ]\
             && cp /rom/etc/config/fstab /tmp/fstab\
             || cp /etc/config/fstab /tmp/fstab
-        run_ramfs "
-echo dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
+        run_ramfs "set -x
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
-
-echo $CMD \\\"$IMAGE\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-
-echo dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
-
-echo sync
 sync
 
-echo mount /dev/sda1 /mnt
 mount /dev/sda1 /mnt
-
-echo cp /tmp/fstab /mnt/fstab
 cp /tmp/fstab /mnt/fstab
-
-echo umount /dev/sda1
 umount /dev/sda1
 
-echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     else
-        run_ramfs "
-echo $CMD \\\"$IMAGE\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
+        run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-
-echo sync
 sync
 
-echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
@@ -214,35 +197,22 @@ else
     if [ $SAVE_CONFIG -gt 0 ]; then
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
-        run_ramfs "
-echo $CMD \\\"$1\\\" \\| dd of=$DEVICE bs=4096 conv=fsync
+        run_ramfs "set -x
 $CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
-
-echo sync
 sync
 
-echo mount /dev/sda1 /mnt
 mount /dev/sda1 /mnt
-
-echo cp \\\"$CONF_TAR\\\" /mnt
 cp \"$CONF_TAR\" /mnt
-
-echo umount /dev/sda1
 umount /dev/sda1
 
-echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     else
-        run_ramfs "
-echo $CMD \\\"$1\\\" | dd of=$DEVICE bs=4096 conv=fsync
+        run_ramfs "set -x
 $CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
-
-echo sync
 sync
 
-echo reboot -f
 reboot -f
 sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
