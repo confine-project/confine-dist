@@ -941,7 +941,7 @@ confine_sliver_deploy() {
     # echo "$FUNCNAME $# $@" >&2
 
     local SL_ID=$( check_slice_id $1 )
-    local SRC="${2:--}"
+#   local SRC="${2:--}"
     local SRC_CFG=$( date +%s )-$BASHPID-deploy
     local SRC_DIR=$CONFINE_RPC_DIR
     
@@ -949,14 +949,15 @@ confine_sliver_deploy() {
     local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
     local LXC_SCRIPTS_PATH=$( uci_get lxc.general.lxc_scripts_path )
     
-    cat $SRC > $SRC_DIR/$SRC_CFG
+#    cat $SRC > $SRC_DIR/$SRC_CFG
 #    cat $SRC_DIR/$SRC_CFG >&2
 
     local NODE_ID=$( uci_get confine.node.id )
     local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
     
-    if  [ "$( uci_get $SRC_CFG.${SL_ID}_${NODE_ID} soft,path=$SRC_DIR )" = "sliver" ] && \
-	[ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
+#   if  [ "$( uci_get $SRC_CFG.${SL_ID}_${NODE_ID} soft,path=$SRC_DIR )" = "sliver" ] && \
+
+    if  [ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
 	[ "$( uci_get confine-slivers.$SL_ID.state soft )" = "allocated" ] && \
 	[ "$CT_NR" ]; then
 
@@ -982,10 +983,10 @@ confine_sliver_deploy() {
 
 	fi
 
-	uci_show $SRC_CFG path=$SRC_DIR | \
-	    grep -e "^$SRC_CFG.${SL_ID}_" | \
-	    sed s/$SRC_CFG/confine-slice-attributes/ | \
-	    uci_merge confine-slice-attributes
+#	uci_show $SRC_CFG path=$SRC_DIR | \
+#	    grep -e "^$SRC_CFG.${SL_ID}_" | \
+#	    sed s/$SRC_CFG/confine-slice-attributes/ | \
+#	    uci_merge confine-slice-attributes
 
 
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR
