@@ -41,14 +41,14 @@ EOF
 
 IMAGE=$1
 case "$IMAGE" in
-    *.tgz|*.tar.gz|*.gzip)
-        CMD="zcat" ;;
-    *.tbz|*.tbz2|*.tb2|*.tar.bz2)
-        CMD="bzcat" ;;
-    *.txz|*.tar.xz)
-        CMD="xzcat" ;;
+    *.gz|*.gzip)
+        CMD=zcat ;;
+    *.bz|*.bz2)
+        CMD=bzcat ;;
+    *.xz)
+        CMD=xzcat ;;
     *)
-        CMD="cat" ;;
+        CMD=cat ;;
 esac
 
 RAM_ROOT=/tmp/root
@@ -166,20 +166,34 @@ grep /home /proc/mounts > /dev/null && {
     umount -l /home
 }
 
-if [ -b ${DEVICE}4 ]; then
-    if [ $SAVE_CONFIG -gt 0 ]; then
-        [ -f /rom/etc/config/fstab ]\
-            && cp /rom/etc/config/fstab /tmp/fstab\
-            || cp /etc/config/fstab /tmp/fstab
-        run_ramfs "set -x
+if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -lt 1 ]; then
+    [ -f /rom/etc/config/fstab ]\
+        && cp /rom/etc/config/fstab /tmp/fstab\
+        || cp /etc/config/fstab /tmp/fstab
+    run_ramfs "set -x
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 sync
 
-mount /dev/sda1 /mnt
+mount -t ext2 -o rw,noatime /dev/sda1 /mnt
 cp /tmp/fstab /mnt/fstab
-umount /dev/sda1
+umount /mnt
+
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+else
+    if [ $SAVE_CONFIG -gt 0 ]; then
+        add_conffiles "$CONFFILES"
+        tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
+        run_ramfs "set -x
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+sync
+
+mount -t ext2 -o rw,noatime /dev/sda1 /mnt
+cp \"$CONF_TAR\" /mnt
+umount /mnt
 
 reboot -f
 sleep 5
@@ -187,30 +201,6 @@ echo b 2>/dev/null >/proc/sysrq-trigger"
     else
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-sync
-
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
-    fi
-else
-    if [ $SAVE_CONFIG -gt 0 ]; then
-        add_conffiles "$CONFFILES"
-        tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
-        run_ramfs "set -x
-$CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
-sync
-
-mount /dev/sda1 /mnt
-cp \"$CONF_TAR\" /mnt
-umount /dev/sda1
-
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
-    else
-        run_ramfs "set -x
-$CMD \"$1\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
 
 reboot -f
