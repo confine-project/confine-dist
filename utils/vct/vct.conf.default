@@ -43,7 +43,7 @@ VCT_SLICE_OWRT_TEMPLATE_URL="http://media.confine-project.eu/vct/CONFINE-sliver-
 VCT_SLICE_OWRT_EXP_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-openwrt.tgz" # MUST BE .tgz
 VCT_SLICE_OWRT_EXP_NAME="hello-openwrt-experiment"
 
-VCT_SLICE_DEBIAN_TEMPLATE_URL="http://media.confine-project.eu/vct/debian32.tgz"
+VCT_SLICE_DEBIAN_TEMPLATE_URL="http://media.confine-project.eu/vct/debian32-02.tgz"
 VCT_SLICE_DEBIAN_EXP_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-debian.tgz"
 VCT_SLICE_DEBIAN_EXP_NAME="hello-debian-experiment"
 
