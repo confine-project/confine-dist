@@ -23,7 +23,7 @@ config 'container' 'openwrt'
 
        option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time'
 
-       option 'mknod'         'null:666:c:1:3:rwm zero:666:c:1:5:rwm full:666:c:1:7: urandom:666:c:1:9:rwm random:666:c:1:8:rwm tty:666:c:5:0:rwm console:600:c:5:1:rwm ptmx:666:c:5:2:rwm tty0:666:c:4:0: tty1:666:c:4:1: tty2:666:c:4:2: tty3:666:c:4:3: tty4:666:c:4:4: ::c:4:*:rwm initctl:600:p::: ::c:136:*:rwm ::c:254:0:rwm'
+       option 'mknod'         'null:666:c:1:3:rwm zero:666:c:1:5:rwm full:666:c:1:7: urandom:666:c:1:9:rwm random:666:c:1:8:rwm tty:666:c:5:0:rwm console:600:c:5:1:rwm ptmx:666:c:5:2:rwm tty0:666:c:4:0: tty1:666:c:4:1: tty2:666:c:4:2: tty3:666:c:4:3: tty4:666:c:4:4: ::c:4:*:rwm initctl:600:p::: ::c:136:*:rwm ::c:254:0:rwm net/tun:660:c:10:200:rwm'
 
        option 'rootfs_url'    'http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz'
        option 'mkdir'         'proc sys dev dev/pts:755 dev/shm:1777 root tmp var www'
@@ -43,7 +43,7 @@ config 'container' 'debian'
        option 'auto_create'   '0'
 
        option 'cap_drop'      'mac_admin mac_override mknod setfcap setpcap sys_admin sys_boot sys_module sys_nice sys_pacct sys_rawio sys_resource sys_time'
-       option 'mknod'         '::c:1:3:rwm ::c:1:5:rwm ::c:1:7: ::c:1:9:rwm ::c:1:8:rwm ::c:5:0:rwm ::c:5:1:rwm ::c:5:2:rwm ::c:4:0: ::c:4:1: ::c:4:2: ::c:4:3: ::c:4:4: ::c:4:*:rwm ::p::: ::c:136:*:rwm ::c:254:0:rwm'
+       option 'mknod'         '::c:1:3:rwm ::c:1:5:rwm ::c:1:7: ::c:1:9:rwm ::c:1:8:rwm ::c:5:0:rwm ::c:5:1:rwm ::c:5:2:rwm ::c:4:0: ::c:4:1: ::c:4:2: ::c:4:3: ::c:4:4: ::c:4:*:rwm ::p::: ::c:136:*:rwm ::c:254:0:rwm ::c:10:200:rwm'
 
        option 'rootfs_url'    'http://distro.confine-project.eu/misc/debian32.tgz'
 

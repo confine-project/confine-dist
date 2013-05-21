@@ -339,17 +339,25 @@ EOF
 	    [ "$((`echo $MKNOD | sed 's/[^:]//g'|wc -m`-1))" = 5 ] || \
 		{ lxc_remove $SL_NAME; err $FUNCNAME "Illegal format $MKNOD in lxc.$SL_NAME.mknod"; }
 
+	    local NAME="$( echo $MKNOD | awk -F':' '{print $1}')"
+	    local NDIR="$( echo $NAME  | grep -o -e "^.*/")"
+	    local MODE="$( echo $MKNOD | awk -F':' '{print $2}')"
+	    local TYPE="$( echo $MKNOD | awk -F':' '{print $3}')"
+	    local MAJOR="$(echo $MKNOD | awk -F':' '{print $4}')"
+	    local MINOR="$(echo $MKNOD | awk -F':' '{print $5}')"
+	    local MORE="$( echo $MKNOD | awk -F':' '{print $6}')"
+
+
 	    if [ "$(echo $MKNOD | awk -F':' '{print $6}')" ]; then
 		cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
-lxc.cgroup.devices.allow = $( echo $MKNOD | awk -F':' '{print $3 " " $4 ":" $5 " " $6}' )
+lxc.cgroup.devices.allow = $TYPE $MAJOR:$MINOR $MORE
 EOF
 	    fi
 
-	    if [ "$(echo $MKNOD | awk -F':' '{print $1}')" ]; then
-		mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev
-		mknod -m $(echo $MKNOD | awk -F':' '{print $2}') \
-		    $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/$(echo $MKNOD | awk -F':' '{print $1}') \
-		    $(echo $MKNOD | awk -F':' '{print $3 " " $4 " " $5 }')
+
+	    if [ "$NAME" ] && [ "$MODE" ]; then
+		mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/$NDIR
+		mknod -m $MODE $LXC_IMAGES_PATH/$SL_NAME/rootfs/dev/$NAME $TYPE $MAJOR $MINOR
 	    fi
 	done
     fi
