@@ -175,10 +175,13 @@ dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 sync
+sleep 2
 
-mount -t ext2 -o rw,noatime /dev/sda1 /mnt
-cp /tmp/fstab /mnt/fstab
-umount /dev/sda1
+mkdir /sda1
+mount ${DEVICE}1 /sda1 || mount -t ext2 -o rw,noatime ${DEVICE}1 /sda1
+
+cp /tmp/fstab /sda1/fstab
+umount ${DEVICE}1
 
 reboot -f
 sleep 5
@@ -190,10 +193,12 @@ else
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
+sleep 2
 
-mount -t ext2 -o rw,noatime /dev/sda1 /mnt
-cp \"$CONF_TAR\" /mnt
-umount /dev/sda1
+mkdir /sda1
+mount -t ext2 -o rw,noatime ${DEVICE}1 /sda1
+cp \"$CONF_TAR\" /sda1
+umount ${DEVICE}1
 
 reboot -f
 sleep 5
@@ -202,6 +207,7 @@ echo b 2>/dev/null >/proc/sysrq-trigger"
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
+sleep 2
 
 reboot -f
 sleep 5
