@@ -269,8 +269,9 @@ function filter(rules, itree, otree, path)
 	path = path or "/"
 
 	assert(rules and otree and itree and path)
+	local curr_path = get_path_val(itree, path)
 	local pk,pv
-	
+
 	for pk,pv in ipairs(rules) do
 	
 		local pattern  = pv[1]
@@ -279,7 +280,7 @@ function filter(rules, itree, otree, path)
 		local pattern_ = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
 
 		local k
-		for k in pairs(get_path_val(itree, path)) do
+		for k in pairs(curr_path) do
 				
 			if (path..k):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
 				
