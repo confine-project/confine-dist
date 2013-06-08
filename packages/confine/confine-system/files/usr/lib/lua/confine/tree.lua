@@ -354,13 +354,16 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 				--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
 				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 				
-				assert( ov~=nil or nv~=nil )
-				assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil),
-				       "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"%{path..tk.."/", type(tk),
-											     as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]),
-											     as_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
-				assert( ov==nil or ov==get_path_val(otree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
-				assert( nv==nil or nv==get_path_val(ntree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
+				if not ( ov~=nil or nv~=nil ) then
+					assert(false)
+				elseif not (type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil)) then
+					assert( false, "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"
+					       %{path..tk.."/", type(tk), as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]), qs_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
+				elseif not (ov==nil or ov==get_path_val(otree, path..tk.."/")) then
+					assert( false, "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
+				elseif not (nv==nil or nv==get_path_val(ntree, path..tk.."/")) then 
+					assert( false, "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
+				end
 				
 				
 				if is_table then
@@ -381,10 +384,10 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 				
 				--assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
-				assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil),
-				       "path=%s type(tk)=%s \nas number:\n%s as string:\n%s"%{path..tk.."/", type(tk),
-											     as_string((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]),
-											     as_string((type(ocurr)=="table" and ocurr or {})[tostring(tk)])})
+				if not (type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil)) then
+					assert( false, "path=%s type(tk)=%s \nas number:\n%s as string:\n%s"
+					       %{path..tk.."/", type(tk), as_string((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]), as_string((type(ocurr)=="table" and ocurr or {})[tostring(tk)])})
+				end
 
 			end
 			
