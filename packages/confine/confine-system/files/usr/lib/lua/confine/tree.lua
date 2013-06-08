@@ -312,86 +312,83 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 	local up_changed = false
 	local ocurr = get_path_val(otree, path)
 	local ncurr = get_path_val(ntree, path)
-	local tkeys = tools.join_tables((type(ocurr)=="table" and ocurr or {}), (type(ncurr)=="table" and ncurr or {}))
+	local tkall = tools.join_tables((type(ocurr)=="table" and ocurr or {}), (type(ncurr)=="table" and ncurr or {}))
 	local pk,pv
 
 --	dbg("lvl=%s cb=%s path=%s ov=%s nv=%s", lvl, cb(), path, tostring(ocurr), tostring(ncurr))
 	
 	for pk,pv in ipairs(rules) do
 	
-		local pattern     = pv[1]
+		local pattern     = pv[1]										-- eg: "/local_slivers/*/interfaces/*"	,eg2: "/local_slivers/*/interfaces"
 		local task        = pv[2]
 		local misc	  = pv[3]
 		assert( type(pattern)=="string" and type(task)=="function", "pattern=%s task=%s pk=%s" %{tostring(pattern), tostring(task), tostring(pk) } )
-		local pattern_key = pattern:match("%*$") or pattern:match("[^/]+$")
-		local pattern_    = pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")
---		local pattern_    = pattern:gsub("/%s$" %pattern_key,"/") -- DOES NOT WORK!!
+		local pattern_path= pattern:match("/%*$") and pattern:gsub("/%*$","/") or pattern:gsub("/[^/]+$","/")	-- eg: "/local_slivers/*/interfaces/"	,eg2: "/local_slivers/*/"
+--		local pattern_path= pattern:gsub("/%s$" %pattern_key,"/") -- DOES NOT WORK!!
 
---		dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_, pattern_key )
-		if path:match("^%s$" %{pattern_:gsub("*","[^/]+")}) then
+--		dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_path, pattern_key )
+		if path:match("^%s$" %{pattern_path:gsub("*","[^/]+")}) then
 		
---			dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_, pattern_key )
+--			dbg( "lvl=%s pk=%s path=%-25s pattern=%s %s %s", lvl, pk, path, pattern, pattern_path, pattern_key )
 
+			local pattern_key = pattern:match("%*$") or pattern:match("[^/]+$") 				-- eg: "*" 				,eg2: "interfaces"
+			local tkrel = ((pattern_key=="*") and tkall or { [pattern_key] = tkall[pattern_key] } )
+			local matched = false
 			local tk
-			local unmatched = true
 			
-			for tk in pairs( tkeys ) do
+			for tk in pairs( tkrel ) do
 				
---				dbg( "pk=%s path=%-25s pattern=%s", pk, path..tk, pattern )
-					
-				if (path..tk):match("^%s$" %{pattern:gsub("*","[^/]+")} ) then
-					
-					assert( pattern_key=="*" or pattern_key == tk)
-					
-					unmatched = false
-			
-					local ov,nv
-					if type(ocurr)=="table" then ov = ocurr[tk] end
-					if type(ncurr)=="table" then nv = ncurr[tk] end
-					local is_table = type(ov)=="table" or type(nv)=="table"
-					local down_changed = false
-	
-					--dbg( "beg %s %-15s %s%s %s => %s (pattern=%s %s %s)",
-					--    is_table and "TBL" or "VAL", tostring((task() or "???")), path, (type(tk)=="number" and tk or '"'..tk..'"'),
-					--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
-					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
-					
-					assert( ov~=nil or nv~=nil )
-					assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil),
-					       "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"%{path..tk.."/", type(tk),
-												     as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]),
-												     as_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
-					assert( ov==nil or ov==get_path_val(otree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
-					assert( nv==nil or nv==get_path_val(ntree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
-					
-					
-					if is_table then
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc, false)
-						down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", unused, lvl+1)
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc, false)
-					else
-						cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc, true)
-					end
-					
-					up_changed = up_changed or down_changed
-					up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
-					up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --otree vs ntree changed
-					
-					--dbg( "end %s %-15s %s%s %s => %s (pattern=%s %s %s)",
-					--    is_table and "TBL" or "VAL", tostring(task() or "???"), path, (type(tk)=="number" and tk or '"'..tk..'"'),
-					--    cdata.val2string((type(ocurr)=="table" and ocurr or {})[tk]):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
-					--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
-					
-					--assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
-					assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil),
-					       "path=%s type(tk)=%s \nas number:\n%s as string:\n%s"%{path..tk.."/", type(tk),
-												     as_string((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]),
-												     as_string((type(ocurr)=="table" and ocurr or {})[tostring(tk)])})
+				assert( pattern_key=="*" or pattern_key == tk)
+				assert( (path..tk):match("^%s$" %{pattern:gsub("*","[^/]+")} ) )
+				
+				matched = true
+		
+				local ov,nv
+				if type(ocurr)=="table" then ov = ocurr[tk] end
+				if type(ncurr)=="table" then nv = ncurr[tk] end
+				local is_table = type(ov)=="table" or type(nv)=="table"
+				local down_changed = false
 
+				--dbg( "beg %s %-15s %s%s %s => %s (pattern=%s %s %s)",
+				--    is_table and "TBL" or "VAL", tostring((task() or "???")), path, (type(tk)=="number" and tk or '"'..tk..'"'),
+				--    cdata.val2string(ov):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
+				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
+				
+				assert( ov~=nil or nv~=nil )
+				assert(type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil),
+				       "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"%{path..tk.."/", type(tk),
+											     as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]),
+											     as_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
+				assert( ov==nil or ov==get_path_val(otree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(ov), tostring(get_path_val(otree, path..tk.."/"))})
+				assert( nv==nil or nv==get_path_val(ntree, path..tk.."/"), "path=%s %s != %s"%{path..tk.."/", tostring(nv), tostring(get_path_val(ntree, path..tk.."/"))})
+				
+				
+				if is_table then
+					cb( task, rules, sys_conf, otree, ntree, path..tk.."/", true, false, misc, false)
+					down_changed = iterate(cb, rules, sys_conf, otree, ntree, path..tk.."/", unused, lvl+1)
+					cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, down_changed, misc, false)
+				else
+					cb( task, rules, sys_conf, otree, ntree, path..tk.."/", false, false, misc, true)
 				end
+				
+				up_changed = up_changed or down_changed
+				up_changed = up_changed or (ov ~= get_path_val(otree,path..tk.."/")) --otree changed
+				up_changed = up_changed or (ov ~= nv and not (type(ov)=="table" and type(nv)=="table")) --otree vs ntree changed
+				
+				--dbg( "end %s %-15s %s%s %s => %s (pattern=%s %s %s)",
+				--    is_table and "TBL" or "VAL", tostring(task() or "???"), path, (type(tk)=="number" and tk or '"'..tk..'"'),
+				--    cdata.val2string((type(ocurr)=="table" and ocurr or {})[tk]):gsub("\n",""):sub(1,30), cdata.val2string(nv):gsub("\n",""):sub(1,30),
+				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
+				
+				--assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil))
+				assert(type(tk)=="number" and ((type(ocurr)=="table" and ocurr or {})[tostring(tk)]==nil) or ((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]==nil),
+				       "path=%s type(tk)=%s \nas number:\n%s as string:\n%s"%{path..tk.."/", type(tk),
+											     as_string((type(ocurr)=="table" and ocurr or {})[tonumber(tk)]),
+											     as_string((type(ocurr)=="table" and ocurr or {})[tostring(tk)])})
+
 			end
 			
-			if unmatched and pattern_key ~= "*" then
+			if (not matched) and pattern_key ~= "*" then
 				--dbg("UNMATCHED lvl=%s pk=%s path=%-25s pattern=%s key=%s",
 				--    lvl, tostring(pk), tostring(path), tostring(pattern), tostring(pattern_key))
 				cb( task, rules, sys_conf, otree, ntree, path..pattern_key.."/", false, false, misc)
