@@ -212,9 +212,12 @@ function get_path_val ( tree, path, depth)
 --		dbg("l=%s path=%s root=%s new=%s newroot=%s tree=%s", depth, path, path_root, path_new, tostring(tree[path_root]), tostring(tree))
 	
 
-		assert(type(path_root)=="string" and path_new, "path_root=%s path_new=%s" %{tostring(path_root), tostring(path_new)})
-		assert( not tonumber(path_root) or not ( tree[path_root] and tree[tonumber(path_root)]),
-		       "path_root=%s tree:\n%s"%{tostring(path_root), as_string(tree)} )
+		if not (type(path_root)=="string" and path_new) then
+			assert(false, "path_root=%s path_new=%s" %{tostring(path_root), tostring(path_new)})
+			
+		elseif not (not tonumber(path_root) or not ( tree[path_root] and tree[tonumber(path_root)])) then
+			assert( false, "path_root=%s tree:\n%s"%{tostring(path_root), as_string(tree)} )
+		end
 		
 		assert( type(tree)=="table" or tree==cdata.null )
 		
