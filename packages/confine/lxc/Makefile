@@ -18,7 +18,7 @@ PKG_RELEASE:=2
 PKG_SOURCE_URL:=git://lxc.git.sourceforge.net/gitroot/lxc/lxc
 PKG_SOURCE_PROTO:=git
 PKG_REV:=60a742e0afd34e02299f64536df35116d68d888d
-PKG_VERSION:=r2012092301
+PKG_VERSION:=r2013061201
 PKG_SOURCE_VERSION:=$(PKG_REV)
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_SOURCE_SUBDIR).tar.gz
@@ -72,6 +72,12 @@ endef
 define Package/lxc/description
 	Userspace tools to manage linux containers
 endef
+
+define Package/lxc/conffiles
+/etc/config/lxc
+endef
+
+
 
 CONFIGURE_ARGS += --with-linuxdir=$(LINUX_DIR) --disable-apparmor
 
