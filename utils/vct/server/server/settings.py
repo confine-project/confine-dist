@@ -20,6 +20,12 @@ from vct.utils import get_vct_config
 from controller.conf.devel_settings import *
 
 
+# When DEBUG is enabled Django appends every executed SQL statement to django.db.connection.queries
+# this will grow unbounded in a long running process environment like celeryd
+if "celeryd" in sys.argv:
+    DEBUG = False
+
+
 VCT_SERVER_ROOT = get_vct_config('VCT_SERVER_DIR')
 
 
@@ -64,6 +70,8 @@ STATIC_ROOT = os.path.join(VCT_SERVER_ROOT, 'static')
 # Install / uninstall modules
 INSTALLED_APPS = add_app(INSTALLED_APPS, 'vct')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'gis')
+INSTALLED_APPS = remove_app(INSTALLED_APPS, 'captcha')
+INSTALLED_APPS = remove_app(INSTALLED_APPS, 'django_google_maps')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'issues')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'registration')
 INSTALLED_APPS = remove_app(INSTALLED_APPS, 'communitynetworks')

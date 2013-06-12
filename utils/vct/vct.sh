@@ -417,7 +417,7 @@ vct_system_install_server() {
         # An older version is present, just go ahead and proceed with normal way
         vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
     fi
-    vct_sudo controller-admin.sh install_requirements
+    vct_sudo controller-admin.sh install_requirements --local
     
     # cleanup possible pip shit
     # vct_sudo rm -fr {pip-*,build,src}
