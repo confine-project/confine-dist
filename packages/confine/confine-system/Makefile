@@ -20,7 +20,9 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
+PKG_VERSION:=r2013061201
 PKG_RELEASE:=1
+
 #PKG_SOURCE_URL:=@SF/confine-system
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
@@ -108,7 +110,9 @@ define Package/confine-system/description
 endef
 
 define Package/confine-system/conffiles
-
+/etc/config/confine
+/etc/config/confine-slivers
+/etc/config/confine-slice-attributes
 endef
 
 define Build/Prepare
