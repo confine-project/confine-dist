@@ -10,6 +10,7 @@ module( "confine.system", package.seeall )
 
 local nixio   = require "nixio"
 local lsys    = require "luci.sys"
+local lutil   = require "luci.util"
 local sig     = require "signal"
 local uci     = require "confine.uci"
 local tools   = require "confine.tools"
@@ -117,7 +118,11 @@ function get_system_conf(sys_conf, arg)
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
-	conf.soft_version          = (tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=",".")
+	conf.sys_revision          = ((tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=","."))
+	conf.cns_version           = lutil.exec( "opkg info confine-system" )
+	conf.cns_version           = type(conf.cns_version) == "string" and conf.cns_version:match("Version: [^\n]+\n") or "???"
+	conf.cns_version           = conf.cns_version:gsub("Version: ",""):gsub(" ",""):gsub("\n","")
+	conf.soft_version          = conf.sys_revision .. "-" .. conf.cns_version
 
 	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
