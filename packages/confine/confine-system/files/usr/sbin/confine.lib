@@ -1242,7 +1242,12 @@ confine_info() {
 
 
 confine_daemon_stop() {
+
+	echo
+	echo "stopping confine daemon..."
+
 	local CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
+
 	while [ "$CPID" ] && [ -d /proc/$CPID ] ;do
 		kill $CPID
 		sleep 1
@@ -1255,7 +1260,9 @@ confine_daemon_stop() {
 
 confine_daemon_continue() {
 	local interactive=${1:-no}
-	
+
+	echo
+	echo "restarting confine daemon..."
 	if echo $interactive | grep "^-i" > /dev/null; then
 		/usr/lib/lua/confine/confine.lua --interactive
 	else
@@ -1265,14 +1272,26 @@ confine_daemon_continue() {
 	confine_info
 }
 
+confine_daemon_update() {
+	local URLS="$1"
+
+	confine_daemon_stop
+
+	echo
+	echo "going to opkg --force-depends install $URLS"
+	opkg --force-depends install $URLS
+
+	confine_daemon_continue
+}
 
 help() {
        cat <<EOF
 confine_info
-confine_node_enable                              # enable confine system
-confine_node_disable                             # disable confine system
-confine_daemon_stop                              # temporary stop confine daemon, (slivers persist)
-confine_daemon_continue                          # continue confine daemon
+confine_node_enable                             # enable confine system
+confine_node_disable                            # disable confine system
+confine_daemon_stop                             # temporary stop confine daemon, (slivers persist)
+confine_daemon_continue                         # continue confine daemon
+confine_daemon_update   <URL>                   # update (stop,update,continue) confine daemon with opkg of given URL
 confine_sliver_allocate <SLICE_ID> [BATCH_FILE]
 confine_sliver_deploy   <SLICE_ID> [BATCH_FILE]
 confine_sliver_start    <SLICE_ID|all>
@@ -1297,7 +1316,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue) $CMD ${1:-};;
+	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;
