@@ -1216,10 +1216,11 @@ confine_info() {
     local OPT_CMD=${2:-}
     local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
 
-    printf "CONFINE node-id=%s node-state=%s \n" \
+    printf "CONFINE node-id=0x%s node-state=%s daemon-pid=%s\n" \
 	$( uci_get confine.node.id soft,quiet ) \
-	$( uci_get confine.node.state soft,quiet )
-    printf "%-14s %-3s %-5s %-10s %-30s \n" slice-id lxc pid state name
+	$( uci_get confine.node.state soft,quiet ) \
+	$( [ -f /var/run/confine/pid ] && [ -d /proc/$(cat /var/run/confine/pid) ] && cat /var/run/confine/pid || echo "stopped" )
+    printf "%-16s %-3s %-5s %-10s %-30s \n" slice-id lxc pid state name
     echo   "----------------------------------------------------------"
 
     local SLICE_ID=
@@ -1233,18 +1234,45 @@ confine_info() {
 	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
 
-	printf "%-14s %-3s %-5s %-10s %-30s \n" \
-	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE $SLIVER_EXP_NAME
+	printf "0x%-14s %-3s %-5s %-10s %-30s \n" \
+	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE "'$SLIVER_EXP_NAME'"
 
     done
+}
+
+
+confine_daemon_stop() {
+	local CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
+	while [ "$CPID" ] && [ -d /proc/$CPID ] ;do
+		kill $CPID
+		sleep 1
+		[ -d /proc/$CPID ] && echo "confine-daemon-pid=$CPID still running. This may take a while..."
+		CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
+	done
+	confine_info
+}
+
+
+confine_daemon_continue() {
+	local interactive=${1:-no}
+	
+	if echo $interactive | grep "^-i" > /dev/null; then
+		/usr/lib/lua/confine/confine.lua --interactive
+	else
+		/usr/lib/lua/confine/confine.lua >/dev/null 2>&1 &
+	fi
+
+	confine_info
 }
 
 
 help() {
        cat <<EOF
 confine_info
-confine_node_enable
-confine_node_disable
+confine_node_enable                              # enable confine system
+confine_node_disable                             # disable confine system
+confine_daemon_stop                              # temporary stop confine daemon, (slivers persist)
+confine_daemon_continue                          # continue confine daemon
 confine_sliver_allocate <SLICE_ID> [BATCH_FILE]
 confine_sliver_deploy   <SLICE_ID> [BATCH_FILE]
 confine_sliver_start    <SLICE_ID|all>
@@ -1269,7 +1297,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_enable|confine_node_disable) $CMD ;;
+	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue) $CMD ${1:-};;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;

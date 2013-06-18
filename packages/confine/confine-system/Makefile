@@ -20,7 +20,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
-PKG_VERSION:=r2013061201
+PKG_VERSION:=r2013061801
 PKG_RELEASE:=1
 
 #PKG_SOURCE_URL:=@SF/confine-system
@@ -166,6 +166,8 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
+	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_stop
+	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_continue
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_undeploy
