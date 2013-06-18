@@ -338,10 +338,12 @@ confine_node_disable() {
 
     echo "$FUNCNAME $@" >&2
 
+    confine.lib confine_daemon_stop
+
     confine.lib uci_set confine.node.state=unprepared soft
 
     confine_tinc_stop
-    
+
     confine_sliver_remove all
 }
 
@@ -558,12 +560,12 @@ confine_node_enable() {
 	    uci_set network.management.proto=static
 	    uci_set network.management.ip6addr=$SERVER_MGMT_IPV6_PREFIX48:$VCRD_ID::2/64
 
-#	    uci_set network.recovery1=interface
-#	    uci_set network.recovery1.ifname=br-local
-#	    uci_set network.recovery1.proto=static
-#	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
-#	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
-#	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
+	    uci_set network.recovery1=interface
+	    uci_set network.recovery1.ifname=br-local
+	    uci_set network.recovery1.proto=static
+	    uci_set network.recovery1.ipaddr=$NODE_PRIV_IPV4_PREFIX24.130
+	    uci_set network.recovery1.netmask=$( ip4_net_to_mask /25 )
+	    uci_set network.recovery1.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0001::2/64
 
 	    uci_set network.recovery2=interface
 	    uci_set network.recovery2.ifname=br-local
@@ -622,7 +624,7 @@ confine_node_enable() {
 	
 	uci_set confine.node.state=started
 
-	confine.lib confine_info
+	confine.lib confine_daemon_continue
 
 	return 0
     fi
@@ -1263,11 +1265,15 @@ confine_daemon_continue() {
 
 	echo
 	echo "restarting confine daemon..."
-	if echo $interactive | grep "^-i" > /dev/null; then
-		/usr/lib/lua/confine/confine.lua --interactive
-	else
-		/usr/lib/lua/confine/confine.lua >/dev/null 2>&1 &
+
+	if ! [ "$( uci -q get confine.node.start_daemon )" = "0" ] ; then
+		if echo $interactive | grep "^-i" > /dev/null; then
+			/usr/lib/lua/confine/confine.lua --interactive
+		else
+			/usr/lib/lua/confine/confine.lua >/dev/null 2>&1 &
+		fi
 	fi
+
 
 	confine_info
 }

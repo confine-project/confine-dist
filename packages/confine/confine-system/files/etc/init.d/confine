@@ -15,29 +15,16 @@ start() {
     fi
 
     confine_node_enable
-
-    if ! [ "$( uci -q get confine.node.start_daemon )" = "0" ] ; then
-	/usr/lib/lua/confine/confine.lua > /dev/null &
-    fi
-
 }
 
 
 stop() {
 
-    if [ -f /var/run/confine/pid ]; then
-	kill $(cat /var/run/confine/pid)
-	sleep 2
-    fi
-
-    if [ -f /var/run/confine/pid ]; then
-	kill -9 $(cat /var/run/confine/pid)
-    fi
+    confine_daemon_stop
 
     confine_sliver_stop all
 
     if [ "$( uci -q get confine.node.state )" = "started" ] ; then
 	confine.lib uci_set confine.node.state=applied
     fi
-    
 }
