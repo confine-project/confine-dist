@@ -311,6 +311,7 @@ end
 in_rules2 = {}
 tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/name",				crules.cb2_set})
 	table.insert(tmp_rules, {"/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/properties/*/*",			crules.cb2_set})
@@ -423,6 +424,7 @@ tmp_rules = in_rules2
 out_filter = {}
 tmp_rules = out_filter
 	table.insert(tmp_rules, {"/description"})
+	table.insert(tmp_rules, {"/name"})
 	table.insert(tmp_rules, {"/properties"})
 	table.insert(tmp_rules, {"/properties/*", "iterate"})
 	table.insert(tmp_rules, {"/properties/*/*"})
