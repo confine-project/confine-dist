@@ -42,8 +42,9 @@ IMAGES = images
 # This is a build sequence number automatically set by Jenkins.
 BUILD_NUMBER ?= unknown
 NIGHTLY_IMAGES_DIR ?= www
-IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-combined
-IMAGE_TYPE ?= ext4
+IMAGE ?= openwrt-$(TARGET)-$(SUBTARGET)-rootfs
+IMAGE_TYPE ?= squashfs
+KERNEL ?= openwrt-$(TARGET)-$(SUBTARGET)-vmlinuz
 J ?= 1
 V ?= 0
 MAKE_SRC_OPTS = -j$(J) V=$(V)
@@ -117,8 +118,10 @@ define post_build
 #	[ -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" ] && gunzip "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" || true
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
-	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
-	ln -fs "CONFINE-owrt-$(TIMESTAMP).img.gz" "$(IMAGES)/CONFINE-owrt-current.img.gz"
+	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
+	ln -fs "CONFINE-owrt-$(TIMESTAMP).img" "$(IMAGES)/CONFINE-owrt-current.img"
+	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(KERNEL)" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).kernel"
+	ln -fs "CONFINE-owrt-$(TIMESTAMP).kernel" "$(IMAGES)/CONFINE-owrt-current.kernel"
 	@echo
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
 endef
