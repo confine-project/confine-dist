@@ -164,11 +164,6 @@ nightly: prepare
 	$(call build_src)
 	$(call nightly_build)
 
-atom_publish:
-	$(shell scp "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz" p4u@distro.confine-project.eu:"www/misc/CONFINE-owrt-testing-atom-$(TIMESTAMP).img.gz")
-	$(shell scp "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version" p4u@distro.confine-project.eu:"www/misc/CONFINE-owrt-testing-atom-$(TIMESTAMP).version")
-	$(shell ssh -t p4u@distro.confine-project.eu "cd www/misc/; ln -fs CONFINE-owrt-testing-atom-{$(TIMESTAMP),current}.img.gz; ln -fs CONFINE-owrt-testing-atom-{$(TIMESTAMP),current}.version")
-
 prepare: .prepared
 
 .prepared:
