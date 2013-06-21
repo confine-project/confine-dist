@@ -128,6 +128,8 @@ define post_build
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
+	cp -f files/etc/confine.version "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
+	ln -fs "CONFINE-owrt-$(TIMESTAMP).version" "$(IMAGES)/CONFINE-owrt-current.version"
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).img.gz" "$(IMAGES)/CONFINE-owrt-current.img.gz"
 	@echo
 	@echo "CONFINE firmware compiled, you can find output files in $(IMAGES)/ directory"
@@ -161,6 +163,11 @@ nightly: prepare
 	$(call set_version)
 	$(call build_src)
 	$(call nightly_build)
+
+atom_publish:
+	$(shell scp "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz" p4u@distro.confine-project.eu:"www/misc/CONFINE-owrt-testing-atom-$(TIMESTAMP).img.gz")
+	$(shell scp "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version" p4u@distro.confine-project.eu:"www/misc/CONFINE-owrt-testing-atom-$(TIMESTAMP).version")
+	$(shell ssh -t p4u@distro.confine-project.eu "cd www/misc/; ln -fs CONFINE-owrt-testing-atom-{$(TIMESTAMP),current}.img.gz; ln -fs CONFINE-owrt-testing-atom-{$(TIMESTAMP),current}.version")
 
 prepare: .prepared
 
