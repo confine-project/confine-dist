@@ -28,14 +28,14 @@ done
 Usage: $0 [options] <image file> [<device>]
 
 Options:
-    -b           backup the configuration files (if currently not using
-                     an overlay)
-    -f           perform upgrade, even if trying to keep overlay and home
-                     partitions and they might be destroyed.
-    -n           don't keep the partition table and fstab (if currently
-                     using an overlay)
+  -b          backup the configuration files (if currently not using
+                  an overlay)
+  -f          perform upgrade, even if trying to keep overlay and home
+                  partitions and they might be destroyed.
+  -n          don't keep the partition table and fstab (if currently
+                  using an overlay)
 
-    -h / --help  display this help
+  -h, --help  display this help
 
 <device> defaults to /dev/sda.
 
@@ -176,7 +176,7 @@ if [ $FORCE -eq 0 -a -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     if [ "$TABLE_IMAGE" != "$TABLE_DEVICE" ]; then
         echo "ERROR: The first two primary partitions on $DEVICE differ in some way
        from the partitions on $IMAGE.
-       Please make sure the sizes of the boot and rootfs partitions are equal.
+       Please make sure the sizes of the boot and rootfs partitions match.
        Run again with -n to delete all the partitions and install from scratch.
        If you're still certain you want to continue, run again with -f."
         exit 2
