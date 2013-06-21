@@ -17,6 +17,9 @@
 #
 
 TIMESTAMP = $(shell date -u +%Y%m%d-%H%M)
+GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
+GIT_HASH = $(shell git rev-parse HEAD)
+
 BUILD_DIR = openwrt
 FILES_DIR = files
 PACKAGE_DIR = packages
@@ -30,7 +33,7 @@ TARGET ?= x86
 SUBTARGET ?= generic
 # Some targets (not x86) need a profile.
 PROFILE ?=
-PARTSIZE ?= 900
+PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
 
@@ -107,6 +110,13 @@ define kmenuconfig_owrt
 	@echo "New Kernel configuration file saved on $(MY_CONFIGS)/kernel_config"
 endef
 
+define set_version
+	: > files/etc/confine.version
+	echo "$(TIMESTAMP)" >> files/etc/confine.version
+	echo "$(GIT_BRANCH)" >> files/etc/confine.version
+	echo "$(GIT_HASH)" >> files/etc/confine.version
+endef
+
 define build_src
 	make -C "$(BUILD_DIR)" $(MAKE_SRC_OPTS)
 endef
@@ -143,10 +153,12 @@ endef
 all: target
 
 target: prepare
+	$(call set_version)
 	$(call build_src)
 	$(call post_build)
 
 nightly: prepare
+	$(call set_version)
 	$(call build_src)
 	$(call nightly_build)
 
