@@ -20,7 +20,9 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
+PKG_VERSION:=r2013061804
 PKG_RELEASE:=1
+
 #PKG_SOURCE_URL:=@SF/confine-system
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
@@ -108,7 +110,9 @@ define Package/confine-system/description
 endef
 
 define Package/confine-system/conffiles
-
+/etc/config/confine
+/etc/config/confine-slivers
+/etc/config/confine-slice-attributes
 endef
 
 define Build/Prepare
@@ -137,11 +141,11 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
 	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
+	$(CP)  ./files/etc/uci-defaults/sysupgrade-recover.sh $(1)/etc/uci-defaults/
+
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
-	$(CP)  ./files/lxc/scripts/openwrt-confine-dhcp.sh $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
-	$(CP)  ./files/lxc/scripts/debian-confine-dhcp.sh  $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
@@ -152,6 +156,7 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/usr/sbin/confine.sysupgrade $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
@@ -161,8 +166,12 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
+	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_stop
+	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_continue
+	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_update
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_allocate
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_deploy
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_undeploy
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove

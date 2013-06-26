@@ -1,4 +1,4 @@
---[[
+ --[[
 
 
 
@@ -12,23 +12,55 @@ local socket  = require "socket"
 local nixio   = require "nixio"
 
 
+logfile = false
+logsize = 1000
+
+
+function dbg_(nl, err, func, fmt, ...)
+	local t = nixio.times()
+	local l = "[%s.%d] %-7s %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
+	if err then
+		io.stderr:write("ERROR "..l)
+	else
+		io.stdout:write(l)
+	end
+	
+	if logfile then
+		
+		local stat = nixio.fs.stat(logfile)
+		if stat and stat.size > logsize then
+			nixio.fs.move(logfile, logfile..".old")
+		end
+		
+		local out = io.open(logfile, "a")
+		assert(out, "Failed to open %s" %logfile)
+		out:write(l)
+		out:close()
+	end
+
+	--io.stdout:write(string.format("[%d.%3d] ", os.time(), t.utime + t.stime + t.cutime + t.cstime))
+	--io.stdout:write((debug.getinfo(2).name or "???").."() ")
+	--io.stdout:write(string.format(fmt, ...))
+	--if nl then io.stdout:write("\n") end
+end
 
 function dbg(fmt, ...)
-	local t = nixio.times()
-	io.stdout:write(string.format("[%d.%3d] ", os.time(),
-	                              t.utime + t.stime + t.cutime + t.cstime))
-	io.stdout:write(string.format(fmt, ...))
-	io.stdout:write("\n")
+	dbg_(true, false, debug.getinfo(2).name or "???", fmt, ...)
 end
 
-stop = false
-
-local function handler(signo)
-	nixio.signal(nixio.const.SIGINT,  "ign")
-	nixio.signal(nixio.const.SIGTERM, "ign")
-	dbg("going to stop now...")
-	stop = true
+function err(fmt, ...)
+	dbg_(true, true, debug.getinfo(2).name or "???", fmt, ...)
 end
+
+
+
+function execute(cmd)
+	dbg(cmd)
+	local result = os.execute(cmd)
+	dbg("return code = %s",result)
+	return result
+end
+
 
 --- Extract flags from an arguments list.
 -- Given string arguments, extract flag arguments into a flags set.
@@ -53,6 +85,14 @@ function parse_flags(args)
    return flags, unpack(args)
 end
 
+stop = false
+
+function handler(signo)
+	nixio.signal(nixio.const.SIGINT,  "ign")
+	nixio.signal(nixio.const.SIGTERM, "ign")
+	dbg("going to stop now...")
+	stop = true
+end
 
 function sleep(sec)
 	local interval=1
@@ -107,7 +147,7 @@ function mkdirr( path, mode )
 			first = first + pos
 			local dir = string.sub(path, 1, first)
 			if not lucifs.isdirectory(dir) then
-				dbg("mkdir "..dir)
+				--dbg("mkdir "..dir)
 				nixio.fs.mkdir( dir, mode )
 			end
 			assert( lucifs.isdirectory(dir), "Failed creating dir=%s" %dir )
@@ -117,6 +157,24 @@ function mkdirr( path, mode )
 	end
 end
 
+function join_tables( t1, t2 )
+	local tn = {}
+	local k,v
+	for k,v in pairs(t1) do tn[k] = v end
+	for k,v in pairs(t2) do tn[k] = v end
+	return tn
+end
+
+function get_table_items( t )
+	local count = 0
+	local k,v
+	for k,v in pairs(t) do
+		count = count + 1
+		--dbg("get_table_items() c=%s k=%s v=%s", count, k, tostring(v))
+	end
+	--dbg("get_table_items() t=%s c=%s", tostring(t), count)
+	return count
+end
 
 function get_table_by_key_val( t, val, key )
 	
@@ -135,6 +193,10 @@ function get_table_by_key_val( t, val, key )
 	return nil
 end
 
+function fname()
+	return debug.getinfo(2).name.."() "
+end
+
 function str2table( str, pattern )
 
 	if not pattern then pattern = "%a+" end
@@ -147,6 +209,29 @@ function str2table( str, pattern )
 	
 	return t
 end
+
+function table2string( tree, separator, maxdepth )
+--	luci.util.dumptable(obj):gsub("%s"%tostring(cdata.null),"null")
+	if not maxdepth then maxdepth = 1 end
+	if not separator then separator = " " end
+	if type(tree)~="table" then return tostring(tree) end
+	local result = ""
+	local k,v
+	for k,v in pairs(tree or {}) do
+			
+		if type(v) ~= "table"  then
+			result = (result=="" and result or result..separator) .. tostring(v)
+		else
+			assert( maxdepth > 1, "maxdepth reached!")
+			local sub_result = table2string(v, separator, (maxdepth - 1))
+			if sub_result ~= "" then
+				result = (result=="" and result or result..separator) .. sub_result
+			end
+		end
+	end
+	return result
+end
+
 
 function subfind(str, start_pattern, end_pattern )
 

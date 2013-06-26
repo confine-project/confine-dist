@@ -1,0 +1,243 @@
+#!/bin/sh
+
+SAVE_CONFIG=0
+FORCE=0
+IGNORE_FSTAB=0
+HELP=0
+
+CONFFILES=/tmp/conf.files
+CONF_TAR=/tmp/conf.tgz
+
+while [ -n "$1" ]; do
+    case "$1" in
+        -b) SAVE_CONFIG=1;;
+        -f) FORCE=1;;
+        -n) IGNORE_FSTAB=1;;
+        -h|--help) HELP=1; break;;
+        -*)
+            echo "Invalid option: $1"
+            exit 1
+        ;;
+        *) break;;
+    esac
+    shift;
+done
+
+[ $HELP -ne 0 ] && {
+    cat <<EOF
+Usage: $0 [options] <image file> [<device>]
+
+Options:
+  -b          backup the configuration files (if currently not using
+                  an overlay)
+  -f          perform upgrade, even if trying to keep overlay and home
+                  partitions and they might be destroyed.
+  -n          don't keep the partition table and fstab (if currently
+                  using an overlay)
+
+  -h, --help  display this help
+
+<device> defaults to /dev/sda.
+
+EOF
+    exit 1
+}
+
+if [ -n "$1" ]; then
+    IMAGE=$1
+    case "$IMAGE" in
+        *.gz|*.gzip)
+            CMD=zcat ;;
+        *.bz|*.bz2)
+            CMD=bzcat ;;
+        *)
+            CMD=cat ;;
+    esac
+else
+    read -n1 -p"No image provided. Do you want to check distro.confine-project.eu
+for updates? [y/n] " answer
+    if [ $answer == "y" ]; then
+        #TODO: compare confine.version files
+    else
+        echo "Nothing to do."
+        exit 0
+    fi
+fi
+
+RAM_ROOT=/tmp/root
+DEVICE=${2:-/dev/sda}
+
+ldd() { LD_TRACE_LOADED_OBJECTS=1 $*; }
+libs() { ldd $* | awk '{print $3}'; }
+
+install_file() { # <file> [ <file> ... ]
+    for file in "$@"; do
+        dest="$RAM_ROOT/$file"
+        [ -f $file -a ! -f $dest ] && {
+            dir="$(dirname $dest)"
+            mkdir -p "$dir"
+            cp $file $dest
+        }
+    done
+}
+
+install_bin() { # <file> [ <symlink> ... ]
+    src=$1
+    files=$1
+    [ -x "$src" ] && files="$src $(libs $src)"
+    install_file $files
+    [ -e /lib/ld-linux.so.3 ] && {
+        install_file /lib/ld-linux.so.3
+    }
+    shift
+    for link in "$@"; do {
+        dest="$RAM_ROOT/$link"
+        dir="$(dirname $dest)"
+        mkdir -p "$dir"
+        [ -f "$dest" ] || ln -s $src $dest
+    }; done
+}
+
+pivot() { # <new_root> <old_root>
+    mount | grep "on $1 type" 2>&- 1>&- || mount -o bind $1 $1
+    mkdir -p $1$2 $1/proc $1/sys $1/dev $1/tmp && \
+    mount -o move /proc $1/proc && \
+    pivot_root $1 $1$2 || {
+        umount $1 $1
+        return 1
+    }
+
+    mount -o move $2/sys /sys
+    mount -o move $2/dev /dev
+    mount -o move $2/tmp /tmp
+    mount -o move $2/overlay /overlay 2>&-
+    return 0
+}
+
+run_ramfs() { # <command> [...]
+    install_bin /bin/busybox /bin/ash /bin/sh /bin/mount /bin/umount \
+        /sbin/pivot_root /sbin/reboot /bin/sync /bin/dd \
+        /bin/grep /bin/cp /bin/mv /bin/tar "/usr/bin/[" \
+        /bin/vi /bin/ls /bin/cat /usr/bin/awk /bin/mkdir \
+        /bin/sleep /bin/zcat /usr/bin/bzcat
+
+    install_file /etc/resolv.conf
+
+    pivot $RAM_ROOT /mnt || exit 3
+
+    mount -o remount,ro /mnt
+    umount -l /mnt
+
+    grep /overlay /proc/mounts > /dev/null && {
+        mount -o remount,ro /overlay
+        umount -l /overlay
+	}
+
+    exec /bin/busybox sh -c "$*"
+}
+
+kill_remaining() { # [ <signal> ]
+    local sig="${1:-TERM}"
+    local stat
+    for stat in /proc/[0-9]*/stat; do
+        [ -f "$stat" ] || continue
+
+        local pid name state ppid rest
+        read pid name state ppid rest < $stat
+        name="${name#(}"; name="${name%)}"
+
+        local cmdline
+        read cmdline < /proc/$pid/cmdline
+
+        [ -n "$cmdline" ] || continue
+        case "$name" in
+            *ash*|*init*|*watchdog*|*ssh*|*dropbear*|*telnet*|*login*|*hostapd*|*wpa_supplicant*) : ;;
+            *)
+                if [ $pid -ne $$ ] && [ $ppid -ne $$ ]; then
+                    kill -$sig $pid 2>/dev/null
+                fi
+            ;;
+        esac
+    done
+}
+
+add_conffiles() {
+    ( find $(sed -ne '/^[[:space:]]*$/d; /^#/d; p' \
+        /etc/sysupgrade.conf /lib/upgrade/keep.d/* 2>/dev/null) \
+        -type f 2>/dev/null;
+      opkg list-changed-conffiles ) | sort -u > "$1"
+    return 0
+}
+
+if [ $FORCE -eq 0 -a -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
+    echo "Checking if the boot and rootfs partitions are of different size..."
+    TABLE_IMAGE=$($CMD "$IMAGE" | dd bs=1 count=32 skip=446 2>/dev/null)
+    TABLE_DEVICE=$(dd if=$DEVICE bs=1 count=32 skip=446 2>/dev/null)
+    if [ "$TABLE_IMAGE" != "$TABLE_DEVICE" ]; then
+        echo "ERROR: The first two primary partitions on $DEVICE differ in some way
+       from the partitions on $IMAGE.
+       Please make sure the sizes of the boot and rootfs partitions match.
+       Run again with -n to delete all the partitions and install from scratch.
+       If you're still certain you want to continue, run again with -f."
+        exit 2
+    else
+        echo "Partition tables match."
+    fi
+fi
+
+kill_remaining TERM
+sleep 4
+kill_remaining KILL
+
+grep /cgroup /proc/mounts > /dev/null && umount /cgroup
+grep /home /proc/mounts > /dev/null && {
+    mount -o ro,remount /home
+    umount -l /home
+}
+
+if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
+    cp /etc/config/fstab /tmp/fstab
+    run_ramfs "set -x
+dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
+sync
+sleep 2
+
+mkdir /part
+mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
+
+cp /tmp/fstab /part/fstab
+umount ${DEVICE}1
+
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+else
+    if [ $SAVE_CONFIG -ne 0 ]; then
+        add_conffiles "$CONFFILES"
+        tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
+        run_ramfs "set -x
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+sync
+sleep 2
+
+mkdir /part
+mount -t ext2 -o rw,noatime ${DEVICE}1 /part
+cp \"$CONF_TAR\" /part
+umount ${DEVICE}1
+
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+    else
+        run_ramfs "set -x
+$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+sync
+sleep 2
+
+reboot -f
+sleep 5
+echo b 2>/dev/null >/proc/sysrq-trigger"
+    fi
+fi

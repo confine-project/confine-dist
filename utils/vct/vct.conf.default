@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
- VCT_TEMPLATE_URL="http://images.confine-project.eu/misc/openwrt-x86-generic-combined-ext4-merge_trunk_02.img.gz"
+VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4-bare-bones_13-x86.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -33,8 +33,19 @@ VCT_VIRT_DIR=/var/lib/vct
 # Note that: templates must be updated: $ ./vct_system_install update
 # and old domains must be removed:      $ ./vct_node_remove <rd-id> 
 # and re-installed:                     $ ./vct_node_create <rd-id> 
-# VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
-# VCT_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+
+
+
+#VCT_SLICE_OWRT_TEMPLATE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
+VCT_SLICE_OWRT_TEMPLATE_URL="http://media.confine-project.eu/vct/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
+VCT_SLICE_OWRT_EXP_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-openwrt.tgz" # MUST BE .tgz
+VCT_SLICE_OWRT_EXP_NAME="hello-openwrt-experiment"
+
+VCT_SLICE_DEBIAN_TEMPLATE_URL="http://media.confine-project.eu/vct/debian32-02.tgz"
+VCT_SLICE_DEBIAN_EXP_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-debian.tgz"
+VCT_SLICE_DEBIAN_EXP_NAME="hello-debian-experiment"
 
 
 
@@ -47,29 +58,35 @@ VCT_RPC_DIR=$VCT_VIRT_DIR/rpc_files
 VCT_UCI_DIR=$VCT_VIRT_DIR/uci
 
 VCT_KEYS_DIR=$VCT_VIRT_DIR/keys
-VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
 
 VCT_SSH_OPTIONS="-i $VCT_USER_HOME/.ssh/id_rsa -i $VCT_KEYS_DIR/id_rsa -o StrictHostKeyChecking=no -o HashKnownHosts=no -o UserKnownHostsFile=$VCT_KEYS_DIR/known_hosts -o ConnectTimeout=1 "
 
-#VCT_TINC_PID=$VCT_TINC_DIR/confine.pid
-VCT_TINC_PID=/var/run/tinc.confine.pid
-VCT_TINC_LOG=$VCT_TINC_DIR/confine.log
-#VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/confine -n confine"
-VCT_TINC_CMD="tincd --logfile=$VCT_TINC_LOG -c $VCT_TINC_DIR/confine -n confine"
-
+VCT_TINC_DIR=$VCT_VIRT_DIR/tinc
+VCT_TINC_NET="confine"
+VCT_TINC_PID=/var/run/tinc.${VCT_TINC_NET}.pid
+VCT_TINC_LOG=$VCT_TINC_DIR/tinc.${VCT_TINC_NET}.log
+VCT_TINC_START="tincd --logfile=$VCT_TINC_LOG --pidfile=$VCT_TINC_PID -c $VCT_TINC_DIR/${VCT_TINC_NET} -n ${VCT_TINC_NET}"
+VCT_TINC_HUP="tincd -n ${VCT_TINC_NET} -kHUP"
+VCT_TINC_STOP="tincd -n ${VCT_TINC_NET} -kTERM"
 
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
 VCT_NODE_MAC_DB=./vct.nodes.local
 
+#################################################
+
+VCT_SERVER="y" ## any other value disables the controller installation and usage
+VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
+VCT_SERVER_VERSION='0.9.1a4' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
 
 VCT_CONFINE_PRIV_IPV6_PREFIX48="fdbd:e804:6aa9"   # Mandatory and unique for all testbeds
 VCT_CONFINE_DEBUG_IPV6_PREFIX48="fd5f:eee5:e6ad"  # Mandatory and unique for all testbeds
 
-VCT_TESTBED_MGMT_IPV6_PREFIX48="fdf5:5351:1dfd"   # Used by UPC/Pangea
+VCT_TESTBED_MGMT_IPV6_PREFIX48="fd65:fc41:c50f"   # VCT mgmt prefix registered at SixXS ULA registry
 VCT_TESTBED_PRIV_IPV4_PREFIX24="192.168.241"
 VCT_TESTBED_MAC_PREFIX16="54:c0"
 
@@ -100,10 +117,9 @@ vct_hello_openwrt() {
     cat <<EOF
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-#   option fs_template_url "http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-    option fs_template_url "http://images.confine-project.eu/misc/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-openwrt.tgz"
-    option exp_name        "hello-openwrt-experiment"
+    option fs_template_url "$VCT_SLICE_OWRT_TEMPLATE_URL"
+    option exp_data_url    "$VCT_SLICE_OWRT_EXP_DATA_URL"
+    option exp_name        "$VCT_SLICE_OWRT_EXP_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal
     option if00_name       priv
@@ -129,9 +145,9 @@ vct_hello_debian() {
     cat <<EOF
 config sliver $SLICE_ID
     option user_pubkey     "$( cat $VCT_KEYS_DIR/id_rsa.pub )"
-    option fs_template_url "http://distro.confine-project.eu/misc/debian32.tgz"
-    option exp_data_url    "http://distro.confine-project.eu/misc/exp-data-hello-world-debian.tgz"
-    option exp_name        "hello-debian-experiment"
+    option fs_template_url "$VCT_SLICE_DEBIAN_TEMPLATE_URL"
+    option exp_data_url    "$VCT_SLICE_DEBIAN_EXP_DATA_URL"
+    option exp_name        "$VCT_SLICE_DEBIAN_EXP_NAME"
     option vlan_nr         "f${SLICE_ID:10:2}"    # mandatory for if-types isolated
     option if00_type       internal
     option if00_name       priv
@@ -155,11 +171,7 @@ EOF
 
 
 #################################################
-
-
-
 # Host network configuration:
-
 
 VCT_BRIDGE_PREFIXES="VCT_BR00 VCT_BR01 VCT_BR02 VCT_BR03 VCT_BR04"  # add and define as needed, eg: " VCT_BR01 VCT_BR02 VCT_BR02"
 VCT_BR00_NAME="vct-local"
@@ -182,17 +194,12 @@ VCT_BR00_V4_DHCPD_DNS="$VCT_NODE_PUBLIC_IPV4_DNS"
 VCT_BR00_V4_NAT_OUT_DEV="auto"   # auto (dev of default route), eth0, ... or undefine (="") to disable NAT/SNAT
 VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
 
-
-
-
 VCT_BR01_NAME="vct-direct-01"
-
 VCT_BR02_NAME="vct-direct-02"
 
 
 #################################################
 # Research Device (RD) values:
-
 
 VCT_RD_NAME_PREFIX="vcrd-"
 VCT_RD_MEM="64"                                     # RD Memory in MB
@@ -200,17 +207,12 @@ VCT_RD_LOCAL_BRIDGE="vct-local"
 
 
 #################################################
-#################################################
 # expected parameters:
-
-
-
 
 VCT_KERNEL_MODULES="ip_tables ebtables kvm kvm_intel dummy"
 
 VCT_INTERFACE_MODEL="e1000"
 VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
-
 
 VCT_DEB_PACKAGES=" \
     bridge-utils \

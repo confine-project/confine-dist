@@ -115,6 +115,38 @@ vct_sudo() {
     return $?
 }
 
+vct_sudo_sh() {
+    if [ "${VCT_DRY_RUN:-}" ]; then
+	vct_do sudo sh -c "$@"
+	return $?
+    fi
+
+    local QUERY=
+
+    if [ "$VCT_SUDO_ASK" != "NO" ]; then
+
+	echo "" >&2
+	echo "$0 wants to execute (VCT_SUDO_ASK=$VCT_SUDO_ASK set to ask):" >&2
+	echo ">>>>   sudo sh -c $@   <<<<" >&2
+	read -p "Pleas type: y) to execute and continue, s) to skip and continue, or anything else to abort: " QUERY >&2
+
+	if [ "$QUERY" == "y" ] ; then
+	    sudo sh -c "$@"
+	    return $?
+
+	elif [ "$QUERY" == "s" ] ; then
+
+	    return 0
+	fi
+	
+	err $FUNCNAME "sudo execution cancelled: $QUERY"
+	return 1
+    fi
+
+    sudo sh -c "$@"
+    return $?
+}
+
 vct_do_ping() {
 	if echo $1 | grep -e ":" >/dev/null; then
 		PING="ping6 -c 1 -w 1 -W 1"
@@ -150,32 +182,55 @@ vct_system_config_check() {
     variable_check VCT_SSH_OPTIONS     quiet
     variable_check VCT_TINC_PID        quiet
     variable_check VCT_TINC_LOG        quiet
-    variable_check VCT_TINC_CMD        quiet
+    variable_check VCT_TINC_START      quiet
 
 
 # Typical cases:
-# VCT_TEMPLATE_URL="http://distro.confine-project.eu/rd-images/openwrt-x86-generic-combined-ext4.img.tgz"
-# VCT_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
-# VCT_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-combined-ext4.img.tgz"
+# VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
+# VCT_NODE_TEMPLATE_URL="file:///../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
-    variable_check VCT_TEMPLATE_URL  quiet
+    variable_check VCT_NODE_TEMPLATE_URL  quiet
 
-    VCT_TEMPLATE_COMP=$( ( echo $VCT_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
-                         ( echo $VCT_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
-                         ( echo $VCT_TEMPLATE_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
-    variable_check VCT_TEMPLATE_COMP quiet
-    VCT_TEMPLATE_TYPE=$(echo $VCT_TEMPLATE_URL | awk -F $VCT_TEMPLATE_COMP '{print $1}' | awk -F'.' '{print $(NF-1)}')
-    variable_check VCT_TEMPLATE_TYPE quiet
-    VCT_TEMPLATE_NAME=$(echo $VCT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F'.' '{print $1}')
-    variable_check VCT_TEMPLATE_NAME quiet
-    VCT_TEMPLATE_SITE=$(echo $VCT_TEMPLATE_URL | awk -F ${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP} '{print $1}')
-    variable_check VCT_TEMPLATE_SITE quiet
+    VCT_NODE_TEMPLATE_COMP=$( ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $VCT_NODE_TEMPLATE_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+    variable_check VCT_NODE_TEMPLATE_COMP quiet
+    VCT_NODE_TEMPLATE_TYPE=$(echo $VCT_NODE_TEMPLATE_URL | awk -F"$VCT_NODE_TEMPLATE_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
+    variable_check VCT_NODE_TEMPLATE_TYPE quiet
+    VCT_NODE_TEMPLATE_NAME=$(echo $VCT_NODE_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" '{print $1}')
+    variable_check VCT_NODE_TEMPLATE_NAME quiet
+    VCT_NODE_TEMPLATE_SITE=$(echo $VCT_NODE_TEMPLATE_URL | awk -F"${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" '{print $1}')
+    variable_check VCT_NODE_TEMPLATE_SITE quiet
 
-    ( [ $VCT_TEMPLATE_TYPE = "vmdk" ] || [ $VCT_TEMPLATE_TYPE = "raw" ] || [ $VCT_TEMPLATE_TYPE = "img" ] ) ||\
-           err $FUNCNAME "Non-supported fs template type $URL_TYPE"
+    ( [ $VCT_NODE_TEMPLATE_TYPE = "vmdk" ] || [ $VCT_NODE_TEMPLATE_TYPE = "raw" ] || [ $VCT_NODE_TEMPLATE_TYPE = "img" ] ) ||\
+           err $FUNCNAME "Non-supported fs template type $VCT_NODE_TEMPLATE_TYPE"
 
-    [ "$VCT_TEMPLATE_URL" = "${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}" ] ||\
-           err $FUNCNAME "Invalid $VCT_TEMPLATE_URL != ${VCT_TEMPLATE_SITE}${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}"
+    [ "$VCT_NODE_TEMPLATE_URL" = "${VCT_NODE_TEMPLATE_SITE}${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}" ] ||\
+           err $FUNCNAME "Invalid $VCT_NODE_TEMPLATE_URL != ${VCT_NODE_TEMPLATE_SITE}${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}"
+
+
+    variable_check VCT_SLICE_OWRT_TEMPLATE_URL  quiet
+    VCT_SLICE_OWRT_TEMPLATE_COMP=$((echo $VCT_SLICE_OWRT_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+				   (echo $VCT_SLICE_OWRT_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ))
+    VCT_SLICE_OWRT_TEMPLATE_NAME=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_TEMPLATE_SITE=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F"${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_OWRT_EXP_DATA_URL  quiet
+    VCT_SLICE_OWRT_EXP_DATA_COMP=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_OWRT_EXP_DATA_NAME=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_EXP_DATA_SITE=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F"${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_DEBIAN_TEMPLATE_URL  quiet
+    VCT_SLICE_DEBIAN_TEMPLATE_COMP=$((echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+				     (echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ))
+    VCT_SLICE_DEBIAN_TEMPLATE_NAME=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_TEMPLATE_SITE=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F"${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
+
+    variable_check VCT_SLICE_DEBIAN_EXP_DATA_URL  quiet
+    VCT_SLICE_DEBIAN_EXP_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_DEBIAN_EXP_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_EXP_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
 
 }
 
@@ -184,11 +239,10 @@ vct_system_config_check() {
 
 vct_tinc_setup() {
 
-    vct_do mkdir -p $VCT_TINC_DIR
-    vct_do rm -rf $VCT_TINC_DIR/* 
-    vct_do mkdir -p $VCT_TINC_DIR/confine/hosts
+    vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
+    vct_do mkdir -p $VCT_TINC_DIR/$VCT_TINC_NET/hosts
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc.conf
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc.conf
 BindToAddress = 0.0.0.0
 Port = $VCT_SERVER_TINC_PORT
 Name = server
@@ -196,38 +250,38 @@ StrictSubnets = yes
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/hosts/server
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server
 Address = $VCT_SERVER_TINC_IP
 Port = $VCT_SERVER_TINC_PORT
 Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
 EOF
 "
     
-    #vct_do tincd -c $VCT_TINC_DIR/confine  -K
-    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/confine/hosts/server"
-    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/confine/rsa_key.priv
+    #vct_do tincd -c $VCT_TINC_DIR/$VCT_TINC_NET  -K
+    vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server"
+    vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/$VCT_TINC_NET/rsa_key.priv
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-up
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc-up
 #!/bin/sh
 ip -6 link set \\\$INTERFACE up mtu 1400
 ip -6 addr add $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 EOF
 "
 
-    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/confine/tinc-down
+    vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc-down
 #!/bin/sh
 ip -6 addr del $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 ip -6 link set \\\$INTERFACE down
 EOF
 "
-    vct_do chmod a+rx $VCT_TINC_DIR/confine/tinc-{up,down}
+    vct_do chmod a+rx $VCT_TINC_DIR/$VCT_TINC_NET/tinc-{up,down}
     
 }
 
 vct_tinc_start() {
     echo "$FUNCNAME $@" >&2
 
-    vct_sudo $VCT_TINC_CMD
+    vct_sudo $VCT_TINC_START
 }
 
 vct_tinc_stop() {
@@ -239,7 +293,8 @@ vct_tinc_stop() {
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
 
-	vct_sudo kill $TINC_PID
+	vct_sudo $VCT_TINC_STOP
+#	vct_sudo kill $TINC_PID
 
 	echo -n "waiting till tinc cleaned up" >&2
 	while [ $TINC_CNT -le $TINC_MAX ]; do
@@ -252,7 +307,7 @@ vct_tinc_stop() {
 	echo  >&2
 	echo  >&2
 	[ -x /proc/$TINC_PID ] && vct_sudo kill -9 $TINC_PID && \
-	    echo "Killing confine tincd the hard way" >&2
+	    echo "Killing vct tincd the hard way" >&2
     fi
 }
 
@@ -341,17 +396,112 @@ check_rpm() {
     done
 }
 
+
+
+vct_system_install_server() {
+    local CURRENT_VERSION=$(python -c "from controller import get_version; print get_version();" || echo false)
+    
+    vct_sudo apt-get update
+    vct_sudo apt-get install -y --force-yes python-pip
+    
+    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data,pki/ca}
+    # Don't know why /pki gets created as root.. but here a quick fix:
+    vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
+    
+    # executes pip commands on /tmp because of garbage they generate
+    local CURRENT=$(pwd) && cd /tmp
+    if [[ ! $(pip freeze|grep confine-controller) ]]; then
+        # First time controller gets installed
+        vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
+    else
+        # An older version is present, just go ahead and proceed with normal way
+        vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
+    fi
+    vct_sudo controller-admin.sh install_requirements --local
+    
+    # cleanup possible pip shit
+    # vct_sudo rm -fr {pip-*,build,src}
+    
+    cd -
+    vct_sudo python server/manage.py setupceleryd --username $VCT_USER
+
+    if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
+	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
+	vct_sudo rm /etc/apache/sites-enabled/*
+    fi
+    
+    # We need postgres to be online, just making sure it is.
+    vct_sudo service postgresql start
+    vct_sudo python server/manage.py setuppostgres --db_name controller --db_user confine --db_password confine
+    vct_sudo python server/manage.py syncdb --noinput
+    vct_sudo python server/manage.py migrate --noinput
+    
+    # Move static files in a place where apache can get them
+    python server/manage.py collectstatic --noinput
+    
+    vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
+    python server/manage.py updatetincd
+
+    # Setup https certificate for the management network
+    vct_do python server/manage.py setuppki --org_name VCT --noinput
+    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
+
+    vct_sudo python server/manage.py setupfirmware
+    
+    vct_sudo python server/manage.py startservices --no-tinc
+    vct_sudo $VCT_TINC_START
+    
+    if [[ $CURRENT_VERSION != false ]]; then
+        # Per version upgrade specific operations
+        vct_sudo python server/manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
+    fi
+    
+    # Create a vct user, default VCT group and provide initial auth token to vct user
+    cat <<- EOF | python server/manage.py shell > /dev/null
+		from users.models import *
+		if not User.objects.filter(username='vct').exists():
+		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
+		
+		group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
+		user = User.objects.get(username='vct')
+		Roles.objects.get_or_create(user=user, group=group, is_admin=True);
+		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
+		AuthToken.objects.get_or_create(user=user, data=token_file.read().strip())
+		EOF
+
+    # Load further data into the database
+    vct_do python server/manage.py loaddata firmwareconfig
+    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
+    vct_do python server/manage.py loaddata server/vct/fixtures/vcttemplates.json
+    vct_do python server/manage.py loaddata server/vct/fixtures/vctslices.json
+}
+
+vct_system_purge_server() {
+	vct_sudo python server/manage.py stopservices --no-postgresql  || true
+	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start # || true
+	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  # || true
+	#grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
+	#grep "^confine" /etc/group  > /dev/null && vct_sudo delgroup confine  || true
+	if [ -d $VCT_SERVER_DIR ]; then
+	    vct_do rm -rf $VCT_SERVER_DIR  || true
+	fi
+}
+
+
 vct_system_install_check() {
 
     #echo $FUNCNAME $@ >&2
 
     local OPT_CMD=${1:-}
-    local CMD_SOFT=$(    echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
-    local CMD_QUICK=$(   echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
-    local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," )
-    local UPD_SERVER=$(  echo "$OPT_CMD" | grep -e "server" > /dev/null && echo "update," )
-    local UPD_NODE=$(    echo "$OPT_CMD" | grep -e "node" > /dev/null && echo "update," )
-    local UPD_KEYS=$(    echo "$OPT_CMD" | grep -e "keys" > /dev/null && echo "update," )
+    local CMD_SOFT=$(      echo "$OPT_CMD" | grep -e "soft"      > /dev/null && echo "soft," )
+    local CMD_QUICK=$(     echo "$OPT_CMD" | grep -e "quick"     > /dev/null && echo "quick," )
+    local CMD_INSTALL=$(   echo "$OPT_CMD" | grep -e "install"   > /dev/null && echo "install," )
+    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "update," )
+    local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
+    local UPD_SLICE=$(     echo "$OPT_CMD" | grep -e "slice"     > /dev/null && echo "update," )
+    local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
+    local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
+    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "server," )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -377,7 +527,7 @@ vct_system_install_check() {
     fi
 
     # check uci binary
-    local UCI_URL="http://distro.confine-project.eu/misc/uci.tgz"
+    local UCI_URL="http://media.confine-project.eu/vct/uci.tgz"
 
     local UCI_INSTALL_DIR="/usr/local/bin"
     local UCI_INSTALL_PATH="/usr/local/bin/uci"
@@ -491,24 +641,88 @@ EOF
 
     # check tinc configuration:
 
-    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] && vct_do rm -rf $VCT_TINC_DIR
+    [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_TINC ] && vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
 
-    if ! [ -d $VCT_TINC_DIR ] &&  [ $CMD_INSTALL ] ; then
+    if ! [ -d $VCT_TINC_DIR/$VCT_TINC_NET ] &&  [ $CMD_INSTALL ] ; then
 	vct_tinc_setup
     fi
 
-    [ -f $VCT_TINC_DIR/confine/hosts/server ] || \
-	{ err $FUNCNAME "$VCT_TINC_DIR/confine/hosts/server not existing" $CMD_SOFT || return 1 ;}
+    [ -f /etc/tinc/nets.boot ] || vct_sudo touch /etc/tinc/nets.boot
+    [ -f $VCT_TINC_DIR/nets.boot ] || vct_sudo touch $VCT_TINC_DIR/nets.boot
+
+    [ -f $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server ] || \
+	{ err $FUNCNAME "$VCT_TINC_DIR/$VCT_TINC_NET/hosts/server not existing" $CMD_SOFT || return 1 ;}
 
 
+    if [ "$CMD_INSTALL" ] &&  [ "$UPD_NODE" ]; then
+	echo "" >&2
+	read -p "Purge existing nodes and slivers (Please type 'y' or anything else to skip): " QUERY >&2
 
-    # check for update and downloadable file-system-template file:
+	if [ "$QUERY" == "y" ] ; then
+	    vct_do vct_node_remove all
+	    vct_do vct_slice_attributes flush all
+	fi
+    fi
 
-    [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_TEMPLATE_NAME}.${VCT_TEMPLATE_TYPE}.${VCT_TEMPLATE_COMP}
 
-    if ! vct_do install_url $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+    # check for update and downloadable node-system-template file:
+    [ "$UPD_NODE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_NODE_TEMPLATE_NAME}.${VCT_NODE_TEMPLATE_TYPE}.${VCT_NODE_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_NODE_TEMPLATE_URL $VCT_NODE_TEMPLATE_SITE $VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE $VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_NODE_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE.$VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR/confine-node-template.img.gz
+    fi
 
-	err $FUNCNAME "Installing ULR=$VCT_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    # check for update and downloadable slice-openwrt-template file:
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_TEMPLATE_URL $VCT_SLICE_OWRT_TEMPLATE_SITE $VCT_SLICE_OWRT_TEMPLATE_NAME $VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_TEMPLATE_NAME.$VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-openwrt-template.tgz
+    fi
+
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_EXP_DATA_URL $VCT_SLICE_OWRT_EXP_DATA_SITE $VCT_SLICE_OWRT_EXP_DATA_NAME $VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_EXP_DATA_NAME.$VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
+    fi
+
+    # check for update and downloadable slice-debian-template file:
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_TEMPLATE_URL $VCT_SLICE_DEBIAN_TEMPLATE_SITE $VCT_SLICE_DEBIAN_TEMPLATE_NAME $VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_TEMPLATE_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_TEMPLATE_NAME.$VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-debian-template.tgz
+    fi
+
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_EXP_DATA_URL $VCT_SLICE_DEBIAN_EXP_DATA_SITE $VCT_SLICE_DEBIAN_EXP_DATA_NAME $VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    else
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_EXP_DATA_NAME.$VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
+    fi
+
+
+    if [ $CMD_INSTALL ] && ( ! [ "$VCT_SERVER" = "y" ] ||  [ $UPD_SERVER ] ); then
+	echo "" >&2
+	read -p "Purge server installation (type 'y' or anything else to skip): " QUERY >&2
+
+	if [ "$QUERY" == "y" ] ; then
+	    vct_system_purge_server
+	fi
+    fi
+
+    if [ "$VCT_SERVER" = "y" ]; then
+	
+	if [ $CMD_INSTALL ] && ( [ $UPD_SERVER ] || ! [ -d $VCT_SERVER_DIR ] ); then
+	    vct_system_install_server
+	fi
+
+	if ! [ -d $VCT_SERVER_DIR ]; then
+	    err $FUNCNAME "Missing controller installation at $VCT_SERVER_DIR but VCT_SERVER=$VCT_SERVER"
+	fi
+
     fi
 
 }
@@ -691,9 +905,17 @@ EOF
 	fi
     done
 
-    # check if tinc management network is running:
-    [ $CMD_INIT ] && vct_tinc_stop
-    [ $CMD_INIT ] && vct_tinc_start
+    if [ "$VCT_SERVER" = "y" ]; then
+        # check if controller system and management network is running:
+	[ $CMD_INIT ] && vct_tinc_stop
+	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices
+	[ $CMD_INIT ] && vct_sudo $VCT_TINC_START
+    else
+        # check if tinc management network is running:
+	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
+	[ $CMD_INIT ] && vct_tinc_stop
+	[ $CMD_INIT ] && vct_tinc_start
+    fi
 }
 
 
@@ -773,6 +995,11 @@ vct_system_cleanup() {
     done
 
     vct_tinc_stop
+
+    if [ $VCT_SERVER_DIR ]; then
+	vct_sudo python server/manage.py stopservices
+    fi
+
 }
 
 ##########################################################################
@@ -962,7 +1189,8 @@ vct_node_create() {
     for VCRD_ID in $( vcrd_ids_get $VCRD_ID_RANGE ); do
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
-	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_TEMPLATE_TYPE}"
+#	local VCRD_PATH="${VCT_SYS_DIR}/${VCT_NODE_TEMPLATE_NAME}-rd${VCRD_ID}.${VCT_NODE_TEMPLATE_TYPE}"
+	local VCRD_PATH="${VCT_SYS_DIR}/rd${VCRD_ID}.${VCT_NODE_TEMPLATE_TYPE}"
 
 	virsh -c qemu:///system dominfo $VCRD_NAME 2>/dev/null && \
 	    err $FUNCNAME "Domain name=$VCRD_NAME already exists"
@@ -971,9 +1199,38 @@ vct_node_create() {
 	    echo "Removing existing rootfs=$VCRD_PATH" >&2 && rm -f $VCRD_PATH
 
 
-	if ! install_url  $VCT_TEMPLATE_URL $VCT_TEMPLATE_SITE $VCT_TEMPLATE_NAME.$VCT_TEMPLATE_TYPE $VCT_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
-	    err $FUNCNAME "Installing $VCT_TEMPLATE_URL to $VCRD_PATH failed"
-	fi    
+	if [ "$VCT_SERVER" = "y" ]; then
+	    local VCRD_FW_NAME="$( echo $VCT_SERVER_NODE_IMAGE_NAME | sed s/NODE_ID/$(( 16#${VCRD_ID} ))/ )"
+	    local FW_PATH="${VCT_SYS_DIR}/${VCRD_FW_NAME}"
+	    if ! [ -f $FW_PATH ]; then
+		err $FUNCNAME "Missing firmware=$FW_PATH for rd-id=$VCRD_ID"
+	    fi
+
+	    local FW_URL="file://${FW_PATH}"
+	    local FW_COMP=$( ( echo $FW_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                             ( echo $FW_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                             ( echo $FW_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+	    
+	    local FW_TYPE=$(echo $FW_URL | awk -F"$FW_COMP" '{print $1}' | awk -F'.' '{print $(NF-1)}')
+	    local FW_NAME=$(echo $FW_URL | awk -F'/' '{print $(NF)}' | awk -F".${FW_TYPE}.${FW_COMP}" '{print $1}')
+	    local FW_SITE=$(echo $FW_URL | awk -F"${FW_NAME}.${FW_TYPE}.${FW_COMP}" '{print $1}')
+
+	    ( [ $FW_TYPE = "vmdk" ] || [ $FW_TYPE = "raw" ] || [ $FW_TYPE = "img" ] ) ||\
+                err $FUNCNAME "Non-supported fs template type $FW_TYPE"
+
+	    [ "$FW_URL" = "${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}" ] ||\
+                err $FUNCNAME "Invalid $FW_URL != ${FW_SITE}${FW_NAME}.${FW_TYPE}.${FW_COMP}"
+	    
+	    if ! install_url  $FW_URL $FW_SITE $FW_NAME.$FW_TYPE $FW_COMP $VCT_SYS_DIR $VCRD_PATH install ; then
+		err $FUNCNAME "Installing $VCT_NODE_TEMPLATE_URL to $VCRD_PATH failed"
+	    fi
+
+	else
+
+	    if ! install_url  $VCT_NODE_TEMPLATE_URL $VCT_NODE_TEMPLATE_SITE $VCT_NODE_TEMPLATE_NAME.$VCT_NODE_TEMPLATE_TYPE $VCT_NODE_TEMPLATE_COMP $VCT_DL_DIR $VCRD_PATH install ; then
+		err $FUNCNAME "Installing $FW_URL to $VCRD_PATH failed"
+	    fi
+	fi
 
 
 
@@ -1016,7 +1273,7 @@ vct_node_create() {
 	done
 
 
-	local TEMPLATE_TYPE=$( [ "$VCT_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_TEMPLATE_TYPE" )
+	local TEMPLATE_TYPE=$( [ "$VCT_NODE_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_NODE_TEMPLATE_TYPE" )
 	local VIRT_CMD="\
     virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --os-type linux \
 	--import --disk path=$VCRD_PATH,format=$TEMPLATE_TYPE \
@@ -1356,7 +1613,7 @@ Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:$VCRD_ID:0:0:0:0/64
 $( cat $PREP_ROOT/etc/tinc/confine/rsa_key.pub )
 EOF
 
-	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/confine/hosts/
+	cp $PREP_ROOT/etc/tinc/confine/hosts/node_$VCRD_ID_DEC $VCT_TINC_DIR/$VCT_TINC_NET/hosts/
 
 	# this is optional:
 	# mkdir -p $PREP_ROOT/etc/dropbear
@@ -1404,14 +1661,14 @@ EOF
 
 	    vct_node_scp $VCRD_ID -r $PREP_ROOT/* remote:/
 	    vct_node_ssh $VCRD_ID "confine_node_enable"
-#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/confine/hosts/
+#	    vct_node_scp $VCRD_ID remote:/etc/tinc/confine/hosts/node_x$VCRD_ID $VCT_TINC_DIR/$VCT_TINC_NET/hosts/
 
 	    local TINC_PID=$([ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID)
 
 	    echo >&2
 	    [ "$TINC_PID" ] && \
 		echo "Notify tincd to reload its configuration by sending SIGHUP (-1) signal" >&2 && \
-		vct_sudo kill -1 $TINC_PID
+		vct_sudo $VCT_TINC_HUP # vct_sudo kill -1 $TINC_PID
 
 	elif [ "$PROCEDURE" = "sysupgrade" ] ; then
 
@@ -1795,7 +2052,7 @@ vct_sliver_ssh() {
 	    	vct_do_ping $IP > /dev/null && break
 
 	    [ "$COUNT" = 0 ] && \
-		echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
+		echo -n "Waiting for $VCRD_ID to listen on $IP (firstboot may take upto 40 secs)" || \
 		echo -n "."
 
 	    COUNT=$(( $COUNT + 1 ))

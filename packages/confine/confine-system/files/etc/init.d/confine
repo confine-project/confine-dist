@@ -20,10 +20,11 @@ start() {
 
 stop() {
 
+    confine_daemon_stop
+
     confine_sliver_stop all
 
     if [ "$( uci -q get confine.node.state )" = "started" ] ; then
 	confine.lib uci_set confine.node.state=applied
     fi
-    
 }

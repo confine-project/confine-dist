@@ -1,0 +1,52 @@
+#!/bin/sh /etc/rc.common
+
+START=80
+
+boot() {
+	start
+}
+
+start() {
+	# Create /var/cache/libvirt if not exists
+	if [ ! -d  /var/cache/libvirt ]; then
+		mkdir -p /var/cache/libvirt/qemu
+	fi
+
+	# Create /var/lib/libvirt if not exists
+	if [ ! -d  /var/lib/libvirt ]; then
+		mkdir -p /var/lib/libvirt/boot
+		mkdir -p /var/lib/libvirt/dnsmasq
+		mkdir -p /var/lib/libvirt/filesystems
+		mkdir -p /var/lib/libvirt/images
+		mkdir -p /var/lib/libvirt/lockd/files
+		mkdir -p /var/lib/libvirt/lxc
+		mkdir -p /var/lib/libvirt/network
+		mkdir -p /var/lib/libvirt/qemu
+		mkdir -p /var/lib/libvirt/uml
+	fi
+
+	# Create /var/log/libvirt if not exists
+	if [ ! -d  /var/log/libvirt ]; then
+	        mkdir -p /var/log/libvirt/lxc
+        	mkdir -p /var/log/libvirt/qemu
+        	mkdir -p /var/log/libvirt/uml
+	fi
+
+	# Create /var/run/libvirt if not exists
+	if [ ! -d  /var/run/libvirt ]; then
+	        mkdir -p /var/run/libvirt/lockd
+        	mkdir -p /var/run/libvirt/lxc
+        	mkdir -p /var/run/libvirt/network
+        	mkdir -p /var/run/libvirt/qemu
+        	mkdir -p /var/run/libvirt/uml
+	fi
+
+	# Starting libvirtd daemon
+	echo "Starting libvirt daemon..."
+	exec /usr/sbin/libvirtd -d
+}
+
+stop() {
+	echo "Stoping libvirt daemon..."
+	start-stop-daemon -K -p /var/run/libvirtd.pid
+}

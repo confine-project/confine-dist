@@ -5,10 +5,12 @@
 /utils/vct/vct.conf
 /utils/vct/vct.conf.overrides
 /utils/vct/vct
+/utils/vct/www
 *.tgz
 private
 /files/etc/dropbear/authorized_keys
 vct.nodes.local
-
+*.pyc
+*~
 
 
