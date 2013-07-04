@@ -447,6 +447,7 @@ vct_system_install_server() {
     vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
     vct_sudo python server/manage.py setupfirmware
+    vct_do python server/manage.py syncfirmwareplugins
     
     vct_sudo python server/manage.py startservices --no-tinc
     vct_sudo $VCT_TINC_START
