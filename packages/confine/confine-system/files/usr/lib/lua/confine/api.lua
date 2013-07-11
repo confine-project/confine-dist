@@ -1,7 +1,6 @@
--- uci set uhttpd.main.lua_prefix=/confine/api
--- uci set uhttpd.main.lua_handler=/root/api.lua
--- cp the script to /root/api.lua
--- /etc/init.d/uhttpd restart
+-- TODO override node.state when needed ?
+-- TODO class based server-related URLs ?
+
 
 
 local data = require 'confine.data'
@@ -13,11 +12,6 @@ NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
 SERVER_API_PATH_PREFIX = sys_conf.server_base_path
 WWW_PATH = '/var/confine/'
 NODE_ID = sys_conf.id
-
-
-
--- TODO override node.state when needed ?
--- TODO class based server-related URLs ?
 
 
 
@@ -184,51 +178,6 @@ end
 
 
 
--- REQUEST/RESPONSE CYCLE FUNCTIONS
-
-function handle_response(request, response)
-    -- Renders the response object as something that CGI server can understand
-    -- and performs content negotiation
-    if not response[1]['Status'] then
-        response[1]['Status'] = "HTTP/1.0 200 OK"
-    end
-    if string.find(request["headers"]["Accept"], "text/html") then
-        response[1]['Content-Type']= "text/html"
-        response[2] = render_as_html(request, response)
-    end
-    content = response[1]['Status'] .. '\r\n'
-    for name, value in pairs(response[1]) do
-        if name ~= 'Status' then
-            content = content .. name .. ': ' .. value .. '\r\n'
-        end
-    end
-    content = content .. '\r\n'
-    content = content .. response[2]
-    return content
-end
-
-
-function api_path_dispatch(request, api_path)
-    -- Mapping between API paths and functions (views/handlers)
-    map = {
-        ['^/$'] = {file_view, 'base'},
-        ['^/node/$'] = {file_view, 'node'},
-        ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
-        ['^/slivers/$'] = {listdir_view, 'slivers'},
-        ['^/templates/(%d+)/$'] = {file_view, 'template'},
-        ['^/templates/$'] = {listdir_view, 'templates'},
-    }
-    for p, view in pairs(map) do
-        patterns = api_path:match(p)
-        if patterns then
-            return view[1], view[2], tonumber(patterns)
-        end
-    end
-    return
-end
-
-
-
 -- VIEWS
 
 function redirect(request, url)
@@ -298,6 +247,51 @@ function file_view(request, name, patterns)
     }
     response = {headers, content}
     return handle_response(request, response)
+end
+
+
+
+-- REQUEST/RESPONSE CYCLE FUNCTIONS
+
+function handle_response(request, response)
+    -- Renders the response object as something that CGI server can understand
+    -- and performs content negotiation
+    if not response[1]['Status'] then
+        response[1]['Status'] = "HTTP/1.0 200 OK"
+    end
+    if string.find(request["headers"]["Accept"], "text/html") then
+        response[1]['Content-Type']= "text/html"
+        response[2] = render_as_html(request, response)
+    end
+    content = response[1]['Status'] .. '\r\n'
+    for name, value in pairs(response[1]) do
+        if name ~= 'Status' then
+            content = content .. name .. ': ' .. value .. '\r\n'
+        end
+    end
+    content = content .. '\r\n'
+    content = content .. response[2]
+    return content
+end
+
+
+function api_path_dispatch(request, api_path)
+    -- Mapping between API paths and functions (views/handlers)
+    map = {
+        ['^/$'] = {file_view, 'base'},
+        ['^/node/$'] = {file_view, 'node'},
+        ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
+        ['^/slivers/$'] = {listdir_view, 'slivers'},
+        ['^/templates/(%d+)/$'] = {file_view, 'template'},
+        ['^/templates/$'] = {listdir_view, 'templates'},
+    }
+    for p, view in pairs(map) do
+        patterns = api_path:match(p)
+        if patterns then
+            return view[1], view[2], tonumber(patterns)
+        end
+    end
+    return
 end
 
 
