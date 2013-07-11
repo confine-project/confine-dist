@@ -42,6 +42,7 @@ define Package/confine-recommended
 	+kmod-openvswitch \
 	\
 	+screen \
+	+coreutils-dd \
 	+lm-sensors +lm-sensors-detect \
 	+usbutils +binutils +patch +pciutils \
 	\
