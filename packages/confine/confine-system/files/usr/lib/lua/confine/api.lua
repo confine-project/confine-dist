@@ -149,7 +149,7 @@ function get_links(request, name, patterns)
     end
     
     for k, link in pairs(server_links) do
-        url = '<' .. proto .. '://' .. SERVER_ADDR .. SERVER_API_PATH_PREFIX .. link[1] .. '>; '
+        url = '<' .. proto .. '://' .. SERVER_ADDR .. SERVER_API_PATH_PREFIX .. '/' .. link[1] .. '>; '
         url = interp(url, {node_id=NODE_ID, object_id=patterns})
         rel = 'rel="http://confine-project.eu/rel/' .. link[2] .. '"'
         links[k] = url .. rel

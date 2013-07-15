@@ -2,7 +2,8 @@
 
 echo "Enable confine CGI API"
 
-uci set uhttpd.main.lua_prefix=/confine/api
-uci set uhttpd.main.lua_handler=/usr/lib/lua/confine/api.lua
+# FIXME adding this config prevents uhttpd from automatically starting during boot :(
+#uci set uhttpd.main.lua_prefix=/confine/api
+#uci set uhttpd.main.lua_handler=/usr/lib/lua/confine/api.lua
 
-uci commit uhttpd
+#uci commit uhttpd
