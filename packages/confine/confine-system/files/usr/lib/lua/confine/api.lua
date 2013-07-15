@@ -1,6 +1,6 @@
 -- TODO override node.state when needed ?
 -- TODO class based server-related URLs ?
-
+ 
 
 local data = require 'confine.data'
 
@@ -220,7 +220,8 @@ function listdir_view(request, name, patterns)
     
     local content = '[\n    ' .. table.concat(lines, ",\n    ") .. '\n]'
     headers = {
-        ['Link'] = get_links(request, name, patterns)
+        ['Link'] = get_links(request, name, patterns),
+        ['Last-Modified'] = io.popen('date -r ' .. directory):read()
     }
     response = {headers, content}
     return handle_response(request, response)
@@ -246,7 +247,8 @@ function file_view(request, name, patterns)
     
     content = dynamic_urls(request, content)
     headers = {
-        ['Link'] = get_links(request, name, patterns)
+        ['Link'] = get_links(request, name, patterns),
+        ['Last-Modified'] = io.popen('date -r ' .. file):read()
     }
     response = {headers, content}
     return handle_response(request, response)
