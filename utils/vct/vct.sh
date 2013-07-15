@@ -463,9 +463,26 @@ vct_system_install_server() {
 		if not User.objects.filter(username='vct').exists():
 		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
 		
+		for username in ['admin', 'researcher', 'technician', 'member']:
+		   if not User.objects.filter(username=username).exists():
+		       User.objects.create_user(username, username+'@example.com', username)
+		
+		users = {}
+		for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
+		   users[username] = User.objects.get(username=username)
+		
 		group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
-		user = User.objects.get(username='vct')
-		Roles.objects.get_or_create(user=user, group=group, is_admin=True);
+		
+		Roles.objects.get_or_create(user=users['vct'], group=group, is_admin=True)
+		Roles.objects.get_or_create(user=users['admin'], group=group, is_admin=True)
+		Roles.objects.get_or_create(user=users['researcher'], group=group, is_researcher=True)
+		Roles.objects.get_or_create(user=users['technician'], group=group, is_technician=True)
+		Roles.objects.get_or_create(user=users['member'], group=group)
+		
+		token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
+		AuthToken.objects.get_or_create(user=users['vct'], data=token_data)
+		AuthToken.objects.get_or_create(user=users['researcher'], data=token_data)
+		
 		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
 		AuthToken.objects.get_or_create(user=user, data=token_file.read().strip())
 		EOF
