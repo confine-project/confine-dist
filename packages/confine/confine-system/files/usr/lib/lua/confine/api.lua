@@ -2,16 +2,19 @@
 -- TODO class based server-related URLs ?
 
 
-
 local data = require 'confine.data'
-local sys_conf = data.file_get("/var/run/confine/system_state")
 
-SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
-API_PATH_PREFIX = sys_conf.node_base_path
-NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
-SERVER_API_PATH_PREFIX = sys_conf.server_base_path
-WWW_PATH = '/var/confine/'
-NODE_ID = sys_conf.id
+
+function set_configuration()
+    local sys_conf = data.file_get("/var/run/confine/system_state")
+
+    SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
+    API_PATH_PREFIX = sys_conf.node_base_path
+    NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
+    SERVER_API_PATH_PREFIX = sys_conf.server_base_path
+    WWW_PATH = '/var/confine/'
+    NODE_ID = sys_conf.id
+end
 
 
 
@@ -299,6 +302,9 @@ end
 -- "MAIN" FUNCTION
 
 function handle_request(request)
+    -- configuration is loaded on each request since it may not be available during uhttpd start
+    set_configuration()
+
     local REQUEST_URI = request['REQUEST_URI']
     -- Remove the path prefix from the beginning of the request URI path
     local api_path = REQUEST_URI:gsub('^' .. API_PATH_PREFIX, '')
