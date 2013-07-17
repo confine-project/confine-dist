@@ -117,10 +117,9 @@ function get_links(request, name, patterns)
     local proto = get_protocol(request)
     node_links = {
         ['node_base'] = {'', 'node/base'},
-        ['node_node'] = {'node/', 'node/node-list'},
+        ['node_node'] = {'node/', 'node/node'},
         ['node_slivers'] = { 'slivers/', 'node/sliver-list'},
         ['node_templates'] = {'templates/', 'node/template-list'},
-        ['node_source'] = {'api/', 'node/source'},
     }
     server_links = {
         ['server_base'] = {'', 'server/base'},
@@ -160,9 +159,9 @@ function get_links(request, name, patterns)
     
     map = {
         ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates',
-                     'node_source', 'server_base', 'server_server', 'server_nodes',
-                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
-                     'server_hosts', 'server_templates', 'server_islands'},
+                    'server_node_source', 'server_base', 'server_server', 'server_nodes',
+                    'server_users', 'server_groups', 'server_gateways', 'server_slivers',
+                    'server_hosts', 'server_templates', 'server_islands'},
         ['node'] = {'node_base',  'server_nodes', 'server_reboot', 'server_cache_cndb',
                     'server_node_source',},
         ['slivers'] = {'node_base', 'server_slivers'},
