@@ -12,6 +12,7 @@
     "pk": 1,
     "model": "firmware.baseimage",
     "fields": {
+        "name": "Default",
         "image": "confine-node-template.img.gz",
         "config": 1,
         "architectures": "i686"
