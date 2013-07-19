@@ -162,14 +162,14 @@ function get_links(request, name, patterns)
                     'server_node_source', 'server_base', 'server_server', 'server_nodes',
                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
                     'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'server_nodes', 'server_reboot', 'server_cache_cndb',
-                    'server_node_source',},
+        ['node'] = {'node_base',  'server_nodes', 'server_node_source', 'server_reboot',
+                    'server_cache_cndb'},
         ['slivers'] = {'node_base', 'server_slivers'},
-        ['sliver'] = {'node_base', 'node_slivers', 'server_update', 'server_upload_exp_data',
-                      'server_sliver_source',},
+        ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
+                      'server_update', 'server_upload_exp_data'},
         ['templates'] = {'node_base', 'server_templates'},
-        ['template'] = {'node_base', 'node_templates', 'server_upload_image', 'server_template_source',
-                        'server_templates'},
+        ['template'] = {'node_base', 'node_templates', 'server_templates',
+                        'server_template_source', 'server_upload_image'},
     }
     rendered_links = {}
     for i, link in ipairs(map[name]) do
