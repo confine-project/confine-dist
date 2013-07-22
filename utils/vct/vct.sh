@@ -13,6 +13,9 @@ shopt -s expand_aliases
 LANG=C
 
 
+# Compute VCT_DIR, the absolute location of VCT source and configuration.
+# Please do not use paths relative to the current directory, but make them
+# relative to VCT_DIR instead.
 if echo "$0" | grep -q /; then
     VCT_FILE=$0
 else
@@ -416,13 +419,13 @@ vct_system_install_server() {
     vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     
     # executes pip commands on /tmp because of garbage they generate
-    local CURRENT=$(pwd) && cd /tmp
+    cd /tmp
     if [[ ! $(pip freeze|grep confine-controller) ]]; then
         # First time controller gets installed
         vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
     else
         # An older version is present, just go ahead and proceed with normal way
-        vct_sudo python $CURRENT/server/manage.py upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
+        vct_sudo python "$VCT_DIR/server/manage.py" upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
     fi
     vct_sudo controller-admin.sh install_requirements --local
     
@@ -430,7 +433,7 @@ vct_system_install_server() {
     # vct_sudo rm -fr {pip-*,build,src}
     
     cd -
-    vct_sudo python server/manage.py setupceleryd --username $VCT_USER --processes 2 --greenlets 50
+    vct_sudo python "$VCT_DIR/server/manage.py" setupceleryd --username $VCT_USER --processes 2 --greenlets 50
 
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
@@ -439,33 +442,33 @@ vct_system_install_server() {
     
     # We need postgres to be online, just making sure it is.
     vct_sudo service postgresql start
-    vct_sudo python server/manage.py setuppostgres --db_name controller --db_user confine --db_password confine
-    vct_sudo python server/manage.py syncdb --noinput
-    vct_sudo python server/manage.py migrate --noinput
+    vct_sudo python "$VCT_DIR/server/manage.py" setuppostgres --db_name controller --db_user confine --db_password confine
+    vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
+    vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
     
     # Move static files in a place where apache can get them
-    python server/manage.py collectstatic --noinput
+    python "$VCT_DIR/server/manage.py" collectstatic --noinput
     
-    vct_sudo python server/manage.py setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
-    python server/manage.py updatetincd
+    vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
+    python "$VCT_DIR/server/manage.py" updatetincd
 
     # Setup https certificate for the management network
-    vct_do python server/manage.py setuppki --org_name VCT --noinput
-    vct_sudo python server/manage.py setupapache --noinput --user $VCT_USER --processes 2 --threads 25
+    vct_do python "$VCT_DIR/server/manage.py" setuppki --org_name VCT --noinput
+    vct_sudo python "$VCT_DIR/server/manage.py" setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
-    vct_sudo python server/manage.py setupfirmware
-    vct_do python server/manage.py syncfirmwareplugins
+    vct_sudo python "$VCT_DIR/server/manage.py" setupfirmware
+    vct_do python "$VCT_DIR/server/manage.py" syncfirmwareplugins
     
-    vct_sudo python server/manage.py startservices --no-tinc
+    vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc
     vct_sudo $VCT_TINC_START
     
     if [[ $CURRENT_VERSION != false ]]; then
         # Per version upgrade specific operations
-        vct_sudo python server/manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
+        vct_sudo python "$VCT_DIR/server/manage.py" postupgradecontroller --specifics --from $CURRENT_VERSION
     fi
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
-    cat <<- EOF | python server/manage.py shell > /dev/null
+    cat <<- EOF | python "$VCT_DIR/server/manage.py" shell > /dev/null
 		from users.models import *
 		if not User.objects.filter(username='vct').exists():
 		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
@@ -493,14 +496,14 @@ vct_system_install_server() {
 		EOF
 
     # Load further data into the database
-    vct_do python server/manage.py loaddata firmwareconfig
-    vct_do python server/manage.py loaddata server/vct/fixtures/firmwareconfig.json
-    vct_do python server/manage.py loaddata server/vct/fixtures/vcttemplates.json
-    vct_do python server/manage.py loaddata server/vct/fixtures/vctslices.json
+    vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
 }
 
 vct_system_purge_server() {
-	vct_sudo python server/manage.py stopservices --no-postgresql  || true
+	vct_sudo python "$VCT_DIR/server/manage.py" stopservices --no-postgresql  || true
 	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start # || true
 	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  # || true
 	#grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
@@ -603,19 +606,19 @@ EOF
 
     if ! [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] ; then 
 
-	echo "Copying vct-default-keys to $VCT_KEYS_DIR. " >&2
+	echo "Copying $VCT_DIR/vct-default-keys to $VCT_KEYS_DIR. " >&2
 	echo "Keys are INSECURE unless vct_system_install is called with override_keys directive !! " >&2
 
-	vct_do cp -rv vct-default-keys  $VCT_KEYS_DIR
+	vct_do cp -rv "$VCT_DIR/vct-default-keys"  $VCT_KEYS_DIR
 
 	vct_do chmod -R og-rwx $VCT_KEYS_DIR/*
 	
 
 	local QUERY=
-	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
+	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
 	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
-	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
+	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
+	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
     fi
 
     if [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] ; then 
@@ -645,11 +648,11 @@ EOF
 	
 	
 	local QUERY=
-	echo "Copy new public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
+	echo "Copy new public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
 	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
 
-	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
+	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
+	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
 
     fi
 
@@ -931,11 +934,11 @@ EOF
     if [ "$VCT_SERVER" = "y" ]; then
         # check if controller system and management network is running:
 	[ $CMD_INIT ] && vct_tinc_stop
-	[ $CMD_INIT ] && vct_sudo python server/manage.py restartservices
+	[ $CMD_INIT ] && vct_sudo python "$VCT_DIR/server/manage.py" restartservices
 	[ $CMD_INIT ] && vct_sudo $VCT_TINC_START
     else
         # check if tinc management network is running:
-	[ $CMD_INIT ] && vct_sudo python server/manage.py stopservices
+	[ $CMD_INIT ] && vct_sudo python "$VCT_DIR/server/manage.py" stopservices
 	[ $CMD_INIT ] && vct_tinc_stop
 	[ $CMD_INIT ] && vct_tinc_start
     fi
@@ -1020,7 +1023,7 @@ vct_system_cleanup() {
     vct_tinc_stop
 
     if [ $VCT_SERVER_DIR ]; then
-	vct_sudo python server/manage.py stopservices
+	vct_sudo python "$VCT_DIR/server/manage.py" stopservices
     fi
 
 }
