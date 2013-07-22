@@ -487,11 +487,9 @@ vct_system_install_server() {
 		Roles.objects.get_or_create(user=users['member'], group=group)
 		
 		token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
-		AuthToken.objects.get_or_create(user=users['vct'], data=token_data)
-		AuthToken.objects.get_or_create(user=users['researcher'], data=token_data)
-		
-		token_file = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro')
-		AuthToken.objects.get_or_create(user=user, data=token_file.read().strip())
+		for __, user in users.items():
+		    AuthToken.objects.get_or_create(user=user, data=token_data)
+                
 		EOF
 
     # Load further data into the database
