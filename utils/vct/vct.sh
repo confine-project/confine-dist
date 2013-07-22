@@ -13,13 +13,20 @@ shopt -s expand_aliases
 LANG=C
 
 
-if [ -f ./vct.conf.overrides ]; then
-    . ./vct.conf.default
-    . ./vct.conf.overrides
-elif [ -f ./vct.conf ]; then
-    . ./vct.conf
-elif [ -f ./vct.conf.default ]; then
-    . ./vct.conf.default
+if echo "$0" | grep -q /; then
+    VCT_FILE=$0
+else
+    VCT_FILE=$(type "$0" | sed -ne 's#.* \(/.*\)#\1#p')
+fi
+VCT_DIR=$(dirname "$(readlink -f "$VCT_FILE")")
+
+if [ -f "$VCT_DIR/vct.conf.overrides" ]; then
+    . "$VCT_DIR/vct.conf.default"
+    . "$VCT_DIR/vct.conf.overrides"
+elif [ -f "$VCT_DIR/vct.conf" ]; then
+    . "$VCT_DIR/vct.conf"
+elif [ -f "$VCT_DIR/vct.conf.default" ]; then
+    . "$VCT_DIR/vct.conf.default"
 fi
 
 
@@ -27,8 +34,8 @@ fi
 
 UCI_DEFAULT_PATH=$VCT_UCI_DIR
 ERR_LOG_TAG='VCT'
-. ./lxc.functions
-. ./confine.functions
+. "$VCT_DIR/lxc.functions"
+. "$VCT_DIR/confine.functions"
 
 
 
