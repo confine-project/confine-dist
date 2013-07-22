@@ -605,19 +605,19 @@ EOF
 
     if ! [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] ; then 
 
-	echo "Copying vct-default-keys to $VCT_KEYS_DIR. " >&2
+	echo "Copying $VCT_DIR/vct-default-keys to $VCT_KEYS_DIR. " >&2
 	echo "Keys are INSECURE unless vct_system_install is called with override_keys directive !! " >&2
 
-	vct_do cp -rv vct-default-keys  $VCT_KEYS_DIR
+	vct_do cp -rv "$VCT_DIR/vct-default-keys"  $VCT_KEYS_DIR
 
 	vct_do chmod -R og-rwx $VCT_KEYS_DIR/*
 	
 
 	local QUERY=
-	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
+	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
 	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
-	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
+	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
+	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
     fi
 
     if [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] ; then 
@@ -647,11 +647,11 @@ EOF
 	
 	
 	local QUERY=
-	echo "Copy new public key: $VCT_KEYS_DIR/id_rsa.pub -> ../../files/etc/dropbear/authorized_keys" >&2
+	echo "Copy new public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
 	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
 
-	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p ../../files/etc/dropbear/ && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub ../../files/etc/dropbear/authorized_keys
+	[ "$QUERY" = "y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
+	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
 
     fi
 
