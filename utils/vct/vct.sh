@@ -496,9 +496,9 @@ vct_system_install_server() {
 
     # Load further data into the database
     vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
-    vct_do python "$VCT_DIR/server/manage.py" loaddata server/vct/fixtures/firmwareconfig.json
-    vct_do python "$VCT_DIR/server/manage.py" loaddata server/vct/fixtures/vcttemplates.json
-    vct_do python "$VCT_DIR/server/manage.py" loaddata server/vct/fixtures/vctslices.json
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
 }
 
 vct_system_purge_server() {
