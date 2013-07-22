@@ -13,6 +13,9 @@ shopt -s expand_aliases
 LANG=C
 
 
+# Compute VCT_DIR, the absolute location of VCT source and configuration.
+# Please do not use paths relative to the current directory, but make them
+# relative to VCT_DIR instead.
 if echo "$0" | grep -q /; then
     VCT_FILE=$0
 else
