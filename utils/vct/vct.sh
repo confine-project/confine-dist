@@ -423,7 +423,7 @@ vct_system_install_server() {
     # vct_sudo rm -fr {pip-*,build,src}
     
     cd -
-    vct_sudo python server/manage.py setupceleryd --username $VCT_USER
+    vct_sudo python server/manage.py setupceleryd --username $VCT_USER --processes 2 --greenlets 50
 
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
