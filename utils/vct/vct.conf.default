@@ -72,7 +72,7 @@ VCT_TINC_STOP="tincd -n ${VCT_TINC_NET} -kTERM"
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
-VCT_NODE_MAC_DB=./vct.nodes.local
+VCT_NODE_MAC_DB="$VCT_DIR/vct.nodes.local"
 
 #################################################
 
