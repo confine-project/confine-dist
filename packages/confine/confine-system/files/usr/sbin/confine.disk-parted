@@ -45,20 +45,27 @@ checksystem() {
 
 
 get_info() {
-	total_cylinders=$($SFDISK -R -g  $DISK |  awk '{print $2}')
+	local disk_geometry
+
+	disk_geometry=$($SFDISK -R -G $DISK)
+	disk_cylinders=$(echo "$disk_geometry" | awk '{print $2}')
+	disk_heads=$(echo "$disk_geometry" | awk '{print $4}')
+	disk_sectors_track=$(echo "$disk_geometry" | awk '{print $6}')
+
 	start_cylinder=$(($($SFDISK -R -l $DISK 2>/dev/null | grep ${DISK}2 | tr -d \- | awk '{print $3}')+1))
-	available_cylinders=$(($total_cylinders-$start_cylinder-2))
+	available_cylinders=$(($disk_cylinders-$start_cylinder-2))
 	overlay_cylinders=$(($available_cylinders*$OVERLAY_SIZE/100))	
 	home_cylinders=$(($available_cylinders*$HOME_SIZE/100))
 
-	echo -e "\n=> Information of target $DISK\n"
+	echo -e "\n=> Information of target $DISK (in cylinders)\n"
 	echo "-----------------------------"
-	echo "Available: $total_cylinders"
+	echo "Available: $disk_cylinders"
 	echo "Overlay: $overlay_cylinders"
 	echo "Home: $home_cylinders"
 	echo "-----------------------------"
 	
-	[ -z  "$total_cylinders" ] || [ -z "$start_cylinder" ] ||  [ -z "$available_cylinders" ] || \
+	[ -z "$disk_cylinders" ] || [ -z  "$disk_heads" ] || [ -z  "$disk_sectors_track" ] || \
+	[ -z "$start_cylinder" ] ||  [ -z "$available_cylinders" ] || \
 	[ -z "$overlay_cylinders" ] || [ -z "$home_cylinders" ] && \
 	{ echo "CRITICAL, cannot get info from disk table"; exit 1; }
 }
@@ -128,7 +135,7 @@ get_info
 
 echo -e "\n==> Disk information fetched\n"
 echo "-----------------------------"
-echo "total cylinders: $total_cylinders"
+echo "total cylinders: $disk_cylinders"
 echo "first available cylinder: $start_cylinder"
 #echo "available: $available_cylinders"
 #$overlay_cylinders
@@ -141,11 +148,12 @@ echo "${DISK}3: $start_cylinder $overlay_cylinders L"
 echo "${DISK}4: $(($start_cylinder+$overlay_cylinders)) $home_cylinders L"
 echo "-----------------------------"
 
-sfdisk -q $DISK -L -N3 --no-reread << EOF
+sfdisk_chs="$SFDISK -C $disk_cylinders -H $disk_heads -S $disk_sectors_track"
+$sfdisk_chs -q $DISK -L -N3 --no-reread << EOF
 $start_cylinder $overlay_cylinders L
 EOF
 
-sfdisk -q $DISK -L -N4 --no-reread << EOF
+$sfdisk_chs -q $DISK -L -N4 --no-reread << EOF
 $(($start_cylinder+$overlay_cylinders)) $home_cylinders L
 EOF
 
@@ -156,7 +164,7 @@ echo -e "\n==> Moving current LXC directory to new Home\n"
 set_lxc_to_home
 
 echo -e "\n==> Trying to force kernel re-read partition table\n"
-echo 1 > /sys/block/sda/device/rescan 1>/dev/null 2>/dev/null
+echo 1 > "/sys/block/$(basename $DISK)/device/rescan" 1>/dev/null 2>/dev/null
 hdparm -z $DISK 1>/dev/null 2>/dev/null
 sleep 10
 
