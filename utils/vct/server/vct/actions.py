@@ -54,7 +54,7 @@ def vct(modeladmin, request, queryset):
             state = state.split(' ')[1] if not state.startswith('-----') else False
         except IndexError:
             state = False
-
+        
         commands = [INFO]
         if build.state in [Build.DELETED, Build.OUTDATED, Build.FAILED]:
             commands += [BUILD]
@@ -65,7 +65,7 @@ def vct(modeladmin, request, queryset):
             commands += [START, REMOVE, DELETE]
         else:
             info = None
-            if name != 'remove':
+            if name not in ['remove', 'create']:
                 cmd = None
             commands = [CREATE, DELETE]
     else:

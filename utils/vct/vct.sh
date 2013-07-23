@@ -468,32 +468,36 @@ vct_system_install_server() {
     fi
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
-    cat <<- EOF | python "$VCT_DIR/server/manage.py" shell > /dev/null
-		from users.models import *
-		if not User.objects.filter(username='vct').exists():
-		    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
-		
-		for username in ['admin', 'researcher', 'technician', 'member']:
-		   if not User.objects.filter(username=username).exists():
-		       User.objects.create_user(username, username+'@example.com', username)
-		
-		users = {}
-		for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
-		   users[username] = User.objects.get(username=username)
-		
-		group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
-		
-		Roles.objects.get_or_create(user=users['vct'], group=group, is_admin=True)
-		Roles.objects.get_or_create(user=users['admin'], group=group, is_admin=True)
-		Roles.objects.get_or_create(user=users['researcher'], group=group, is_researcher=True)
-		Roles.objects.get_or_create(user=users['technician'], group=group, is_technician=True)
-		Roles.objects.get_or_create(user=users['member'], group=group)
-		
-		token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
-		for __, user in users.items():
-		    AuthToken.objects.get_or_create(user=user, data=token_data)
-                
-		EOF
+    cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
+	from users.models import *
+	if not User.objects.filter(username='vct').exists():
+	    print 'Creating vct superuser'
+	    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
+	
+	for username in ['admin', 'researcher', 'technician', 'member']:
+	   if not User.objects.filter(username=username).exists():
+	       print 'Creating %s user' % username
+	       User.objects.create_user(username, username+'@example.com', username)
+	
+	users = {}
+	for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
+	   users[username] = User.objects.get(username=username)
+	
+	group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
+	
+	print '\nCreating roles ...'
+	Roles.objects.get_or_create(user=users['vct'], group=group, is_admin=True)
+	Roles.objects.get_or_create(user=users['admin'], group=group, is_admin=True)
+	Roles.objects.get_or_create(user=users['researcher'], group=group, is_researcher=True)
+	Roles.objects.get_or_create(user=users['technician'], group=group, is_technician=True)
+	Roles.objects.get_or_create(user=users['member'], group=group)
+	
+	token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
+	for __, user in users.items():
+	    print '\nAdding auth token to user %s' % user.username
+	    AuthToken.objects.get_or_create(user=user, data=token_data)
+	
+	EOF
 
     # Load further data into the database
     vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
