@@ -130,3 +130,9 @@ MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.
 SITE_NAME = 'VCT'
 SITE_VERBOSE_NAME = 'VCT Testbed Management'
 
+
+# Custom settings
+try:
+   from local_settings import *
+except ImportError:
+   pass

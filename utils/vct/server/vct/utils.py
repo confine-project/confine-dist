@@ -3,9 +3,13 @@ from os import path
 from controller.utils.system import run
 
 
+def get_vct_root():
+    return path.abspath(path.join(path.dirname(path.realpath(__file__)), '../..'))
+
+
 def get_vct_config(var):
     """ Get options from vct config file """
-    vct_root = path.abspath(path.join(path.dirname(path.realpath(__file__)), '../..'))
+    vct_root = get_vct_root()
     context = {
         'var': var,
         'source': """

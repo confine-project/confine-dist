@@ -34,14 +34,14 @@ There is no firmware build currently available.
 <p>
 {% endif %}
 
-{% if cmd %}
+{% if cmd != None %}
 <pre style="font-size:1em">
 $ <b>vct_node_{{ cmd_name }} {{ node_id }}</b>
 {% if cmd.stderr %}<font color="red">{{ cmd.stderr|linebreaks }}</font>{% endif %}{{ cmd.stdout|linebreaks|compact }}
 </pre>
 {% endif %}
 
-{% if info %}
+{% if info != None %}
 <pre style="font-size:1em">
 $ <b>vct_node_info {{ node_id }}</b>
 {% if info.stderr %}<font color="red">{{ info.stderr|linebreaks }}</font>{% endif %}{{ info.stdout|linebreaks }}
