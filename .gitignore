@@ -12,3 +12,4 @@ private
 vct.nodes.local
 *.pyc
 *~
+local_settings.py
