@@ -449,7 +449,7 @@ vct_system_install_server() {
     # Move static files in a place where apache can get them
     python "$VCT_DIR/server/manage.py" collectstatic --noinput
     
-    vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --tinc_address="${VCT_SERVER_TINC_IP}"
+    vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --address="${VCT_SERVER_TINC_IP}"
     python "$VCT_DIR/server/manage.py" updatetincd
 
     # Setup https certificate for the management network
