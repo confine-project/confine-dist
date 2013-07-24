@@ -1262,6 +1262,22 @@ vct_node_create() {
 	    fi
 	fi
 
+        # Enlarge the node image to the configured size if smaller.
+        if [ "$VCT_NODE_IMAGE_SIZE_MiB" ]; then
+            # With other template types we cannot even figure out image size.
+            if [ "$VCT_NODE_TEMPLATE_TYPE" != "img" ]; then
+                err $FUNCNAME "Unsupported template type $VCT_NODE_TEMPLATE_TYPE while enlarging $VCRD_PATH"
+            fi
+
+            local IMAGE_SIZE_B
+            IMAGE_SIZE_B=$(stat -c %s "$VCRD_PATH")
+
+            if [ $IMAGE_SIZE_B -lt $((VCT_NODE_IMAGE_SIZE_MiB * 1024 * 1024)) ]; then
+                dd if=/dev/zero of="$VCRD_PATH" bs=1M count=0 seek=$VCT_NODE_IMAGE_SIZE_MiB \
+                    || err $FUNCNAME "Failed to enlarge $VCRD_PATH"
+            fi
+        fi
+
 
 
 	local VCRD_NETW=""

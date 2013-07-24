@@ -36,6 +36,10 @@ VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-c
 # VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_NODE_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
+# If set, node images smaller than this size in MiB (1024*1024) will be
+# enlarged using sparse disk allocation.
+VCT_NODE_IMAGE_SIZE_MiB=896
+
 
 
 #VCT_SLICE_OWRT_TEMPLATE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
