@@ -163,18 +163,17 @@ write_fstab
 echo -e "\n==> Moving current LXC directory to new Home\n"
 set_lxc_to_home
 
-echo -e "\n==> Trying to force kernel re-read partition table\n"
-echo 1 > "/sys/block/$(basename $DISK)/device/rescan" 1>/dev/null 2>/dev/null
-hdparm -z $DISK 1>/dev/null 2>/dev/null
+echo -e "\n==> Telling the kernel about new partitions\n"
+partx --add --nr 3:4 $DISK
 sleep 10
 
 if ! ls ${DISK}4 2>/dev/null; then
-	echo "Warning: it is not possible to re-read partition table!"
+	echo "Warning: it is not possible to use the new partitions!"
 	echo ""
 	echo -e "\n==============================================================="
-	echo " Seem that kernel does not read the new partition table"
-	echo " reboot is needed to be able to format and use partitions"
-	echo " a script has been added to uci-defaults, please reboot"
+	echo " Seems that the kernel can not access the new partitions."
+	echo " Rebooting is needed to be able to format and use the partitions."
+	echo " A script has been added to uci-defaults, please reboot."
 	echo -e "===============================================================\n"
 
 	echo "!/bin/sh
