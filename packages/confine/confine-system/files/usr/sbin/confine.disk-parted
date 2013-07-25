@@ -1,8 +1,12 @@
 #!/bin/sh
 # Autor: Pau <p4u@dabax.net>
+# With modifications from Ivan Vilata-i-Balaguer <ivan@pangea.org>.
 # This scripts exepect a partition table such as [sda1][sda2][free]
 # and creates sda3 for overlayFS and sda4 for home
 # sfdisk is needed
+
+# Stop as soon as problems are found, or detect and handle them properly.
+set -e
 
 OVERLAY_SIZE="20" #in %
 HOME_SIZE="80" #in %
@@ -63,10 +67,12 @@ get_info() {
 	echo "Home: $home_cylinders"
 	echo "-----------------------------"
 	
-	[ -z "$disk_cylinders" ] || [ -z  "$disk_heads" ] || [ -z  "$disk_sectors_track" ] || \
-	[ -z "$start_cylinder" ] ||  [ -z "$available_cylinders" ] || \
-	[ -z "$overlay_cylinders" ] || [ -z "$home_cylinders" ] && \
-	{ echo "CRITICAL, cannot get info from disk table" > /dev/stderr; exit 1; }
+	if [ -z "$disk_cylinders" -o -z "$disk_heads" -o -z "$disk_sectors_track" \
+	     -o -z "$start_cylinder" -o -z "$available_cylinders" \
+	     -o -z "$overlay_cylinders" -o -z "$home_cylinders" ]; then
+		echo "CRITICAL, cannot get info from disk table" > /dev/stderr
+		exit 1
+	fi
 }
 
 
@@ -111,7 +117,8 @@ write_fstab() {
 		option enabled 1
 	EOF
 	mkdir -p /overlay /home
-	/etc/init.d/fstab enable
+	# Badly handled test exit status here.
+	/etc/init.d/fstab enable || true
 }
 
 
@@ -150,11 +157,14 @@ echo "${DISK}4: $(($start_cylinder+$overlay_cylinders)) $home_cylinders L"
 echo "-----------------------------"
 
 sfdisk_chs="$SFDISK -C $disk_cylinders -H $disk_heads -S $disk_sectors_track"
-$sfdisk_chs -q $DISK -L -N3 --no-reread << EOF
+# sfdisk may fail to reread the partition table and exit with an error code,
+# but we perform our own check later.
+
+$sfdisk_chs -q $DISK -L -N3 --no-reread << EOF || true
 $start_cylinder $overlay_cylinders L
 EOF
 
-$sfdisk_chs -q $DISK -L -N4 --no-reread << EOF
+$sfdisk_chs -q $DISK -L -N4 --no-reread << EOF || true
 $(($start_cylinder+$overlay_cylinders)) $home_cylinders L
 EOF
 
@@ -197,12 +207,18 @@ fi
 
 echo -e "\n==> Formating partitions\n"
 
-umount ${DISK}3
-$MKFS ${DISK}3 || { echo "CRITICAL, cannot format partition ${DISK}3" > /dev/stderr; exit 2; }
+for pn in 3 4; do
+	umount ${DISK}$pn || true  # probably not mounted
+	if ! $MKFS ${DISK}$pn; then
+		echo "CRITICAL, cannot format partition ${DISK}$pn" > /dev/stderr
+		exit 2
+	fi
+done
 
-umount ${DISK}4
-$MKFS ${DISK}4 || { echo "CRITICAL, cannot format partition ${DISK}4" > /dev/stderr; exit 2; }
-mount /home
+if ! mount /home; then
+	echo "CRITICAL, cannot mount the home filesystem" > /dev/stderr
+	exit 2
+fi
 mkdir -p /home/lxc/images /home/lxc/templates
 umount /home
 
