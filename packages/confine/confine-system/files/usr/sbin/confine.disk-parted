@@ -117,14 +117,10 @@ EOF
 
 
 set_lxc_to_home() {
-	echo "Moving LXC directories to /home"
-	mkdir /home/lxc 2>/dev/null
-	mkdir /home/lxc/images /home/lxc/templates
-	mv /lxc/images /lxc/.images.old
-	mv /lxc/templates /lxc/.templates.old
+	mv /lxc/images /lxc/images.old
+	mv /lxc/templates /lxc/templates.old
 	ln -s /home/lxc/images /lxc/images
 	ln -s /home/lxc/templates /lxc/templates
-	echo "Done"
 }
 
 echo -e "\n==> Checking system\n"
@@ -160,7 +156,7 @@ EOF
 echo -e "\n==> Writing fstab and enabling block-mount\n"
 write_fstab
 
-echo -e "\n==> Moving current LXC directory to new Home\n"
+echo -e "\n==> Pointing current LXC directories to new home\n"
 set_lxc_to_home
 
 echo -e "\n==> Telling the kernel about new partitions\n"
@@ -200,6 +196,9 @@ $MKFS ${DISK}3
 umount ${DISK}4
 $MKFS ${DISK}4
 [ $? -ne 0 ] && { echo "CRITICAL, cannot format partiion ${DISK}4"; exit 2; }
+mount /home
+mkdir -p /home/lxc/images /home/lxc/templates
+umount /home
 
 echo -e "\n==> Done, time to reboot the machine\n"
 
