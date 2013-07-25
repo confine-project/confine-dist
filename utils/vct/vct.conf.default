@@ -38,7 +38,7 @@ VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-c
 
 # If set, node images smaller than this size in MiB (1024*1024) will be
 # enlarged using sparse disk allocation.
-VCT_NODE_IMAGE_SIZE_MiB=896
+VCT_NODE_IMAGE_SIZE_MiB=$((4 * 1024))  # 4 GiB
 
 
 
