@@ -8,6 +8,8 @@
 # Stop as soon as problems are found, or detect and handle them properly.
 set -e
 
+# Partitioning only takes place if there is at least this much free space.
+MIN_FREE_SIZE_MiB=$((3 * 1024)) # 3 GiB
 OVERLAY_SIZE="20" #in %
 HOME_SIZE="80" #in %
 SFDISK="sfdisk"
@@ -42,6 +44,18 @@ checksystem() {
 
 	if ! which $MKFS > /dev/null; then
 		echo "mkfs not found, doing nothing" > /dev/stderr
+		exit 1
+	fi
+
+	local disk_name disk_size_kib used_size_kib part_size_kib
+	disk_name=$(basename $DISK)
+	disk_size_kib=$(sed -ne "s/.* \([0-9]*\) $disk_name$/\1/p" /proc/partitions)
+	used_size_kib=0
+	for part_size_kib in $(sed -ne "s/.* \([0-9]*\) $disk_name[0-9][0-9]*$/\1/p" /proc/partitions); do
+		used_size_kib=$((used_size_kib + part_size_kib))
+	done
+	if [ $(((disk_size_kib - used_size_kib)/1024)) -lt $MIN_FREE_SIZE_MiB ]; then
+		echo "Insufficient free disk space (need at least $MIN_FREE_SIZE_MiB MiB)" > /dev/stderr
 		exit 1
 	fi
 }
