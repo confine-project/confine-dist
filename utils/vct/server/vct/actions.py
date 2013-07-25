@@ -91,3 +91,4 @@ def vct(modeladmin, request, queryset):
 vct.short_description = 'VCT Node Management'
 vct.verbose_name = 'VM Management'
 vct.css_class = 'viewsitelink'
+vct.description = 'Manage VCT virtual machines'

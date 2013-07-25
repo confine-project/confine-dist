@@ -56,7 +56,7 @@ if is_installed('firmware'):
         from controller.admin.utils import insert_action
         insert_action(Node, vct)
     else:
-        insertattr(Node, 'action', vct)
+        insertattr(Node, 'actions', vct)
     node_modeladmin = get_modeladmin(Node)
     old_get_change_view_actions_as_class = node_modeladmin.get_change_view_actions_as_class
     def get_change_view_actions_as_class(self):
