@@ -4,7 +4,7 @@ from django import forms
 from django.core import validators
 from django.core.exceptions import ValidationError
 
-from controller.admin.utils import insert_change_view_action, insert_action, get_modeladmin
+from controller.admin.utils import insert_change_view_action, get_modeladmin
 from controller.models.utils import get_file_field_base_path
 from controller.utils import is_installed
 from nodes.models import Node
@@ -50,7 +50,13 @@ if is_installed('firmware'):
     
     # Replace node firmware download for "VM manager"
     insert_change_view_action(Node, vct)
-    insert_action(Node, vct)
+    try:
+        from controller.admin.utils import insertattr
+    except ImportError:
+        from controller.admin.utils import insert_action
+        insert_action(Node, vct)
+    else:
+        insertattr(Node, 'action', vct)
     node_modeladmin = get_modeladmin(Node)
     old_get_change_view_actions_as_class = node_modeladmin.get_change_view_actions_as_class
     def get_change_view_actions_as_class(self):
