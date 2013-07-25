@@ -18,32 +18,32 @@ TMPFS="64M"
 
 checksystem() {
 	if ! test -b ${DISK}2; then 
-		echo "${DISK}2 does not exist, doing nothing" > /dev/stderr
+		echo "${DISK}2 does not exist, doing nothing" >&2
 		exit 1
 	fi
 	if ! which $SFDISK > /dev/null; then
-		echo "$SFDISK is not installed, doing nothing" > /dev/stderr
+		echo "$SFDISK is not installed, doing nothing" >&2
 		exit 1
 	fi
 	
 	if test -b ${DISK}3; then
-		echo "${DISK}3 partition exists, doing nothing" > /dev/stderr
+		echo "${DISK}3 partition exists, doing nothing" >&2
 		exit 1
 	fi
 	
 	
 	if ! opkg list | grep -q block-mount; then
-		echo "block-mount package is not installed, doing nothing" > /dev/stderr
+		echo "block-mount package is not installed, doing nothing" >&2
 		exit 1
 	fi
 
 	if ! $SFDISK -q -V -L ${DISK}; then
-		echo "CRITICAL, something wrong in the partition table" > /dev/stderr
+		echo "CRITICAL, something wrong in the partition table" >&2
 		exit 1
 	fi
 
 	if ! which $MKFS > /dev/null; then
-		echo "mkfs not found, doing nothing" > /dev/stderr
+		echo "mkfs not found, doing nothing" >&2
 		exit 1
 	fi
 
@@ -55,7 +55,7 @@ checksystem() {
 		used_size_kib=$((used_size_kib + part_size_kib))
 	done
 	if [ $(((disk_size_kib - used_size_kib)/1024)) -lt $MIN_FREE_SIZE_MiB ]; then
-		echo "Insufficient free disk space (need at least $MIN_FREE_SIZE_MiB MiB)" > /dev/stderr
+		echo "Insufficient free disk space (need at least $MIN_FREE_SIZE_MiB MiB)" >&2
 		exit 1
 	fi
 }
@@ -84,7 +84,7 @@ get_info() {
 	if [ -z "$disk_cylinders" -o -z "$disk_heads" -o -z "$disk_sectors_track" \
 	     -o -z "$start_cylinder" -o -z "$available_cylinders" \
 	     -o -z "$overlay_cylinders" -o -z "$home_cylinders" ]; then
-		echo "CRITICAL, cannot get info from disk table" > /dev/stderr
+		echo "CRITICAL, cannot get info from disk table" >&2
 		exit 1
 	fi
 }
@@ -193,7 +193,7 @@ partx --add --nr 3:4 $DISK
 sleep 10
 
 if ! test -b ${DISK}4; then
-	cat > /dev/stderr <<- EOF
+	cat >&2 <<- EOF
 	Warning: it is not possible to use the new partitions!
 
 	==================================================================
@@ -224,13 +224,13 @@ echo -e "\n==> Formating partitions\n"
 for pn in 3 4; do
 	umount ${DISK}$pn || true  # probably not mounted
 	if ! $MKFS ${DISK}$pn; then
-		echo "CRITICAL, cannot format partition ${DISK}$pn" > /dev/stderr
+		echo "CRITICAL, cannot format partition ${DISK}$pn" >&2
 		exit 2
 	fi
 done
 
 if ! mount /home; then
-	echo "CRITICAL, cannot mount the home filesystem" > /dev/stderr
+	echo "CRITICAL, cannot mount the home filesystem" >&2
 	exit 2
 fi
 mkdir -p /home/lxc/images /home/lxc/templates
