@@ -72,16 +72,16 @@ get_info() {
 
 write_fstab() {
 
-	cat > /etc/config/fstab << EOF
-	#Added by confine system
+	cat > /etc/config/fstab <<- EOF
+	# Added by confine system
 	config global automount
 		option from_fstab 1
 		option anon_mount 0
-		
+
 	config global autoswap
 		option from_fstab 1
 		option anon_swap 0
-		
+
 	config mount
 		option target	/overlay
 		option device	${DISK}3
@@ -97,11 +97,11 @@ write_fstab() {
 		option options	rw,noatime,nodiratime
 		option enabled	1
 		option enabled_fsck 1
-		
+
 	config swap
 		option device	/dev/example
 		option enabled	0
-	
+
 	config mount
 		option target /tmp
 	  	option device tmpfs
@@ -109,7 +109,7 @@ write_fstab() {
 		option options remount,rw,nosuid,nodev,noatime,size=$TMPFS
 		option enabled_fsck 0
 		option enabled 1
-EOF
+	EOF
 	mkdir -p /overlay /home
 	/etc/init.d/fstab enable
 }
@@ -179,7 +179,8 @@ if ! test -b ${DISK}4; then
 	==================================================================
 	EOF
 
-	echo "!/bin/sh
+        cat > /etc/uci-defaults/format_partitions.sh <<- EOF
+	#!/bin/sh
 	umount ${DISK}3
 	umount ${DISK}4
 	$MKFS ${DISK}3
@@ -190,7 +191,7 @@ if ! test -b ${DISK}4; then
 	mkdir /tmp/disk4/lxc/templates /tmp/disk4/lxc/images
 	umount /tmp/disk4/
 	reboot
-	" > /etc/uci-defaults/format_partitions.sh
+	EOF
 	exit 0
 fi
 
