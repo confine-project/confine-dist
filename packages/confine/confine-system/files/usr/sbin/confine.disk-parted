@@ -11,33 +11,33 @@ MKFS="mkfs.ext4"
 TMPFS="64M"
 
 checksystem() {
-	if ! ls ${DISK}2; then 
-		echo "${DISK}2 does not exist, doing nothing"
+	if ! test -b ${DISK}2; then 
+		echo "${DISK}2 does not exist, doing nothing" > /dev/stderr
 		exit 1
 	fi
-	if ! which $SFDISK; then
-		echo "$SFDISK is not installed, doing nothing"
-		exit 1
-	fi
-	
-	if ls ${DISK}3; then
-		echo "${DISK}3 partition exist, doing nothing"
+	if ! which $SFDISK > /dev/null; then
+		echo "$SFDISK is not installed, doing nothing" > /dev/stderr
 		exit 1
 	fi
 	
+	if test -b ${DISK}3; then
+		echo "${DISK}3 partition exists, doing nothing" > /dev/stderr
+		exit 1
+	fi
 	
-	if ! opkg list | grep block-mount; then
-		echo "block-mount package is not installed, doing nothing"
+	
+	if ! opkg list | grep -q block-mount; then
+		echo "block-mount package is not installed, doing nothing" > /dev/stderr
 		exit 1
 	fi
 
 	if ! $SFDISK -q -V -L ${DISK}; then
-		echo "CRITICAL, something wrong in the partition table"
+		echo "CRITICAL, something wrong in the partition table" > /dev/stderr
 		exit 1
 	fi
 
-	if ! which $MKFS; then
-		echo "mkfs not found, doing nothing"
+	if ! which $MKFS > /dev/null; then
+		echo "mkfs not found, doing nothing" > /dev/stderr
 		exit 1
 	fi
 }
@@ -66,7 +66,7 @@ get_info() {
 	[ -z "$disk_cylinders" ] || [ -z  "$disk_heads" ] || [ -z  "$disk_sectors_track" ] || \
 	[ -z "$start_cylinder" ] ||  [ -z "$available_cylinders" ] || \
 	[ -z "$overlay_cylinders" ] || [ -z "$home_cylinders" ] && \
-	{ echo "CRITICAL, cannot get info from disk table"; exit 1; }
+	{ echo "CRITICAL, cannot get info from disk table" > /dev/stderr; exit 1; }
 }
 
 
@@ -110,7 +110,7 @@ write_fstab() {
 		option enabled_fsck 0
 		option enabled 1
 EOF
-	mkdir /overlay /home 2>/dev/null
+	mkdir -p /overlay /home
 	/etc/init.d/fstab enable
 }
 
@@ -168,14 +168,16 @@ echo -e "\n==> Telling the kernel about new partitions\n"
 partx --add --nr 3:4 $DISK
 sleep 10
 
-if ! ls ${DISK}4 2>/dev/null; then
-	echo "Warning: it is not possible to use the new partitions!"
-	echo ""
-	echo -e "\n==============================================================="
-	echo " Seems that the kernel can not access the new partitions."
-	echo " Rebooting is needed to be able to format and use the partitions."
-	echo " A script has been added to uci-defaults, please reboot."
-	echo -e "===============================================================\n"
+if ! test -b ${DISK}4; then
+	cat > /dev/stderr <<- EOF
+	Warning: it is not possible to use the new partitions!
+
+	==================================================================
+	 Seems that the kernel can not access the new partitions.
+	 Rebooting is needed to be able to format and use the partitions.
+	 A script has been added to uci-defaults, please reboot.
+	==================================================================
+	EOF
 
 	echo "!/bin/sh
 	umount ${DISK}3
@@ -195,12 +197,10 @@ fi
 echo -e "\n==> Formating partitions\n"
 
 umount ${DISK}3
-$MKFS ${DISK}3
-[ $? -ne 0 ] && { echo "CRITICAL, cannot format partiion ${DISK}3"; exit 2; }
+$MKFS ${DISK}3 || { echo "CRITICAL, cannot format partition ${DISK}3" > /dev/stderr; exit 2; }
 
 umount ${DISK}4
-$MKFS ${DISK}4
-[ $? -ne 0 ] && { echo "CRITICAL, cannot format partiion ${DISK}4"; exit 2; }
+$MKFS ${DISK}4 || { echo "CRITICAL, cannot format partition ${DISK}4" > /dev/stderr; exit 2; }
 mount /home
 mkdir -p /home/lxc/images /home/lxc/templates
 umount /home
