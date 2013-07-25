@@ -124,6 +124,9 @@ set_lxc_to_home() {
 
 
 DISK=$(ls -l /dev/root | sed -ne 's#.* -> \(.*\)[0-9][0-9]*$#\1#p')
+if ! echo "$DISK" | grep -q '^/'; then
+	DISK="/dev/$DISK"
+fi
 
 echo -e "\n==> Checking system\n"
 checksystem
