@@ -262,10 +262,13 @@ function handle_response(request, response)
     -- and performs content negotiation
     if not response[1]['Status'] then
         response[1]['Status'] = "HTTP/1.0 200 OK"
+        response[1]['Date'] = os.date()
     end
     if string.find(request["headers"]["Accept"], "text/html") then
-        response[1]['Content-Type']= "text/html"
+        response[1]['Content-Type'] = "text/html"
         response[2] = render_as_html(request, response)
+    else
+        response[1]['Content-Type'] = "application/json"
     end
     content = response[1]['Status'] .. '\r\n'
     for name, value in pairs(response[1]) do
@@ -305,7 +308,7 @@ end
 function handle_request(request)
     -- configuration is loaded on each request since it may not be available during uhttpd start
     set_configuration()
-
+    
     local REQUEST_URI = request['REQUEST_URI']
     -- Remove the path prefix from the beginning of the request URI path
     local api_path = REQUEST_URI:gsub('^' .. API_PATH_PREFIX, '')
