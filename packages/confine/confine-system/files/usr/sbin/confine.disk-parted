@@ -6,7 +6,6 @@
 
 OVERLAY_SIZE="20" #in %
 HOME_SIZE="80" #in %
-DISK="/dev/sda"
 SFDISK="sfdisk"
 MKFS="mkfs.ext4"
 TMPFS="64M"
@@ -122,6 +121,9 @@ set_lxc_to_home() {
 	ln -s /home/lxc/images /lxc/images
 	ln -s /home/lxc/templates /lxc/templates
 }
+
+
+DISK=$(ls -l /dev/root | sed -ne 's#.* -> \(.*\)[0-9][0-9]*$#\1#p')
 
 echo -e "\n==> Checking system\n"
 checksystem
