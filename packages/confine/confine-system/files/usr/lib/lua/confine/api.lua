@@ -262,7 +262,7 @@ function handle_response(request, response)
     -- and performs content negotiation
     if not response[1]['Status'] then
         response[1]['Status'] = "HTTP/1.0 200 OK"
-        response[1]['Date'] = os.date()
+        response[1]['Date'] = os.date('%a %b %d %H:%M:%S %Z %Y')
     end
     if string.find(request["headers"]["Accept"], "text/html") then
         response[1]['Content-Type'] = "text/html"
