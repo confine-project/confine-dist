@@ -5,6 +5,7 @@
 /utils/vct/vct.conf
 /utils/vct/vct.conf.overrides
 /utils/vct/vct
+/openwrt
 /utils/vct/www
 *.tgz
 private
@@ -12,5 +13,4 @@ private
 vct.nodes.local
 *.pyc
 *~
-
-
+local_settings.py

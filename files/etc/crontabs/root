@@ -1,0 +1,2 @@
+# Check if tincd is alive and relaunch if not, see "Bug #107: Node tincd randomly crashes"
+*/5 * * * * (ps|grep " tincd --logfile -n confine$" &> /dev/null) || tincd --logfile -n confine

@@ -20,7 +20,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
-PKG_VERSION:=r2013061804
+PKG_VERSION:=r2013072507
 PKG_RELEASE:=1
 
 #PKG_SOURCE_URL:=@SF/confine-system
@@ -47,7 +47,7 @@ define Package/confine-system
 	+px5g \
 	+time \
 	+ntpd \
-	+block-mount +sfdisk +hdparm \
+	+block-mount +sfdisk +partx-utils \
 	\
 	+dropbearconvert \
 	+openssh-keygen +openssl-util \

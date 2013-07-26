@@ -36,6 +36,10 @@ VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/openwrt-x86-generic-c
 # VCT_NODE_TEMPLATE_URL="ssh:22:user@example.org:///confine/confine-dist/openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 # VCT_NODE_TEMPLATE_URL="file://../../openwrt/bin/x86/openwrt-x86-generic-combined-ext4.img.gz"
 
+# If set, node images smaller than this size in MiB (1024*1024) will be
+# enlarged using sparse disk allocation.
+VCT_NODE_IMAGE_SIZE_MiB=$((4 * 1024))  # 4 GiB
+
 
 
 #VCT_SLICE_OWRT_TEMPLATE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
@@ -72,13 +76,13 @@ VCT_TINC_STOP="tincd -n ${VCT_TINC_NET} -kTERM"
 VCT_SLICE_DB="slice-attributes"
 VCT_RD_RPC_DIR=/var/run/confine/rpc
 
-VCT_NODE_MAC_DB=./vct.nodes.local
+VCT_NODE_MAC_DB="$VCT_DIR/vct.nodes.local"
 
 #################################################
 
 VCT_SERVER="y" ## any other value disables the controller installation and usage
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.9.1' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_VERSION='0.9.2a9' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################

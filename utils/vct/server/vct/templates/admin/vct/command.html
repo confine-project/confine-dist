@@ -1,0 +1,59 @@
+{% extends "admin/base_site.html" %}
+{% load i18n l10n %}
+{% load url from future %}
+{% load admin_urls utils %}
+
+
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=app_label %}">{{ app_label|capfirst|escape }}</a>
+&rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; <a href="{% url 'admin:nodes_node_change' node.pk %}">{{ node }}</a>
+&rsaquo; VM Management
+</div>
+{% endblock %}
+
+
+{% block content_title %}<h1>VCT Virtual Node Management (<a href={% url 'admin:nodes_node_change' node.pk %}>{{ node }}</a>)</h1>{% endblock %}
+
+
+{% block content %}
+<p>
+<div style="margin-left:20px">
+{% if build %}
+Current available firmware:<ul>
+        <li><a href={{ build.image.url }}>{{ build.image_name }}</a></li>
+        <li>State: {{ build.state }}</li>
+        <li>Build Date: {{ build.date }}</li>
+        <li>Base Image: {{ build.base_image }}</li>
+    </ul>
+{% else %}
+There is no firmware build currently available.
+<p>
+{% endif %}
+
+{% if cmd != None %}
+<pre style="font-size:1em">
+$ <b>vct_node_{{ cmd_name }} {{ node_id }}</b>
+{% if cmd.stderr %}<font color="red">{{ cmd.stderr|linebreaks }}</font>{% endif %}{{ cmd.stdout|linebreaks|compact }}
+</pre>
+{% endif %}
+
+{% if info != None %}
+<pre style="font-size:1em">
+$ <b>vct_node_info {{ node_id }}</b>
+{% if info.stderr %}<font color="red">{{ info.stderr|linebreaks }}</font>{% endif %}{{ info.stdout|linebreaks }}
+</pre>
+{% elif build %}
+There is no node virtual machine currently available.
+<p>
+{% endif %}
+
+{% for cmd in cmds %}
+<a href="{% url 'admin:nodes_node_vct' node.pk %}?cmd={{ cmd.0 }}"><button title='{{ cmd.2 }}'>{{ cmd.1 }}</button></a>
+{% endfor %}
+</div>
+{% endblock %}
+

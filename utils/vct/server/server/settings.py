@@ -22,7 +22,7 @@ from controller.conf.devel_settings import *
 
 # When DEBUG is enabled Django appends every executed SQL statement to django.db.connection.queries
 # this will grow unbounded in a long running process environment like celeryd
-if "celeryd" in sys.argv:
+if "celeryd" in sys.argv or 'celeryev' in sys.argv or 'celerybeat' in sys.argv:
     DEBUG = False
 
 
@@ -130,3 +130,12 @@ MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.
 SITE_NAME = 'VCT'
 SITE_VERBOSE_NAME = 'VCT Testbed Management'
 
+# email
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# Custom settings
+try:
+   from local_settings import *
+except ImportError:
+   pass
