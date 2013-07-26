@@ -138,10 +138,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/dropbear
-	$(CP)  ./files/etc/uci-defaults/remove-useless-busybox-links.sh $(1)/etc/uci-defaults/
-	$(CP)  ./files/etc/uci-defaults/confine-banner.sh  $(1)/etc/uci-defaults/
-	$(CP)  ./files/etc/uci-defaults/enable-uhttpd-ipv6.sh $(1)/etc/uci-defaults/
-	$(CP)  ./files/etc/uci-defaults/sysupgrade-recover.sh $(1)/etc/uci-defaults/
+	$(CP) ./files/etc/uci-defaults/* $(1)/etc/uci-defaults/
 
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
