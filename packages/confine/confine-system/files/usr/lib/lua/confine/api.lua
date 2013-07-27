@@ -1,5 +1,5 @@
 -- TODO override node.state when needed ?
--- TODO class based server-related URLs ?
+-- TODO class based server-related URLs ? (i.e. private ipv4/mgmt ipv6/public ipv4)
  
 
 local data = require 'confine.data'
@@ -202,7 +202,7 @@ end
 
 
 function content_negotiation(request, response)
-    -- Format response content based on Accept request header
+    -- Formats response content based on Accept request header
     accept = request["headers"]["Accept"]
     if accept and string.find(accept, "text/html") then
         response['headers']['Content-Type'] = "text/html"
@@ -215,7 +215,7 @@ end
 
 
 function encoding_negotiation(request, response)
-    -- Encode response based on Accept-Encoding request header
+    -- Encodes response based on Accept-Encoding request header
     encoding = request["headers"]["Accept-Encoding"] 
     if encoding and string.find(encoding, "gzip") then
         response['headers']['Content-Encoding'] = "gzip"
@@ -244,12 +244,15 @@ end
 -- VIEWS
 
 function redirect(request, url)
-    -- 303 redirection to URL
+    -- 303 redirection to url
     headers = {
         ['Status'] = "HTTP/1.1 303 See Other",
         ['Location'] = url
     }
-    response = { ['headers'] = headers, ['content'] = '' }
+    response = {
+        ['headers'] = headers,
+        ['content'] = ''
+    }
     return handle_response(request, response)
 end
 
@@ -260,7 +263,10 @@ function not_found(request, url)
         ['Status'] = "HTTP/1.0 404 Not Found"
     }
     content = '{\n    "detail": "Requested ' .. url ..' not found"\n}'
-    response = { ['headers'] = headers, ['content'] = content }
+    response = {
+        ['headers'] = headers,
+        ['content'] = content
+    }
     return handle_response(request, response)
 end
 
@@ -283,7 +289,10 @@ function listdir_view(request, name, patterns)
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. directory):read()
     }
-    response = { ['headers'] = headers, ['content'] = content }
+    response = {
+        ['headers'] = headers,
+        ['content'] = content
+    }
     return handle_response(request, response)
 end
 
@@ -310,7 +319,10 @@ function file_view(request, name, patterns)
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. file):read()
     }
-    response = { ['headers'] = headers, ['content'] = content }
+    response = { 
+        ['headers'] = headers,
+        ['content'] = content
+    }
     return handle_response(request, response)
 end
 
