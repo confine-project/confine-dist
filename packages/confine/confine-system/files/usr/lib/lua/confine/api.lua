@@ -29,10 +29,10 @@ function urlize(text)
     local escape_marks = {{'"', '"', '"', '"'}, {"<", ">", "&lt;", "&gt;"},}
     for i, c in ipairs(escape_marks) do
         for url in text:gmatch(c[1]..'http(.-)'..c[2]) do
-            local url = 'http' .. url
+            url = 'http' .. url
             local link = c[3]..'<a href="' .. url .. '">' .. url .. '</a>'..c[4]
-            local url = c[1] .. url .. c[2]
-            local text = text:gsub(literalize(url), link)
+            url = c[1] .. url .. c[2]
+            text = text:gsub(literalize(url), link)
         end
     end
     return text
@@ -113,7 +113,7 @@ function render_as_html(request, response)
             headers = headers .. '<b>' .. name .. ':</b> ' .. value .. '\n'
         end
     end
-    headers = headers:gsub(', ', ',<br>      ') .. '</pre>\n'
+    headers = headers:gsub(', <', ',<br>      <') .. '</pre>\n'
     -- Content
     local content = '<code><pre>\n' .. response['content'] .. '</pre></code>'
     return urlize(html_head .. title .. headers .. content .. html_tail)
@@ -190,7 +190,7 @@ end
 
 function conditional_response(request, response)
     -- Returns response based on If-None-Match request header
-    local request_etag = request["headers"]["If-None-Match"]
+    local request_etag = request['headers']["If-None-Match"]
     local modified = true
     if request_etag and request_etag == response['headers']['Etag'] then
         response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
@@ -203,7 +203,7 @@ end
 
 function content_negotiation(request, response)
     -- Formats response content based on Accept request header
-    local accept = request["headers"]["Accept"]
+    local accept = request['headers']["Accept"]
     if accept and string.find(accept, "text/html") then
         response['headers']['Content-Type'] = "text/html"
         response['content'] = render_as_html(request, response)
@@ -216,7 +216,7 @@ end
 
 function encoding_negotiation(request, response)
     -- Encodes response based on Accept-Encoding request header
-    local encoding = request["headers"]["Accept-Encoding"] 
+    local encoding = request['headers']["Accept-Encoding"] 
     if encoding and string.find(encoding, "gzip") then
         response['headers']['Content-Encoding'] = "gzip"
         response['content'] = gzip(response['content'])
@@ -338,6 +338,10 @@ function handle_response(request, response)
     response['headers']['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000')
     response['headers']['Etag'] = get_etag(response['content'])
     
+    if not response['headers']['Status'] then
+        response['headers']['Status'] = "HTTP/1.0 200 OK"
+    end
+    
     -- Conditional response
     local response, modified = conditional_response(request, response)
     if modified then
@@ -345,9 +349,6 @@ function handle_response(request, response)
         response = encoding_negotiation(request, response)
     end
     response['headers']['Content-Length'] = string.len(response['content'])
-    if not response['headers']['Status'] then
-        response['headers']['Status'] = "HTTP/1.0 200 OK"
-    end
     return cgi_response(response)
 end
 
