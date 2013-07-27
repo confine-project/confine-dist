@@ -76,6 +76,11 @@ function list_directories(directory)
 end
 
 
+function get_etag(text)
+    md5 = io.popen('echo "' .. text .. '"|md5sum|cut -d" " -f1'):read()
+    return '"' .. md5 .. '"'
+end
+
 
 -- HELPER FUNCTIONS
 
@@ -220,7 +225,7 @@ function listdir_view(request, name, patterns)
     local content = '[\n    ' .. table.concat(lines, ",\n    ") .. '\n]'
     headers = {
         ['Link'] = get_links(request, name, patterns),
-        ['Last-Modified'] = io.popen('date -r ' .. directory):read()
+        ['Last-Modified'] = io.popen('date -R -r ' .. directory):read()
     }
     response = {headers, content}
     return handle_response(request, response)
@@ -247,7 +252,7 @@ function file_view(request, name, patterns)
     content = dynamic_urls(request, content)
     headers = {
         ['Link'] = get_links(request, name, patterns),
-        ['Last-Modified'] = io.popen('date -r ' .. file):read()
+        ['Last-Modified'] = io.popen('date -R -r ' .. file):read()
     }
     response = {headers, content}
     return handle_response(request, response)
@@ -259,26 +264,39 @@ end
 
 function handle_response(request, response)
     -- Renders the response object as something that CGI server can understand
-    -- and performs content negotiation
-    if not response[1]['Status'] then
-        response[1]['Status'] = "HTTP/1.0 200 OK"
-        response[1]['Date'] = os.date('%a %b %d %H:%M:%S %Z %Y')
-    end
-    if string.find(request["headers"]["Accept"], "text/html") then
-        response[1]['Content-Type'] = "text/html"
-        response[2] = render_as_html(request, response)
+    -- and performs content negotiation and conditional response
+    
+    response[1]['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000')
+    response[1]['Etag'] = get_etag(response[2])
+    
+    -- Conditional response
+    etag = request["headers"]["If-None-Match"]
+    if etag and etag == response[1]['Etag'] then
+        response[1]['Status'] = "HTTP/1.0 304 Not Modified"
+        response[2] = ''
     else
-        response[1]['Content-Type'] = "application/json"
-    end
-    content = response[1]['Status'] .. '\r\n'
-    for name, value in pairs(response[1]) do
-        if name ~= 'Status' then
-            content = content .. name .. ': ' .. value .. '\r\n'
+        -- Content negotiation
+        if string.find(request["headers"]["Accept"], "text/html") then
+            response[1]['Content-Type'] = "text/html"
+            response[2] = render_as_html(request, response)
+        else
+            response[1]['Content-Type'] = "application/json"
         end
     end
-    content = content .. '\r\n'
-    content = content .. response[2]
-    return content
+    response[1]['Content-Length'] = string.len(response[2])
+    if not response[1]['Status'] then
+        response[1]['Status'] = "HTTP/1.0 200 OK"
+    end
+    -- Format a CGI response
+    cgi_response = response[1]['Status'] .. '\r\n'
+    for name, value in pairs(response[1]) do
+        if name ~= 'Status' then
+            cgi_response = cgi_response .. name .. ': ' .. value .. '\r\n'
+        end
+    end
+    cgi_response = cgi_response .. '\r\n'
+    cgi_response = cgi_response .. response[2]
+    return cgi_response
 end
 
 
