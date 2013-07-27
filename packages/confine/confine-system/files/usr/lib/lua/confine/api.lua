@@ -17,7 +17,6 @@ function set_configuration()
 end
 
 
-
 --UTILITY FUNCTIONS
 
 function literalize(str)
@@ -77,8 +76,13 @@ end
 
 
 function get_etag(text)
-    md5 = io.popen('echo "' .. text .. '"|md5sum|cut -d" " -f1'):read()
+    md5 = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1"):read()
     return '"' .. md5 .. '"'
+end
+
+
+function gzip(text)
+    return io.popen("echo -n '" .. text .. "'|gzip -9f"):read('*all')
 end
 
 
@@ -103,15 +107,15 @@ function render_as_html(request, response)
     title = title .. '<b>GET</b> ' .. request['REQUEST_URI']
     title = title .. '\n</header>\n'
     -- Headers
-    headers = '<pre><b>' .. response[1]['Status'] .. '</b>\n'
-    for name, value in pairs(response[1]) do
+    headers = '<pre><b>' .. response['headers']['Status'] .. '</b>\n'
+    for name, value in pairs(response['headers']) do
         if name ~= 'Status' then
             headers = headers .. '<b>' .. name .. ':</b> ' .. value .. '\n'
         end
     end
     headers = headers:gsub(', ', ',<br>      ') .. '</pre>\n'
     -- Content
-    content = '<code><pre>\n' .. response[2] .. '</pre></code>'
+    content = '<code><pre>\n' .. response['content'] .. '</pre></code>'
     return urlize(html_head .. title .. headers .. content .. html_tail)
 end
 
@@ -184,6 +188,58 @@ function get_links(request, name, patterns)
 end
 
 
+function conditional_response(request, response)
+    -- Returns response based on If-None-Match request header
+    request_etag = request["headers"]["If-None-Match"]
+    modified = true
+    if request_etag and request_etag == response['headers']['Etag'] then
+        response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
+        response['content'] = ''
+        modified = false
+    end
+    return response, modified
+end
+
+
+function content_negotiation(request, response)
+    -- Format response content based on Accept request header
+    accept = request["headers"]["Accept"]
+    if accept and string.find(accept, "text/html") then
+        response['headers']['Content-Type'] = "text/html"
+        response['content'] = render_as_html(request, response)
+    else
+        response['headers']['Content-Type'] = "application/json"
+    end
+    return response
+end
+
+
+function encoding_negotiation(request, response)
+    -- Encode response based on Accept-Encoding request header
+    encoding = request["headers"]["Accept-Encoding"] 
+    if encoding and string.find(encoding, "gzip") then
+        response['headers']['Content-Encoding'] = "gzip"
+        response['content'] = gzip(response['content'])
+    else
+        response['headers']['Content-Encoding'] = "chunked"
+    end
+    return response
+end
+
+
+function cgi_response(response)
+    -- Formats response as CGI expects
+    headers = response['headers']['Status'] .. '\r\n'
+    for name, value in pairs(response['headers']) do
+        if name ~= 'Status' then
+            headers = headers .. name .. ': ' .. value .. '\r\n'
+        end
+    end
+    content = headers .. '\r\n'
+    content = content .. response['content']
+    return content
+end
+
 
 -- VIEWS
 
@@ -193,7 +249,7 @@ function redirect(request, url)
         ['Status'] = "HTTP/1.1 303 See Other",
         ['Location'] = url
     }
-    response = {headers, ''}
+    response = { ['headers'] = headers, ['content'] = '' }
     return handle_response(request, response)
 end
 
@@ -204,7 +260,7 @@ function not_found(request, url)
         ['Status'] = "HTTP/1.0 404 Not Found"
     }
     content = '{\n    "detail": "Requested ' .. url ..' not found"\n}'
-    response = {headers, content}
+    response = { ['headers'] = headers, ['content'] = content }
     return handle_response(request, response)
 end
 
@@ -227,7 +283,7 @@ function listdir_view(request, name, patterns)
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. directory):read()
     }
-    response = {headers, content}
+    response = { ['headers'] = headers, ['content'] = content }
     return handle_response(request, response)
 end
 
@@ -254,49 +310,33 @@ function file_view(request, name, patterns)
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. file):read()
     }
-    response = {headers, content}
+    response = { ['headers'] = headers, ['content'] = content }
     return handle_response(request, response)
 end
-
 
 
 -- REQUEST/RESPONSE CYCLE FUNCTIONS
 
 function handle_response(request, response)
     -- Renders the response object as something that CGI server can understand
-    -- and performs content negotiation and conditional response
+    -- also performs advance HTTP functions like content and encoding negotiation,
+    -- conditional request, etc
     
-    response[1]['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000')
-    response[1]['Etag'] = get_etag(response[2])
+    -- RFC 2822 date format
+    response['headers']['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000')
+    response['headers']['Etag'] = get_etag(response['content'])
     
     -- Conditional response
-    etag = request["headers"]["If-None-Match"]
-    if etag and etag == response[1]['Etag'] then
-        response[1]['Status'] = "HTTP/1.0 304 Not Modified"
-        response[2] = ''
-    else
-        -- Content negotiation
-        if string.find(request["headers"]["Accept"], "text/html") then
-            response[1]['Content-Type'] = "text/html"
-            response[2] = render_as_html(request, response)
-        else
-            response[1]['Content-Type'] = "application/json"
-        end
+    response, modified = conditional_response(request, response)
+    if modified then
+        response = content_negotiation(request, response)
+        response = encoding_negotiation(request, response)
     end
-    response[1]['Content-Length'] = string.len(response[2])
-    if not response[1]['Status'] then
-        response[1]['Status'] = "HTTP/1.0 200 OK"
+    response['headers']['Content-Length'] = string.len(response['content'])
+    if not response['headers']['Status'] then
+        response['headers']['Status'] = "HTTP/1.0 200 OK"
     end
-    -- Format a CGI response
-    cgi_response = response[1]['Status'] .. '\r\n'
-    for name, value in pairs(response[1]) do
-        if name ~= 'Status' then
-            cgi_response = cgi_response .. name .. ': ' .. value .. '\r\n'
-        end
-    end
-    cgi_response = cgi_response .. '\r\n'
-    cgi_response = cgi_response .. response[2]
-    return cgi_response
+    return cgi_response(response)
 end
 
 
@@ -318,7 +358,6 @@ function api_path_dispatch(request, api_path)
     end
     return
 end
-
 
 
 -- "MAIN" FUNCTION
