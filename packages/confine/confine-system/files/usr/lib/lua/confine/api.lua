@@ -7,7 +7,7 @@ local data = require 'confine.data'
 
 function set_configuration()
     local sys_conf = data.file_get("/var/run/confine/system_state")
-
+    
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
     API_PATH_PREFIX = sys_conf.node_base_path
     NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
@@ -29,10 +29,10 @@ function urlize(text)
     local escape_marks = {{'"', '"', '"', '"'}, {"<", ">", "&lt;", "&gt;"},}
     for i, c in ipairs(escape_marks) do
         for url in text:gmatch(c[1]..'http(.-)'..c[2]) do
-            url = 'http' .. url
-            link = c[3]..'<a href="' .. url .. '">' .. url .. '</a>'..c[4]
-            url = c[1] .. url .. c[2]
-            text = text:gsub(literalize(url), link)
+            local url = 'http' .. url
+            local link = c[3]..'<a href="' .. url .. '">' .. url .. '</a>'..c[4]
+            local url = c[1] .. url .. c[2]
+            local text = text:gsub(literalize(url), link)
         end
     end
     return text
@@ -76,7 +76,7 @@ end
 
 
 function get_etag(text)
-    md5 = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1"):read()
+    local md5 = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1"):read()
     return '"' .. md5 .. '"'
 end
 
@@ -93,21 +93,21 @@ function dynamic_urls(request, content)
     local proto = get_protocol(request)
     local node_addr = get_addr(request)
     local server_url = "http(s*)://" .. literalize(SERVER_ADDR)
-    content = content:gsub(literalize(NODE_URL), proto .. '://' .. node_addr)
+    local content = content:gsub(literalize(NODE_URL), proto .. '://' .. node_addr)
     return content:gsub(server_url, proto .. '://' .. SERVER_ADDR)
 end
 
 
 function render_as_html(request, response)
-    html_head = '<!DOCTYPE html>\n<html>\n<body style="font-family: monospace">\n'
-    html_tail = '\n</body>\n</html>'
+    local html_head = '<!DOCTYPE html>\n<html>\n<body style="font-family: monospace">\n'
+    local html_tail = '\n</body>\n</html>'
     -- Render response as HTML (both response.headers and response.content)
-    title = '<header>\n'
+    local title = '<header>\n'
     title = title .. '<h1>Confine-system node API</h1>\n'
     title = title .. '<b>GET</b> ' .. request['REQUEST_URI']
     title = title .. '\n</header>\n'
     -- Headers
-    headers = '<pre><b>' .. response['headers']['Status'] .. '</b>\n'
+    local headers = '<pre><b>' .. response['headers']['Status'] .. '</b>\n'
     for name, value in pairs(response['headers']) do
         if name ~= 'Status' then
             headers = headers .. '<b>' .. name .. ':</b> ' .. value .. '\n'
@@ -115,7 +115,7 @@ function render_as_html(request, response)
     end
     headers = headers:gsub(', ', ',<br>      ') .. '</pre>\n'
     -- Content
-    content = '<code><pre>\n' .. response['content'] .. '</pre></code>'
+    local content = '<code><pre>\n' .. response['content'] .. '</pre></code>'
     return urlize(html_head .. title .. headers .. content .. html_tail)
 end
 
@@ -124,13 +124,13 @@ function get_links(request, name, patterns)
     -- Given a resource name it returns the associated header links
     local addr = get_addr(request)
     local proto = get_protocol(request)
-    node_links = {
+    local node_links = {
         ['node_base'] = {'', 'node/base'},
         ['node_node'] = {'node/', 'node/node'},
         ['node_slivers'] = { 'slivers/', 'node/sliver-list'},
         ['node_templates'] = {'templates/', 'node/template-list'},
     }
-    server_links = {
+    local server_links = {
         ['server_base'] = {'', 'server/base'},
         ['server_server'] = {'server/', 'server/server'},
         ['server_nodes'] = {'nodes/', 'server/node-list'},
@@ -152,7 +152,7 @@ function get_links(request, name, patterns)
         ['server_upload_image'] = {'templates/${object_id}/ctl/upload-image', 'server/do-upload-image'},
         ['server_template_source'] = {'templates/${object_id}', 'node/source'},
     }
-    links = {}
+    local links, url, rel = {}
     for k, link in pairs(node_links) do
         url = '<' .. proto .. '://' .. addr .. API_PATH_PREFIX .. '/' .. link[1] .. '>; '
         rel = 'rel="http://confine-project.eu/rel/'..link[2]..'"'
@@ -166,7 +166,7 @@ function get_links(request, name, patterns)
         links[k] = url .. rel
     end
     
-    map = {
+    local map = {
         ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates',
                     'server_node_source', 'server_base', 'server_server', 'server_nodes',
                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
@@ -180,7 +180,7 @@ function get_links(request, name, patterns)
         ['template'] = {'node_base', 'node_templates', 'server_templates',
                         'server_template_source', 'server_upload_image'},
     }
-    rendered_links = {}
+    local rendered_links = {}
     for i, link in ipairs(map[name]) do
         rendered_links[i] = links[link]
     end
@@ -190,8 +190,8 @@ end
 
 function conditional_response(request, response)
     -- Returns response based on If-None-Match request header
-    request_etag = request["headers"]["If-None-Match"]
-    modified = true
+    local request_etag = request["headers"]["If-None-Match"]
+    local modified = true
     if request_etag and request_etag == response['headers']['Etag'] then
         response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
         response['content'] = ''
@@ -203,7 +203,7 @@ end
 
 function content_negotiation(request, response)
     -- Formats response content based on Accept request header
-    accept = request["headers"]["Accept"]
+    local accept = request["headers"]["Accept"]
     if accept and string.find(accept, "text/html") then
         response['headers']['Content-Type'] = "text/html"
         response['content'] = render_as_html(request, response)
@@ -216,7 +216,7 @@ end
 
 function encoding_negotiation(request, response)
     -- Encodes response based on Accept-Encoding request header
-    encoding = request["headers"]["Accept-Encoding"] 
+    local encoding = request["headers"]["Accept-Encoding"] 
     if encoding and string.find(encoding, "gzip") then
         response['headers']['Content-Encoding'] = "gzip"
         response['content'] = gzip(response['content'])
@@ -229,13 +229,13 @@ end
 
 function cgi_response(response)
     -- Formats response as CGI expects
-    headers = response['headers']['Status'] .. '\r\n'
+    local headers = response['headers']['Status'] .. '\r\n'
     for name, value in pairs(response['headers']) do
         if name ~= 'Status' then
             headers = headers .. name .. ': ' .. value .. '\r\n'
         end
     end
-    content = headers .. '\r\n'
+    local content = headers .. '\r\n'
     content = content .. response['content']
     return content
 end
@@ -245,11 +245,11 @@ end
 
 function redirect(request, url)
     -- 303 redirection to url
-    headers = {
+    local headers = {
         ['Status'] = "HTTP/1.1 303 See Other",
         ['Location'] = url
     }
-    response = {
+    local response = {
         ['headers'] = headers,
         ['content'] = ''
     }
@@ -259,11 +259,11 @@ end
 
 function not_found(request, url)
     -- 404 URL not found
-    headers = {
+    local headers = {
         ['Status'] = "HTTP/1.0 404 Not Found"
     }
-    content = '{\n    "detail": "Requested ' .. url ..' not found"\n}'
-    response = {
+    local content = '{\n    "detail": "Requested ' .. url ..' not found"\n}'
+    local response = {
         ['headers'] = headers,
         ['content'] = content
     }
@@ -279,17 +279,17 @@ function listdir_view(request, name, patterns)
     
     local lines = {}
     for i, dir in ipairs(list_directories(directory)) do
-        dir = dir:match('^'..directory..'(.*)/$')
-        url = proto..'://'..addr..API_PATH_PREFIX..'/'..name..dir..'/'
+        local dir = dir:match('^'..directory..'(.*)/$')
+        local url = proto..'://'..addr..API_PATH_PREFIX..'/'..name..dir..'/'
         lines[i] = '{\n        "uri": "' .. url .. '"\n    }'
     end
     
     local content = '[\n    ' .. table.concat(lines, ",\n    ") .. '\n]'
-    headers = {
+    local headers = {
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. directory):read()
     }
-    response = {
+    local response = {
         ['headers'] = headers,
         ['content'] = content
     }
@@ -314,12 +314,12 @@ function file_view(request, name, patterns)
     local content = f:read("*all")
     f:close()
     
-    content = dynamic_urls(request, content)
-    headers = {
+    local content = dynamic_urls(request, content)
+    local headers = {
         ['Link'] = get_links(request, name, patterns),
         ['Last-Modified'] = io.popen('date -R -r ' .. file):read()
     }
-    response = { 
+    local response = { 
         ['headers'] = headers,
         ['content'] = content
     }
@@ -339,7 +339,7 @@ function handle_response(request, response)
     response['headers']['Etag'] = get_etag(response['content'])
     
     -- Conditional response
-    response, modified = conditional_response(request, response)
+    local response, modified = conditional_response(request, response)
     if modified then
         response = content_negotiation(request, response)
         response = encoding_negotiation(request, response)
@@ -354,7 +354,7 @@ end
 
 function api_path_dispatch(request, api_path)
     -- Mapping between API paths and functions (views/handlers)
-    map = {
+    local map = {
         ['^/$'] = {file_view, 'base'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
@@ -363,7 +363,7 @@ function api_path_dispatch(request, api_path)
         ['^/templates/$'] = {listdir_view, 'templates'},
     }
     for p, view in pairs(map) do
-        patterns = api_path:match(p)
+        local patterns = api_path:match(p)
         if patterns then
             return view[1], view[2], tonumber(patterns)
         end
@@ -379,9 +379,10 @@ function handle_request(request)
     set_configuration()
     
     local REQUEST_URI = request['REQUEST_URI']
-    -- Remove the path prefix from the beginning of the request URI path
+    -- Remove path prefix from the beginning of the request URI path
     local api_path = REQUEST_URI:gsub('^' .. API_PATH_PREFIX, '')
-    view, name, patterns = api_path_dispatch(request, api_path)
+    local view, name, patterns = api_path_dispatch(request, api_path)
+    local response
     if view then
         response = view(request, name, patterns)
     else
