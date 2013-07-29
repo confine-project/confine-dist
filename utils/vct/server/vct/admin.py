@@ -63,15 +63,6 @@ if is_installed('firmware'):
         actions = old_get_change_view_actions_as_class()
         return [ action for action in actions if action.url_name != 'firmware' ]
     type(node_modeladmin).get_change_view_actions_as_class = get_change_view_actions_as_class
-    
-    # Select optional firmware files by default (tinc keys)
-    from firmware.forms import OptionalFilesForm
-    old_init = OptionalFilesForm.__init__
-    def __init__(self, *args, **kwargs):
-        old_init(self, *args, **kwargs)
-        for __, field in self.fields.items():
-            field.initial = True
-    OptionalFilesForm.__init__ = __init__
 
 
 # Slices customization
