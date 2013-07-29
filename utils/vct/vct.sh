@@ -433,18 +433,27 @@ vct_system_install_server() {
     # vct_sudo rm -fr {pip-*,build,src}
     
     cd -
+    
+    # We need postgres to be online, just making sure it is.
+    vct_sudo service postgresql start
+    vct_sudo python "$VCT_DIR/server/manage.py" setuppostgres --db_name controller --db_user confine --db_password confine
+    
+    if [[ $CURRENT_VERSION != false ]]; then
+        # Per version upgrade specific operations
+        cd $VCT_DIR/server
+        vct_sudo python manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
+        cd -
+    else
+        vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
+        vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
+    fi
+    
     vct_sudo python "$VCT_DIR/server/manage.py" setupceleryd --username $VCT_USER --processes 2 --greenlets 50
 
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
 	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
-    
-    # We need postgres to be online, just making sure it is.
-    vct_sudo service postgresql start
-    vct_sudo python "$VCT_DIR/server/manage.py" setuppostgres --db_name controller --db_user confine --db_password confine
-    vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
-    vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
     
     # Move static files in a place where apache can get them
     python "$VCT_DIR/server/manage.py" collectstatic --noinput
@@ -461,11 +470,6 @@ vct_system_install_server() {
     
     vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc
     vct_sudo $VCT_TINC_START
-    
-    if [[ $CURRENT_VERSION != false ]]; then
-        # Per version upgrade specific operations
-        vct_sudo python "$VCT_DIR/server/manage.py" postupgradecontroller --specifics --from $CURRENT_VERSION
-    fi
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
