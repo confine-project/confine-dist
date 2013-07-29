@@ -959,9 +959,14 @@ vct_system_init() {
 
 vct_system_cleanup() {
 
-    vct_do vct_node_remove all
+    local FLUSH_ARG="${1:-}"
 
-    vct_do vct_slice_attributes flush all
+    if [ "$FLUSH_ARG" = "flush" ] ; then
+        vct_do vct_node_remove all
+        vct_do vct_slice_attributes flush all
+    elif [ "$FLUSH_ARG" ] ; then
+	err $FUNCNAME "Invalid argument: $FLUSH_ARG"
+    fi
 
     local BRIDGE=
     local BR_NAME=
@@ -2134,7 +2139,8 @@ vct_help() {
 
     vct_system_install [OVERRIDE_DIRECTIVES]              : install vct system requirements
     vct_system_init                                       : initialize vct system on host
-    vct_system_cleanup                                    : revert vct_system_init
+    vct_system_cleanup [flush]                            : revert vct_system_init
+                                                            and optionally remove testbed data
 
 
     Node Management Functions
