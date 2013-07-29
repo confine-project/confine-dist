@@ -336,7 +336,7 @@ function handle_response(request, response)
     
     -- RFC 2822 date format
     response['headers']['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000')
-    response['headers']['Etag'] = get_etag(response['content'])
+    response['headers']['ETag'] = get_etag(response['content'])
     response['headers']['Allow'] = 'GET HEAD'
     
     if not response['headers']['Status'] then
