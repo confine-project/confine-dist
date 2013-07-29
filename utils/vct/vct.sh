@@ -455,9 +455,6 @@ vct_system_install_server() {
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
     
-    # Move static files in a place where apache can get them
-    python "$VCT_DIR/server/manage.py" collectstatic --noinput
-    
     vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --address="${VCT_SERVER_TINC_IP}"
     python "$VCT_DIR/server/manage.py" updatetincd
 
@@ -465,7 +462,12 @@ vct_system_install_server() {
     vct_do python "$VCT_DIR/server/manage.py" setuppki --org_name VCT --noinput
     vct_sudo python "$VCT_DIR/server/manage.py" setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
+    # Move static files in a place where apache can get them
+    python "$VCT_DIR/server/manage.py" collectstatic --noinput
+
     vct_sudo python "$VCT_DIR/server/manage.py" setupfirmware
+    vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" syncfirmwareplugins
     
     vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc
@@ -502,10 +504,7 @@ vct_system_install_server() {
 	    AuthToken.objects.get_or_create(user=user, data=token_data)
 	
 	EOF
-
     # Load further data into the database
-    vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
-    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
 }
