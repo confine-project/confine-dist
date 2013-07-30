@@ -961,12 +961,14 @@ vct_system_cleanup() {
 
     local FLUSH_ARG="${1:-}"
 
-    if [ "$FLUSH_ARG" = "flush" ] ; then
-        vct_do vct_node_remove all
-        vct_do vct_slice_attributes flush all
-    elif [ "$FLUSH_ARG" ] ; then
-	err $FUNCNAME "Invalid argument: $FLUSH_ARG"
-    fi
+    case $FLUSH_ARG in
+        "") vct_do vct_node_stop all ;;
+        "flush")
+            vct_do vct_node_remove all  # also stops them
+            vct_do vct_slice_attributes flush all
+            ;;
+        *) err $FUNCNAME "Invalid argument: $FLUSH_ARG" ;;
+    esac
 
     local BRIDGE=
     local BR_NAME=
