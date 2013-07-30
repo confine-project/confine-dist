@@ -9,7 +9,6 @@
 /utils/vct/www
 *.tgz
 private
-/files/etc/dropbear/authorized_keys
 vct.nodes.local
 *.pyc
 *~

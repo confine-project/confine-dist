@@ -617,13 +617,6 @@ EOF
 	vct_do cp -rv "$VCT_DIR/vct-default-keys"  $VCT_KEYS_DIR
 
 	vct_do chmod -R og-rwx $VCT_KEYS_DIR/*
-	
-
-	local QUERY=
-	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
-	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
-	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
     fi
 
     if [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] ; then 
