@@ -1647,7 +1647,6 @@ vct_node_customize() {
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
 #	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
-	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
 
 	mkdir -p $PREP_ROOT/etc/tinc/confine/hosts/
 	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/server

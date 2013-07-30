@@ -374,7 +374,6 @@ confine_node_enable() {
 	confine_sliver_remove all
 
 	local SERVER_MGMT_IPV6_PREFIX48=$( uci_get confine.testbed.mgmt_ipv6_prefix48           soft )
-	local SERVER_MGMT_PUBKEY="$(       uci_get confine.server.mgmt_pubkey                   soft )"
 
 	local NODE_LOCAL_IFNAME=$(         uci_get confine.node.local_ifname                    soft )
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
@@ -398,8 +397,6 @@ confine_node_enable() {
 	    uci_set system.@system[0].hostname="rd${VCRD_ID}"
 
 	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
-
-	    echo "$SERVER_MGMT_PUBKEY" >> /etc/dropbear/authorized_keys 
 
 	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
 		

@@ -97,7 +97,6 @@ VCT_TESTBED_MAC_PREFIX16="54:c0"
 VCT_SERVER_CN_URL="http://community.net/node/yyyyy"
 VCT_SERVER_TINC_IP=10.241.0.254
 VCT_SERVER_TINC_PORT=655
-#VCT_SERVER_MGMT_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
 #VCT_SERVER_TINC_PUBKEY=  Can be (re-)created with ./vct_system_install override_keys
 
 VCT_NODE_CN_URL="http://community.net/node/xxxxx"
