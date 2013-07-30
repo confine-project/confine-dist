@@ -423,11 +423,11 @@ vct_system_install_server() {
     if [[ ! $(pip freeze|grep confine-controller) ]]; then
         # First time controller gets installed
         vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
+        vct_sudo controller-admin.sh install_requirements --local
     else
         # An older version is present, just go ahead and proceed with normal way
         vct_sudo python "$VCT_DIR/server/manage.py" upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
     fi
-    vct_sudo controller-admin.sh install_requirements --local
     
     # cleanup possible pip shit
     # vct_sudo rm -fr {pip-*,build,src}
@@ -440,9 +440,7 @@ vct_system_install_server() {
     
     if [[ $CURRENT_VERSION != false ]]; then
         # Per version upgrade specific operations
-        cd $VCT_DIR/server
-        vct_sudo python manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
-        cd -
+        ( cd $VCT_DIR/server && vct_sudo python manage.py postupgradecontroller --no-restart --local --from $CURRENT_VERSION )
     else
         vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
         vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
