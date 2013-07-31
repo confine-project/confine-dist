@@ -1,9 +1,8 @@
 #!/bin/sh
-# Autor: Pau <p4u@dabax.net>
-# With modifications from Ivan Vilata-i-Balaguer <ivan@pangea.org>.
-# This scripts exepect a partition table such as [sda1][sda2][free]
+# Contributors: Pau <p4u@dabax.net>, Ivan Vilata-i-Balaguer <ivan@pangea.org>, Daniel Marti <mvdan@gmail.com>
+# This scripts exepects a partition table such as [sda1][sda2][free]
 # and creates sda3 for overlayFS and sda4 for home
-# sfdisk is needed
+# sfdisk and partx are needed
 
 # Stop as soon as problems are found, or detect and handle them properly.
 set -e
