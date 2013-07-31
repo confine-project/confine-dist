@@ -43,7 +43,7 @@ done
 echo "Firmware image download correctly!"
 [ -n "$MD5" ] && check_md5
 
-[ "$1" == "-f" ] && OPTS="-f"
+OPTS="$@"
 
 (mount | grep -q overlay) && upgrade_overlay || upgrade_raw
 
