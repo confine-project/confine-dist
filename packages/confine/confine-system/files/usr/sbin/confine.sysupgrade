@@ -54,14 +54,8 @@ if [ -n "$1" ]; then
             CMD=cat ;;
     esac
 else
-    read -n1 -p"No image provided. Do you want to check distro.confine-project.eu
-for updates? [y/n] " answer
-    if [ $answer == "y" ]; then
-        #TODO: compare confine.version files
-    else
         echo "Nothing to do."
         exit 0
-    fi
 fi
 
 RAM_ROOT=/tmp/root
