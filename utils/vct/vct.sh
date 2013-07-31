@@ -423,11 +423,11 @@ vct_system_install_server() {
     if [[ ! $(pip freeze|grep confine-controller) ]]; then
         # First time controller gets installed
         vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
+        vct_sudo controller-admin.sh install_requirements --local
     else
         # An older version is present, just go ahead and proceed with normal way
         vct_sudo python "$VCT_DIR/server/manage.py" upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
     fi
-    vct_sudo controller-admin.sh install_requirements --local
     
     # cleanup possible pip shit
     # vct_sudo rm -fr {pip-*,build,src}
@@ -440,9 +440,7 @@ vct_system_install_server() {
     
     if [[ $CURRENT_VERSION != false ]]; then
         # Per version upgrade specific operations
-        cd $VCT_DIR/server
-        vct_sudo python manage.py postupgradecontroller --specifics --from $CURRENT_VERSION
-        cd -
+        ( cd $VCT_DIR/server && vct_sudo python manage.py postupgradecontroller --no-restart --local --from $CURRENT_VERSION )
     else
         vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
         vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
@@ -455,9 +453,6 @@ vct_system_install_server() {
 	vct_sudo rm /etc/apache/sites-enabled/*
     fi
     
-    # Move static files in a place where apache can get them
-    python "$VCT_DIR/server/manage.py" collectstatic --noinput
-    
     vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --address="${VCT_SERVER_TINC_IP}"
     python "$VCT_DIR/server/manage.py" updatetincd
 
@@ -465,7 +460,12 @@ vct_system_install_server() {
     vct_do python "$VCT_DIR/server/manage.py" setuppki --org_name VCT --noinput
     vct_sudo python "$VCT_DIR/server/manage.py" setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
+    # Move static files in a place where apache can get them
+    python "$VCT_DIR/server/manage.py" collectstatic --noinput
+
     vct_sudo python "$VCT_DIR/server/manage.py" setupfirmware
+    vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
+    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" syncfirmwareplugins
     
     vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc
@@ -502,10 +502,7 @@ vct_system_install_server() {
 	    AuthToken.objects.get_or_create(user=user, data=token_data)
 	
 	EOF
-
     # Load further data into the database
-    vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
-    vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
 }
@@ -620,13 +617,6 @@ EOF
 	vct_do cp -rv "$VCT_DIR/vct-default-keys"  $VCT_KEYS_DIR
 
 	vct_do chmod -R og-rwx $VCT_KEYS_DIR/*
-	
-
-	local QUERY=
-	echo "Copy default public key: $VCT_KEYS_DIR/id_rsa.pub -> $VCT_DIR/../../files/etc/dropbear/authorized_keys" >&2
-	read -p "(then please recompile your node images afterwards)? [Y|n]: " QUERY >&2
-	[ "$QUERY" = "y" ]  || [ "$QUERY" = "Y" ] || [ "$QUERY" = "" ] && vct_do mkdir -p "$VCT_DIR/../../files/etc/dropbear/" && \
-	    vct_do cp -v $VCT_KEYS_DIR/id_rsa.pub "$VCT_DIR/../../files/etc/dropbear/authorized_keys"
     fi
 
     if [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] && [ $UPD_KEYS ] ; then 
@@ -960,9 +950,16 @@ vct_system_init() {
 
 vct_system_cleanup() {
 
-    vct_do vct_node_remove all
+    local FLUSH_ARG="${1:-}"
 
-    vct_do vct_slice_attributes flush all
+    case $FLUSH_ARG in
+        "") vct_do vct_node_stop all ;;
+        "flush")
+            vct_do vct_node_remove all  # also stops them
+            vct_do vct_slice_attributes flush all
+            ;;
+        *) err $FUNCNAME "Invalid argument: $FLUSH_ARG" ;;
+    esac
 
     local BRIDGE=
     local BR_NAME=
@@ -1643,7 +1640,6 @@ vct_node_customize() {
 
 	uci_set confine.server=server                                                            path=$PREP_UCI
 #	uci_set confine.server.cn_url=$VCT_SERVER_CN_URL                                         path=$PREP_UCI
-	uci_set confine.server.mgmt_pubkey="$( cat $VCT_KEYS_DIR/id_rsa.pub )"                   path=$PREP_UCI
 
 	mkdir -p $PREP_ROOT/etc/tinc/confine/hosts/
 	cat <<EOF > $PREP_ROOT/etc/tinc/confine/hosts/server
@@ -2135,7 +2131,8 @@ vct_help() {
 
     vct_system_install [OVERRIDE_DIRECTIVES]              : install vct system requirements
     vct_system_init                                       : initialize vct system on host
-    vct_system_cleanup                                    : revert vct_system_init
+    vct_system_cleanup [flush]                            : revert vct_system_init
+                                                            and optionally remove testbed data
 
 
     Node Management Functions
