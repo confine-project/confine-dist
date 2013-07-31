@@ -481,7 +481,7 @@ vct_system_install_server() {
 	for username in ['admin', 'researcher', 'technician', 'member']:
 	   if not User.objects.filter(username=username).exists():
 	       print 'Creating %s user' % username
-	       User.objects.create_user(username, username+'@example.com', username)
+	       User.objects.create_user(username, 'vct+%s@localhost' % username, username)
 	
 	users = {}
 	for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
