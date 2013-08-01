@@ -73,7 +73,7 @@ get_info() {
 	overlay_cylinders=$(($available_cylinders*$OVERLAY_SIZE/100))	
 	home_cylinders=$(($available_cylinders*$HOME_SIZE/100))
 
-	echo -e "\n=> Information of target $DISK (in cylinders)\n"
+	echo -e "\n==> Information of target $DISK (in cylinders)\n"
 	echo "-----------------------------"
 	echo "Available: $disk_cylinders"
 	echo "Overlay: $overlay_cylinders"
@@ -143,10 +143,7 @@ set_lxc_to_home() {
 }
 
 
-DISK=$(ls -l /dev/root | sed -ne 's#.* -> \(.*\)[0-9][0-9]*$#\1#p')
-if ! echo "$DISK" | grep -q '^/'; then
-	DISK="/dev/$DISK"
-fi
+DISK=$(sed -rn 's#.*\broot=([^0-9]+).*#\1#p' /proc/cmdline)
 
 echo -e "\n==> Checking system\n"
 checksystem
