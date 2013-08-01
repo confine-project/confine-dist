@@ -218,19 +218,20 @@ fi
 echo -e "\n==> Formating partitions\n"
 
 for pn in 3 4; do
-	umount ${DISK}$pn || true  # probably not mounted
 	if ! $MKFS ${DISK}$pn; then
 		echo "CRITICAL, cannot format partition ${DISK}$pn" >&2
 		exit 2
 	fi
+	mtpt=$(mktemp -d)
+	if ! mount ${DISK}$pn $mtpt; then
+		echo "CRITICAL, cannot mount partition ${DISK}$pn" >&2
+		exit 2
+	fi
+	if [ $pn = 4 ]; then
+		mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
+	fi
+	umount ${DISK}$pn
 done
-
-if ! mount /home; then
-	echo "CRITICAL, cannot mount the home filesystem" >&2
-	exit 2
-fi
-mkdir -p /home/lxc/images /home/lxc/templates
-umount /home
 
 echo -e "\n==> Done, time to reboot the machine\n"
 
