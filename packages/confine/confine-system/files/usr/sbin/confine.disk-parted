@@ -21,34 +21,27 @@ checksystem() {
 		echo "${DISK}2 does not exist, doing nothing" >&2
 		exit 1
 	fi
-	if ! which $SFDISK > /dev/null; then
-		echo "$SFDISK is not installed, doing nothing" >&2
-		exit 1
-	fi
-	
+
 	if test -b ${DISK}3; then
 		echo "${DISK}3 partition exists, doing nothing" >&2
 		exit 1
 	fi
-	
-	
+
 	if ! opkg list | grep -q block-mount; then
 		echo "block-mount package is not installed, doing nothing" >&2
 		exit 1
 	fi
 
+	local program
+	for program in $SFDISK $MKFS $PARTX; do
+		if ! which $program > /dev/null; then
+			echo "$program is not installed, doing nothing" >&2
+			exit 1
+		fi
+	done
+
 	if ! $SFDISK -q -V -L ${DISK}; then
 		echo "CRITICAL, something wrong in the partition table" >&2
-		exit 1
-	fi
-
-	if ! which $MKFS > /dev/null; then
-		echo "mkfs not found, doing nothing" >&2
-		exit 1
-	fi
-
-	if ! which $PARTX > /dev/null; then
-		echo "partx not found, doing nothing" >&2
 		exit 1
 	fi
 
