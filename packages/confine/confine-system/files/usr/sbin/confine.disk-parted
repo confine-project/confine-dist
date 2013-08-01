@@ -13,6 +13,7 @@ OVERLAY_SIZE="20" #in %
 HOME_SIZE="80" #in %
 SFDISK="sfdisk"
 MKFS="mkfs.ext4"
+PARTX="partx"
 TMPFS="64M"
 
 checksystem() {
@@ -43,6 +44,11 @@ checksystem() {
 
 	if ! which $MKFS > /dev/null; then
 		echo "mkfs not found, doing nothing" >&2
+		exit 1
+	fi
+
+	if ! which $PARTX > /dev/null; then
+		echo "partx not found, doing nothing" >&2
 		exit 1
 	fi
 
@@ -185,7 +191,7 @@ echo -e "\n==> Pointing current LXC directories to new home\n"
 set_lxc_to_home
 
 echo -e "\n==> Telling the kernel about new partitions\n"
-partx --add --nr 3:4 $DISK
+$PARTX --add --nr 3:4 $DISK
 sleep 10
 
 if ! test -b ${DISK}4; then
