@@ -75,15 +75,24 @@ function list_directories(directory)
 end
 
 
+function escape_quotes(text)
+    -- FIXME don't fucking know how to properly scape quotes '
+    return text:gsub("'", "?")
+end
+
+
 function get_etag(text)
+    text = escape_quotes(text)
     local md5 = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1"):read()
     return '"' .. md5 .. '"'
 end
 
 
 function gzip(text)
+    text = escape_quotes(text)
     return io.popen("echo -n '" .. text .. "'|gzip -9f"):read('*all')
 end
+
 
 
 -- HELPER FUNCTIONS
