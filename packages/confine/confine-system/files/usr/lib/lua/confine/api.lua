@@ -76,8 +76,7 @@ end
 
 
 function escape_quotes(text)
-    -- FIXME don't fucking know how to properly scape quotes '
-    return text:gsub("'", "?")
+    return text:gsub("'", "\'\\'\'")
 end
 
 
