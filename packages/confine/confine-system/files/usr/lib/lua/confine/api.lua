@@ -76,7 +76,7 @@ end
 
 
 function escape_quotes(text)
-    return text:gsub("'", "\'\\'\'")
+    return text:gsub("'", "'\\''")
 end
 
 
