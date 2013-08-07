@@ -24,7 +24,7 @@
 <div style="margin-left:20px">
 {% if build %}
 Current available firmware:<ul>
-        <li><a href={{ build.image.url }}>{{ build.image_name }}</a></li>
+        {% if build.image %}<li><a href={{ build.image.url }}>{{ build.image_name }}</a></li>{% endif %}
         <li>State: {{ build.state }}</li>
         <li>Build Date: {{ build.date }}</li>
         <li>Base Image: {{ build.base_image }}</li>
