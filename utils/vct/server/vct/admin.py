@@ -60,12 +60,12 @@ if is_installed('firmware'):
     from firmware.models import BaseImage
     from firmware.settings import FIRMWARE_BASE_IMAGE_EXTENSIONS
     
-    if settings.VCT_ENABLE_LOCAL_FILES:
+    if settings.VCT_LOCAL_FILES:
         BaseImageInline.form = local_files_form_factory(BaseImage, 'image',
                 extensions=FIRMWARE_BASE_IMAGE_EXTENSIONS)
     
     # Replace node firmware download for "VM manager"
-    if settings.VCT_ENABLE_VM_MANAGEMENT:
+    if settings.VCT_VM_MANAGEMENT:
         insert_change_view_action(Node, vm_management)
         insertattr(Node, 'actions', vm_management)
         node_modeladmin = get_modeladmin(Node)
@@ -77,7 +77,7 @@ if is_installed('firmware'):
 
 
 # Slices customization
-if settings.VCT_ENABLE_LOCAL_FILES:
+if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
     SliceAdmin.form = local_files_form_factory(Slice, 'exp_data',
