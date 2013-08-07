@@ -18,7 +18,7 @@ REMOVE = ('remove', 'Remove VM', 'Remove node virtual machine')
 DELETE = ('delete', 'Delete FW', 'Delete node firmware')
 
 
-def vct(modeladmin, request, queryset):
+def vm_management(modeladmin, request, queryset):
     name = request.GET.get('cmd', 'info')
     if name == 'build':
         response = get_firmware(modeladmin, request, queryset)
@@ -87,8 +87,8 @@ def vct(modeladmin, request, queryset):
         "app_label": app_label,}
     
     return TemplateResponse(request, 'admin/vct/command.html', context,
-        current_app=modeladmin.admin_site.name)
-vct.short_description = 'VCT Node Management'
-vct.verbose_name = 'VM Management'
-vct.css_class = 'viewsitelink'
-vct.description = 'Manage VCT virtual machines'
+            current_app=modeladmin.admin_site.name)
+vm_management.short_description = 'VCT Node Management'
+vm_management.verbose_name = 'VM Management'
+vm_management.css_class = 'viewsitelink'
+vm_management.description = 'Manage VCT virtual machines'
