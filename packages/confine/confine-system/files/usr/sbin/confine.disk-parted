@@ -217,6 +217,10 @@ fi
 echo -e "\n==> Formating partitions\n"
 
 for pn in 3 4; do
+	# The filesystem may have been automounted if it matched an old one.
+	if mount | grep -q "^${DISK}$pn "; then
+		umount ${DISK}$pn
+	fi
 	if ! $MKFS ${DISK}$pn; then
 		echo "CRITICAL, cannot format partition ${DISK}$pn" >&2
 		exit 2
