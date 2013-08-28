@@ -237,23 +237,24 @@ fi
 echo -e "\n==> Formating partitions\n"
 
 for pn in 3 4; do
+	part=$DISK$pn
 	# The filesystem may have been automounted if it matched an old one.
-	if mount | grep -q "^${DISK}$pn "; then
-		umount ${DISK}$pn
+	if mount | grep -q "^$part "; then
+		umount $part
 	fi
-	if ! $MKFS ${DISK}$pn; then
-		echo "CRITICAL, cannot format partition ${DISK}$pn" >&2
+	if ! $MKFS $part; then
+		echo "CRITICAL, cannot format partition $part" >&2
 		exit 2
 	fi
 	mtpt=$(mktemp -d)
-	if ! mount ${DISK}$pn $mtpt; then
-		echo "CRITICAL, cannot mount partition ${DISK}$pn" >&2
+	if ! mount $part $mtpt; then
+		echo "CRITICAL, cannot mount partition $part" >&2
 		exit 2
 	fi
 	if [ $pn = 4 ]; then
 		mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
 	fi
-	umount ${DISK}$pn
+	umount $part
 done
 
 echo -e "\n==> Done, time to reboot the machine\n"
