@@ -20,7 +20,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
-PKG_VERSION:=r2013080100
+PKG_VERSION:=r2013082800
 PKG_RELEASE:=1
 
 #PKG_SOURCE_URL:=@SF/confine-system

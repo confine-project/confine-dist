@@ -187,7 +187,27 @@ echo -e "\n==> Telling the kernel about new partitions\n"
 $PARTX --add --nr 3:4 $DISK
 sleep 10
 
-if ! test -b ${DISK}4; then
+# Check whether the machine needs to be rebooted before continuing.
+needs_reboot=no
+test -b ${DISK}4 || needs_reboot=yes
+if [ $needs_reboot = no ]; then
+	# On some machines the kernel still gets a bad disk geometry
+	# and it sees the new partitions smaller than they are
+	# until the machine is rebooted.
+	for pn in 3 4; do
+		part=$DISK$pn
+		part_name=$(basename $part)
+		knl_part_size=$(sed -rne "s#^.* ([0-9]+) $part_name\$#\1#p" /proc/partitions)
+		# "sfdisk -s PARTITION" reports the kernel geometry, don't use.
+		tbl_part_size=$(($($SFDISK -d $DISK | sed -rne "s#^$part .* size= *([0-9]+).*#\1#p")/2))
+		if [ $knl_part_size -lt $tbl_part_size ]; then
+			needs_reboot=yes
+			break
+		fi
+	done
+fi
+
+if [ $needs_reboot = yes ]; then
 	cat >&2 <<- EOF
 	Warning: it is not possible to use the new partitions!
 
