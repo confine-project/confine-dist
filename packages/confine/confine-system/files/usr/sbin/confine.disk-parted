@@ -141,8 +141,47 @@ set_lxc_to_home() {
 	ln -s /home/lxc/templates /lxc/templates
 }
 
+format_partitions() {
+	local pn part mtpt
+
+	echo -e "\n==> Formatting partitions\n"
+
+	for pn in 3 4; do
+		part=$DISK$pn
+		# The filesystem may have been automounted if it matched an old one.
+		if mount | grep -q "^$part "; then
+			umount $part
+		fi
+		if ! $MKFS $part; then
+			echo "CRITICAL, cannot format partition $part" >&2
+			exit 2
+		fi
+		mtpt=$(mktemp -d)
+		if ! mount $part $mtpt; then
+			echo "CRITICAL, cannot mount partition $part" >&2
+			exit 2
+		fi
+		if [ $pn = 4 ]; then
+			mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
+		fi
+		umount $part
+	done
+
+	echo -e "\n==> Writing fstab and enabling block-mount\n"
+	write_fstab
+
+	echo -e "\n==> Done, time to reboot the machine\n"
+}
+
 
 DISK=$(sed -rn 's#.*\broot=([^0-9]+).*#\1#p' /proc/cmdline)
+
+if [ "$1" = post ]; then
+	# Second invocation after creating the partitions
+	# and needing a reboot, finish the job.
+	format_partitions
+	exit 0
+fi
 
 echo -e "\n==> Checking system\n"
 checksystem
@@ -177,9 +216,6 @@ $sfdisk_chs -q $DISK -L -N4 --no-reread << EOF || true
 $(($start_cylinder+$overlay_cylinders)) $home_cylinders L
 EOF
 
-echo -e "\n==> Writing fstab and enabling block-mount\n"
-write_fstab
-
 echo -e "\n==> Pointing current LXC directories to new home\n"
 set_lxc_to_home
 
@@ -208,56 +244,32 @@ if [ $needs_reboot = no ]; then
 fi
 
 if [ $needs_reboot = yes ]; then
+	uci_def_script=/etc/uci-defaults/format_partitions.sh
+
 	cat >&2 <<- EOF
 	Warning: it is not possible to use the new partitions!
 
 	==================================================================
 	 Seems that the kernel can not access the new partitions.
 	 Rebooting is needed to be able to format and use the partitions.
-	 A script has been added to uci-defaults, please reboot.
+	 The script "$uci_def_script"
+	 has been added to uci-defaults, please reboot.
 	==================================================================
 	EOF
 
-        cat > /etc/uci-defaults/format_partitions.sh <<- EOF
+	# Call myself ($0) but go straight to formatting,
+	# reboot if everything went fine.
+	cat > $uci_def_script <<- EOF
 	#!/bin/sh
-	umount ${DISK}3
-	umount ${DISK}4
-	$MKFS ${DISK}3
-	$MKFS ${DISK}4
-	mkdir /tmp/disk4
-	mount ${DISK}4 /tmp/disk4
-	mkdir /tmp/disk4/lxc
-	mkdir /tmp/disk4/lxc/templates /tmp/disk4/lxc/images
-	umount /tmp/disk4/
-	reboot
+	if $0 post >> '/root/$(echo $0 | tr / _).log' 2>&1; then
+		reboot
+	fi
 	EOF
+	chmod a+rx $uci_def_script
 	exit 0
 fi
 
-echo -e "\n==> Formating partitions\n"
-
-for pn in 3 4; do
-	part=$DISK$pn
-	# The filesystem may have been automounted if it matched an old one.
-	if mount | grep -q "^$part "; then
-		umount $part
-	fi
-	if ! $MKFS $part; then
-		echo "CRITICAL, cannot format partition $part" >&2
-		exit 2
-	fi
-	mtpt=$(mktemp -d)
-	if ! mount $part $mtpt; then
-		echo "CRITICAL, cannot mount partition $part" >&2
-		exit 2
-	fi
-	if [ $pn = 4 ]; then
-		mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
-	fi
-	umount $part
-done
-
-echo -e "\n==> Done, time to reboot the machine\n"
+format_partitions
 
 exit 0
 
