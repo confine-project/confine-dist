@@ -130,6 +130,11 @@ MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.
 SITE_NAME = 'VCT'
 SITE_VERBOSE_NAME = 'VCT Testbed Management'
 
+# Email
+DEFAULT_FROM_EMAIL = 'vct@localhost'
+SERVER_EMAIL = 'vct@localhost'
+ISSUES_SUPPORT_EMAILS = ['vct@localhost']
+
 
 # Custom settings
 try:
