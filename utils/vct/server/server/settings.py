@@ -130,9 +130,6 @@ MAINTENANCE_PUB_KEY_PATH = os.path.join(get_vct_config('VCT_KEYS_DIR'), 'id_rsa.
 SITE_NAME = 'VCT'
 SITE_VERBOSE_NAME = 'VCT Testbed Management'
 
-# email
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
 
 # Custom settings
 try:
