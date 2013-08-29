@@ -477,7 +477,7 @@ vct_system_install_server() {
 	from users.models import *
 	if not User.objects.filter(username='vct').exists():
 	    print 'Creating vct superuser'
-	    User.objects.create_superuser('vct', 'vct@example.com', 'vct')
+	    User.objects.create_superuser('vct', 'vct@localhost', 'vct')
 	
 	for username in ['admin', 'researcher', 'technician', 'member']:
 	   if not User.objects.filter(username=username).exists():
