@@ -434,8 +434,11 @@ vct_system_install_server() {
     
     cd -
     
-    # We need postgres to be online, just making sure it is.
+    # We need to be sure that postgres is up and has a database controller and user confine:
     vct_sudo service postgresql start
+    sudo su postgres -c "psql -c \"CREATE USER confine PASSWORD 'confine';\""
+    sudo su postgres -c "psql -c \"CREATE DATABASE controller OWNER confine;\""
+    # because this command fails if db controller does not exits !
     vct_sudo python "$VCT_DIR/server/manage.py" setuppostgres --db_name controller --db_user confine --db_password confine
     
     if [[ $CURRENT_VERSION != false ]]; then
