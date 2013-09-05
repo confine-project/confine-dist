@@ -1124,7 +1124,7 @@ vct_node_info() {
 
     # virsh --connect qemu:///system list --all
 
-    local REAL_IDS="$( cat $VCT_NODE_MAC_DB | awk '{print $1}' | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" )"
+    local REAL_IDS="$( [ -f $VCT_NODE_MAC_DB ] && cat $VCT_NODE_MAC_DB | awk '{print $1}' | grep -e "^[0-9,a-f][0-9,a-f][0-9,a-f][0-9,a-f]$" )"
     local VIRT_IDS="$( virsh -c qemu:///system list --all | grep ${VCT_RD_NAME_PREFIX} | awk '{print $2}' | awk -F'-' '{print $2}' )"
     local ALL_IDS="$REAL_IDS $VIRT_IDS"
 
@@ -1279,7 +1279,7 @@ vct_node_create() {
             IMAGE_SIZE_B=$(stat -c %s "$VCRD_PATH")
 
             if [ $IMAGE_SIZE_B -lt $((VCT_NODE_IMAGE_SIZE_MiB * 1024 * 1024)) ]; then
-                dd if=/dev/zero of="$VCRD_PATH" bs=1M count=0 seek=$VCT_NODE_IMAGE_SIZE_MiB \
+                dd if=/dev/zero of="$VCRD_PATH" bs=1M count=0 seek=$VCT_NODE_IMAGE_SIZE_MiB 2>&1\
                     || err $FUNCNAME "Failed to enlarge $VCRD_PATH"
             fi
         fi
