@@ -2150,29 +2150,12 @@ vct_help() {
     vct_node_remove    <NODE_SET>                         : remove domain with given NODE_ID
     vct_node_console   <NODE_ID>                          : open console to running domain
 
-    vct_node_customize <NODE_SET> [online|offline|sysupgrade]  : configure & activate node
-
     vct_node_ssh       <NODE_SET> ["COMMANDS"]            : ssh connect via recovery IPv6
     vct_node_scp       <NODE_SET> <SCP_ARGS>              : copy via recovery IPv6
     vct_node_mount     <NODE_SET>
     vct_node_unmount   <NODE_SET>
 
 
-    Slice and Sliver Management Functions
-    -------------------------------------
-    Following functions always connect to a running node for RPC execution.
-
-    vct_sliver_allocate  <SL_ID> <NODE_SET> [EXPERIMENT]
-    vct_sliver_deploy    <SL_ID> <NODE_SET>
-    vct_sliver_start     <SL_ID> <NODE_SET>
-    vct_sliver_stop      <SL_ID> <NODE_SET>
-    vct_sliver_remove    <SL_ID> <NODE_SET> 
-    vct_sliver_ssh       <SL_ID> <NODE_SET> ["COMMANDS"]  : ssh connect via recovery IPv6
-
-    vct_slice_attributes <show|short|flush|update|state=<STATE>> [SL_ID|all [NODE_ID]]
-    vct_slice_info                                               [SL_ID|all [NODE_ID]]
-
-   
     Argument Definitions
     --------------------
 
@@ -2180,8 +2163,6 @@ vct_help() {
                              override_node_template, override_server_template, override_keys
     NODE_ID:=             node id given by a 4-digit lower-case hex value (eg: 0a12)
     NODE_SET:=            set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (0001-0003)
-    SL_ID:=               slice id given by a 12-digit lower-case hex value
-    EXPERIMENT:=          vct_hello_openwrt | vct_hello_debian | as defined in vct.conf
     COMMANDS:=            Commands to be executed on node
     SCP_ARGS:=            MUST contain keyword='remote:' which is substituted by 'root@[IPv6]:'
 
@@ -2241,19 +2222,8 @@ else
 	vct_node_ssh)               $CMD "$@";;
 	vct_node_scp)               $CMD "$@";;
 
-        vct_node_customize)         $CMD "$@";;
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;
-
-        vct_sliver_allocate)        $CMD "$@";;
-        vct_sliver_deploy)          $CMD "$@";;
-        vct_sliver_start)           $CMD "$@";;
-        vct_sliver_stop)            $CMD "$@";;
-        vct_sliver_remove)          $CMD "$@";;
-        vct_sliver_ssh)             $CMD "$@";;
-
-	vct_slice_attributes)       $CMD "$@";;
-	vct_slice_info)             $CMD "$@";;
 
 	*) vct_help;;
     esac
