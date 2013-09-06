@@ -219,13 +219,17 @@ EOF
 echo -e "\n==> Pointing current LXC directories to new home\n"
 set_lxc_to_home
 
-echo -e "\n==> Telling the kernel about new partitions\n"
-$PARTX --add --nr 3:4 $DISK
-sleep 10
-
-# Check whether the machine needs to be rebooted before continuing.
+# Try to make the new partitions available and
+# check whether the machine needs to be rebooted before continuing.
 needs_reboot=no
-test -b ${DISK}4 || needs_reboot=yes
+
+echo -e "\n==> Telling the kernel about new partitions\n"
+$PARTX --add --nr 3:4 $DISK || needs_reboot=yes
+if [ $needs_reboot = no ]; then
+	sleep 10
+	test -b ${DISK}4 || needs_reboot=yes
+fi
+
 if [ $needs_reboot = no ]; then
 	# On some machines the kernel still gets a bad disk geometry
 	# and it sees the new partitions smaller than they are
