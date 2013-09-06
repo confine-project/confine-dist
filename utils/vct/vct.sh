@@ -746,7 +746,7 @@ EOF
     fi
 
     if ! [ -d $VCT_SERVER_DIR ]; then
-       err $FUNCNAME "Missing controller installation at $VCT_SERVER_DIR but VCT_SERVER=$VCT_SERVER"
+       err $FUNCNAME "Missing controller installation at $VCT_SERVER_DIR"
     fi
 
 
