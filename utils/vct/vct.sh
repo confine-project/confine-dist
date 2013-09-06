@@ -532,12 +532,12 @@ vct_system_install_check() {
     local CMD_SOFT=$(      echo "$OPT_CMD" | grep -e "soft"      > /dev/null && echo "soft," )
     local CMD_QUICK=$(     echo "$OPT_CMD" | grep -e "quick"     > /dev/null && echo "quick," )
     local CMD_INSTALL=$(   echo "$OPT_CMD" | grep -e "install"   > /dev/null && echo "install," )
-    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "update," )
-    local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "update," )
-    local UPD_SLICE=$(     echo "$OPT_CMD" | grep -e "slice"     > /dev/null && echo "update," )
-    local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "update," )
-    local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "tinc," )
-    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "server," )
+
+    local UPD_NODE=$(      echo "$OPT_CMD" | grep -e "node"      > /dev/null && echo "y" )
+    local UPD_SLICE=$(     echo "$OPT_CMD" | grep -e "slice"     > /dev/null && echo "y" )
+    local UPD_KEYS=$(      echo "$OPT_CMD" | grep -e "keys"      > /dev/null && echo "y" )
+    local UPD_TINC=$(      echo "$OPT_CMD" | grep -e "tinc"      > /dev/null && echo "y" )
+    local UPD_SERVER=$(    echo "$OPT_CMD" | grep -e "server"    > /dev/null && echo "y" )
 
     # check if correct user:
     if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
@@ -932,6 +932,7 @@ EOF
 
     # check if controller system and management network is running:
     [ $CMD_INIT ] && vct_tinc_stop
+    [ $CMD_INIT ] && vct_sudo service postgresql start
     [ $CMD_INIT ] && vct_sudo python "$VCT_DIR/server/manage.py" restartservices
     [ $CMD_INIT ] && vct_sudo $VCT_TINC_START
 }
@@ -1021,10 +1022,18 @@ vct_system_cleanup() {
     vct_tinc_stop
 
     if [ $VCT_SERVER_DIR ]; then
-	vct_sudo python "$VCT_DIR/server/manage.py" stopservices
+	vct_sudo python "$VCT_DIR/server/manage.py" stopservices --no-postgresql
     fi
 
 }
+
+
+vct_system_purge() {
+    vct_system_cleanup flush
+    vct_system_purge_server
+    [ "$VCT_VIRT_DIR" != "/" ] && vct_sudo rm -rf $VCT_VIRT_DIR
+}
+
 
 ##########################################################################
 #######  
@@ -1572,6 +1581,7 @@ vct_help() {
     vct_system_init                                       : initialize vct system on host
     vct_system_cleanup [flush]                            : revert vct_system_init
                                                             and optionally remove testbed data
+    vct_system_purge                                      : purge vct installation
 
 
     Node Management Functions
@@ -1646,6 +1656,7 @@ else
 	vct_system_init_check)      $CMD "$@";;
 	vct_system_init)            $CMD "$@";;
 	vct_system_cleanup)         $CMD "$@";;
+	vct_system_purge)           $CMD "$@";;
 
 	vct_node_info)              $CMD "$@";;
 	vct_node_create)            $CMD "$@";;
