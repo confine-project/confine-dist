@@ -1,7 +1,7 @@
 {% extends "admin/base_site.html" %}
 {% load i18n l10n %}
 {% load url from future %}
-{% load admin_urls utils %}
+{% load admin_urls utils static %}
 
 
 
@@ -24,7 +24,7 @@
 <div style="margin-left:20px">
 {% if build %}
 Current available firmware:<ul>
-        <li><a href={{ build.image.url }}>{{ build.image_name }}</a></li>
+        {% if build.image %}<li><a href={{ build.image.url }}>{{ build.image_name }}</a></li>{% endif %}
         <li>State: {{ build.state }}</li>
         <li>Build Date: {{ build.date }}</li>
         <li>Base Image: {{ build.base_image }}</li>
@@ -52,7 +52,7 @@ There is no node virtual machine currently available.
 {% endif %}
 
 {% for cmd in cmds %}
-<a href="{% url 'admin:nodes_node_vct' node.pk %}?cmd={{ cmd.0 }}"><button title='{{ cmd.2 }}'>{{ cmd.1 }}</button></a>
+<a href="{% url 'admin:nodes_node_vct' node.pk %}?cmd={{ cmd.0 }}"><button title='{{ cmd.2 }}'> <IMG SRC="{% static 'vct/img/'|add:cmd.0|add:'.png' %}"  ALIGN="absmiddle"> {{ cmd.1 }}</button></a>
 {% endfor %}
 </div>
 {% endblock %}

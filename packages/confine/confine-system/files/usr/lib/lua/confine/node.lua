@@ -132,7 +132,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.id                    = sys_conf.id
 	node.uuid                  = sys_conf.uuid
 --	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
-	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file),ssl.CERT_HEADER,ssl.CERT_TRAILER)
+	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	node.local_iface           = sys_conf.local_iface
@@ -241,6 +241,36 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 		assert(false, "ERR_SETUP...")
 	end
 	
+end
+
+function cb2_set_direct_ifaces( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
+	if not rules then return "cb2_set_direct_ifaces" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local key = ctree.get_path_leaf(path)
+	assert (type(old)=="table" or type(new)=="table")
+	
+	if begin and ((not old or old==null) and new) then
+
+		ctree.set_path_val(otree,path,{})
+		
+	elseif not begin and changed then
+		
+		if system.check_direct_ifaces( new, true ) then
+		
+			system.set_system_conf( sys_conf, key, new )
+			sliver.remove_slivers( sys_conf, otree, nil )
+			ctree.set_path_val(otree,path,sys_conf[key])
+			
+		else
+			
+			dbg( crules.add_error(otree, path, "contains invalid or non-existing interface name(s)", new) )
+			set_node_state( sys_conf, otree, STATE.debug, path )
+			return true
+		end
+		
+	end
 end
 
 function cb2_set_setup( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
@@ -390,7 +420,7 @@ tmp_rules = in_rules2
 
 
 --FIXME	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
-	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_sys_and_remove_slivers})
+	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_direct_ifaces})
 	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
 --FIXME	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	

@@ -75,15 +75,28 @@ function list_directories(directory)
 end
 
 
+function escape_quotes(text)
+    return text:gsub("'", "'\\''")
+end
+
+
 function get_etag(text)
-    local md5 = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1"):read()
+    text = escape_quotes(text)
+    local md5_handle = io.popen("echo -n '" .. text .. "'|md5sum|cut -d' ' -f1")
+    local md5 = md5_handle:read()
+    md5_handle:close()
     return '"' .. md5 .. '"'
 end
 
 
 function gzip(text)
-    return io.popen("echo -n '" .. text .. "'|gzip -9f"):read('*all')
+    text = escape_quotes(text)
+    local gzip_handle = io.popen("echo -n '" .. text .. "'|gzip -9f")
+    local gzip = gzip_handle:read('*all')
+    gzip_handle:close()
+    return gzip
 end
+
 
 
 -- HELPER FUNCTIONS
@@ -285,10 +298,12 @@ function listdir_view(request, name, patterns)
     end
     
     local content = '[\n    ' .. table.concat(lines, ",\n    ") .. '\n]'
+    local last_modify_handle = io.popen('date -R -r ' .. directory)
     local headers = {
         ['Link'] = get_links(request, name, patterns),
-        ['Last-Modified'] = io.popen('date -R -r ' .. directory):read()
+        ['Last-Modified'] = last_modify_handle:read()
     }
+    last_modify_handle:close()
     local response = {
         ['headers'] = headers,
         ['content'] = content
@@ -315,10 +330,12 @@ function file_view(request, name, patterns)
     f:close()
     
     local content = dynamic_urls(request, content)
+    local last_modify_handle = io.popen('date -R -r ' .. file)
     local headers = {
         ['Link'] = get_links(request, name, patterns),
-        ['Last-Modified'] = io.popen('date -R -r ' .. file):read()
+        ['Last-Modified'] = last_modify_handle:read()
     }
+    last_modify_handle:close()
     local response = { 
         ['headers'] = headers,
         ['content'] = content

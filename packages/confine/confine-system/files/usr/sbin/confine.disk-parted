@@ -1,9 +1,8 @@
 #!/bin/sh
-# Autor: Pau <p4u@dabax.net>
-# With modifications from Ivan Vilata-i-Balaguer <ivan@pangea.org>.
-# This scripts exepect a partition table such as [sda1][sda2][free]
+# Contributors: Pau <p4u@dabax.net>, Ivan Vilata-i-Balaguer <ivan@pangea.org>, Daniel Marti <mvdan@gmail.com>
+# This scripts exepects a partition table such as [sda1][sda2][free]
 # and creates sda3 for overlayFS and sda4 for home
-# sfdisk is needed
+# sfdisk and partx are needed
 
 # Stop as soon as problems are found, or detect and handle them properly.
 set -e
@@ -14,6 +13,7 @@ OVERLAY_SIZE="20" #in %
 HOME_SIZE="80" #in %
 SFDISK="sfdisk"
 MKFS="mkfs.ext4"
+PARTX="partx"
 TMPFS="64M"
 
 checksystem() {
@@ -21,29 +21,27 @@ checksystem() {
 		echo "${DISK}2 does not exist, doing nothing" >&2
 		exit 1
 	fi
-	if ! which $SFDISK > /dev/null; then
-		echo "$SFDISK is not installed, doing nothing" >&2
-		exit 1
-	fi
-	
+
 	if test -b ${DISK}3; then
 		echo "${DISK}3 partition exists, doing nothing" >&2
 		exit 1
 	fi
-	
-	
+
 	if ! opkg list | grep -q block-mount; then
 		echo "block-mount package is not installed, doing nothing" >&2
 		exit 1
 	fi
 
+	local program
+	for program in $SFDISK $MKFS $PARTX; do
+		if ! which $program > /dev/null; then
+			echo "$program is not installed, doing nothing" >&2
+			exit 1
+		fi
+	done
+
 	if ! $SFDISK -q -V -L ${DISK}; then
 		echo "CRITICAL, something wrong in the partition table" >&2
-		exit 1
-	fi
-
-	if ! which $MKFS > /dev/null; then
-		echo "mkfs not found, doing nothing" >&2
 		exit 1
 	fi
 
@@ -74,7 +72,7 @@ get_info() {
 	overlay_cylinders=$(($available_cylinders*$OVERLAY_SIZE/100))	
 	home_cylinders=$(($available_cylinders*$HOME_SIZE/100))
 
-	echo -e "\n=> Information of target $DISK (in cylinders)\n"
+	echo -e "\n==> Information of target $DISK (in cylinders)\n"
 	echo "-----------------------------"
 	echo "Available: $disk_cylinders"
 	echo "Overlay: $overlay_cylinders"
@@ -143,10 +141,46 @@ set_lxc_to_home() {
 	ln -s /home/lxc/templates /lxc/templates
 }
 
+format_partitions() {
+	local pn part mtpt
 
-DISK=$(ls -l /dev/root | sed -ne 's#.* -> \(.*\)[0-9][0-9]*$#\1#p')
-if ! echo "$DISK" | grep -q '^/'; then
-	DISK="/dev/$DISK"
+	echo -e "\n==> Formatting partitions\n"
+
+	for pn in 3 4; do
+		part=$DISK$pn
+		# The filesystem may have been automounted if it matched an old one.
+		if mount | grep -q "^$part "; then
+			umount $part
+		fi
+		if ! $MKFS $part; then
+			echo "CRITICAL, cannot format partition $part" >&2
+			exit 2
+		fi
+		mtpt=$(mktemp -d)
+		if ! mount $part $mtpt; then
+			echo "CRITICAL, cannot mount partition $part" >&2
+			exit 2
+		fi
+		if [ $pn = 4 ]; then
+			mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
+		fi
+		umount $part
+	done
+
+	echo -e "\n==> Writing fstab and enabling block-mount\n"
+	write_fstab
+
+	echo -e "\n==> Done, time to reboot the machine\n"
+}
+
+
+DISK=$(sed -rn 's#.*\broot=([^0-9]+).*#\1#p' /proc/cmdline)
+
+if [ "$1" = post ]; then
+	# Second invocation after creating the partitions
+	# and needing a reboot, finish the job.
+	format_partitions
+	exit 0
 fi
 
 echo -e "\n==> Checking system\n"
@@ -182,61 +216,64 @@ $sfdisk_chs -q $DISK -L -N4 --no-reread << EOF || true
 $(($start_cylinder+$overlay_cylinders)) $home_cylinders L
 EOF
 
-echo -e "\n==> Writing fstab and enabling block-mount\n"
-write_fstab
-
 echo -e "\n==> Pointing current LXC directories to new home\n"
 set_lxc_to_home
 
-echo -e "\n==> Telling the kernel about new partitions\n"
-partx --add --nr 3:4 $DISK
-sleep 10
+# Try to make the new partitions available and
+# check whether the machine needs to be rebooted before continuing.
+needs_reboot=no
 
-if ! test -b ${DISK}4; then
+echo -e "\n==> Telling the kernel about new partitions\n"
+$PARTX --add --nr 3:4 $DISK || needs_reboot=yes
+if [ $needs_reboot = no ]; then
+	sleep 10
+	test -b ${DISK}4 || needs_reboot=yes
+fi
+
+if [ $needs_reboot = no ]; then
+	# On some machines the kernel still gets a bad disk geometry
+	# and it sees the new partitions smaller than they are
+	# until the machine is rebooted.
+	for pn in 3 4; do
+		part=$DISK$pn
+		part_name=$(basename $part)
+		knl_part_size=$(sed -rne "s#^.* ([0-9]+) $part_name\$#\1#p" /proc/partitions)
+		# "sfdisk -s PARTITION" reports the kernel geometry, don't use.
+		tbl_part_size=$(($($SFDISK -d $DISK | sed -rne "s#^$part .* size= *([0-9]+).*#\1#p")/2))
+		if [ $knl_part_size -lt $tbl_part_size ]; then
+			needs_reboot=yes
+			break
+		fi
+	done
+fi
+
+if [ $needs_reboot = yes ]; then
+	uci_def_script=/etc/uci-defaults/format_partitions.sh
+
 	cat >&2 <<- EOF
 	Warning: it is not possible to use the new partitions!
 
 	==================================================================
 	 Seems that the kernel can not access the new partitions.
 	 Rebooting is needed to be able to format and use the partitions.
-	 A script has been added to uci-defaults, please reboot.
+	 The script "$uci_def_script"
+	 has been added to uci-defaults, please reboot.
 	==================================================================
 	EOF
 
-        cat > /etc/uci-defaults/format_partitions.sh <<- EOF
+	# Call myself ($0) but go straight to formatting,
+	# reboot if everything went fine.
+	cat > $uci_def_script <<- EOF
 	#!/bin/sh
-	umount ${DISK}3
-	umount ${DISK}4
-	$MKFS ${DISK}3
-	$MKFS ${DISK}4
-	mkdir /tmp/disk4
-	mount ${DISK}4 /tmp/disk4
-	mkdir /tmp/disk4/lxc
-	mkdir /tmp/disk4/lxc/templates /tmp/disk4/lxc/images
-	umount /tmp/disk4/
-	reboot
+	if $0 post >> '/root/$(echo $0 | tr / _).log' 2>&1; then
+		reboot
+	fi
 	EOF
+	chmod a+rx $uci_def_script
 	exit 0
 fi
 
-echo -e "\n==> Formating partitions\n"
-
-for pn in 3 4; do
-	umount ${DISK}$pn || true  # probably not mounted
-	if ! $MKFS ${DISK}$pn; then
-		echo "CRITICAL, cannot format partition ${DISK}$pn" >&2
-		exit 2
-	fi
-done
-
-if ! mount /home; then
-	echo "CRITICAL, cannot mount the home filesystem" >&2
-	exit 2
-fi
-mkdir -p /home/lxc/images /home/lxc/templates
-umount /home
-
-echo -e "\n==> Done, time to reboot the machine\n"
+format_partitions
 
 exit 0
 

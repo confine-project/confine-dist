@@ -9,16 +9,15 @@ from firmware.models import Build
 from vct.utils import get_vct_root
 
 
-INFO = ('info', 'VM Info', 'Node virtual machine information')
-BUILD = ('build', 'Build FW', 'Build firmware for this node')
-CREATE = ('create', 'Create VM', 'Create node virtual machine')
-START = ('start', 'Start VM', 'Start node virtual machine')
-STOP = ('stop', 'Stop VM', 'Stop node virtual machine')
-REMOVE = ('remove', 'Remove VM', 'Remove node virtual machine')
-DELETE = ('delete', 'Delete FW', 'Delete node firmware')
+def vm_management(modeladmin, request, queryset):
+    INFO = ('info', 'VM Info', 'Node virtual machine information')
+    BUILD = ('build', 'Build FW', 'Build firmware for this node')
+    CREATE = ('create', 'Create VM', 'Create node virtual machine')
+    START = ('start', 'Start VM', 'Start node virtual machine')
+    STOP = ('stop', 'Stop VM', 'Stop node virtual machine')
+    REMOVE = ('remove', 'Remove VM', 'Remove node virtual machine')
+    DELETE = ('delete', 'Delete FW', 'Delete node firmware')
 
-
-def vct(modeladmin, request, queryset):
     name = request.GET.get('cmd', 'info')
     if name == 'build':
         response = get_firmware(modeladmin, request, queryset)
@@ -67,7 +66,9 @@ def vct(modeladmin, request, queryset):
             info = None
             if name not in ['remove', 'create']:
                 cmd = None
-            commands = [CREATE, DELETE]
+            commands = [DELETE]
+            if build.state != Build.FAILED:
+                commands = [CREATE, DELETE]
     else:
         info = None
     
@@ -87,8 +88,9 @@ def vct(modeladmin, request, queryset):
         "app_label": app_label,}
     
     return TemplateResponse(request, 'admin/vct/command.html', context,
-        current_app=modeladmin.admin_site.name)
-vct.short_description = 'VCT Node Management'
-vct.verbose_name = 'VM Management'
-vct.css_class = 'viewsitelink'
-vct.description = 'Manage VCT virtual machines'
+            current_app=modeladmin.admin_site.name)
+vm_management.short_description = 'VCT Node Management'
+vm_management.verbose_name = 'VM Management'
+vm_management.css_class = 'viewsitelink'
+vm_management.description = 'Manage VCT virtual machines'
+vm_management.url_name = 'vct'

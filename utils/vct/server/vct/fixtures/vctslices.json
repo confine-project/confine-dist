@@ -13,7 +13,7 @@
         "set_state": "register",
         "template": 2,
         "vlan_nr": -1,
-        "expires_on": "2013-04-08",
+        "expires_on": "2015-12-31",
         "description": "openwrt-slice-example"
     }
 },
@@ -31,7 +31,7 @@
         "set_state": "register",
         "template": 1,
         "vlan_nr": -1,
-        "expires_on": "2013-04-08",
+        "expires_on": "2015-12-31",
         "description": "debian-slice-example"
     }
 }

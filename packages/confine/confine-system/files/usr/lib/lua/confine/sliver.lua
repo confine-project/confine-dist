@@ -157,7 +157,7 @@ function cb2_instance_sn( rules, sys_conf, otree, ntree, path, begin, changed )
 		if nval~=oval then
 			ctree.set_path_val(otree, path, nval)
 		end
-	else
+	elseif nval then
 		dbg( add_lslv_err(otree, path, "Illegal "..type(nval), nval))
 	end
 end
@@ -528,8 +528,8 @@ tmp_rules = alloc_rules
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 
 tmp_rules = deploy_rules
@@ -544,10 +544,10 @@ tmp_rules = deploy_rules
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 
 tmp_rules = start_rules
@@ -574,10 +574,10 @@ tmp_rules = start_rules
 
 tmp_rules = stop_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
-	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})	
 
@@ -932,7 +932,7 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 	
 	dbg( "sliver=%s start_state=%s success_state=%s error_state=%s", key, tostring(start_state), tostring(success_state), tostring(error_state) )
 	
-	if start_state~=oslv.state then
+	if start_state and start_state~=oslv.state then
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, start_state ) then
 			remove_slivers( a.sys_conf, a.otree, key, nil)
 			return false

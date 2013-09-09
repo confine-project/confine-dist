@@ -29,17 +29,17 @@ end
 
 function set( config, section, option, val)
 
+	val = (val==nil and "" or tostring(val))
 	local uci = is_clean(config)
-	assert( uci, "uci.set config=%s DIRTY when setting option=%s"
-	       %{tostring(config), tostring(section).."."..tostring(option).."."..tostring(val)})
+	assert( uci, "uci.set config=%s DIRTY when setting option %s=%s"
+	       %{tostring(config), tostring(section).."."..tostring(option), val})
 
 	assert( uci:set( config, section, option, val ) and uci:commit( config ) and
 	       uci:set( config, section, option, val ) and uci:commit( config ) and --FIXME: WTF!!!!!!!!!!!!!
-	       uci:get( config, section, option )==tostring(val),
-		"%s.%s.%s NOT %s" %{ tostring(config),tostring(section),tostring(option),tostring(val)})
+	       (uci:get( config, section, option ) or "")==val,
+		"%s.%s.%s NOT %s" %{ tostring(config),tostring(section),tostring(option),val})
 	
 	return true
-	       
 end
 
 function get( config, section, option, default )

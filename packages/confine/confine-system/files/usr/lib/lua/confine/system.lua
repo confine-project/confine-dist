@@ -85,6 +85,33 @@ function help()
 	os.exit(0)
 end
 
+
+function check_direct_ifaces( ifaces, picky )
+
+	local sys_devices = lsys.net.devices()
+	local direct_ifaces = {}
+	
+	local k,v
+	local n=0
+	for k,v in pairs(ifaces) do
+		
+		if type(v)=="string" and (v:match("^eth[%d]+$") or v:match("^wlan[%d]+$")) and tools.get_table_by_key_val(sys_devices,v) then
+			
+			n=n+1
+			direct_ifaces[tostring(n)] = v
+			
+		else
+			
+			tools.dbg("val=%s Invalid interface prefix or Interface does not exits!", tostring(v))
+			if picky then
+				return false
+			end
+		end
+	end
+	
+	return direct_ifaces
+end
+
 function get_system_conf(sys_conf, arg)
 
 	if not uci.is_clean("confine") or not uci.is_clean("confine-slivers") then return false end
@@ -167,7 +194,12 @@ function get_system_conf(sys_conf, arg)
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
 
-	conf.direct_ifaces         = ctree.copy_recursive_rebase_keys(tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+"), "direct_ifaces")
+
+	conf.direct_ifaces = check_direct_ifaces(
+				ctree.copy_recursive_rebase_keys(
+				    tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+"),
+				    "direct_ifaces") )
+
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
 
@@ -235,28 +267,12 @@ function set_system_conf( sys_conf, opt, val, section)
 
 	elseif opt == "direct_ifaces" and type(val) == "table" then
 		
-		local devices = lsys.net.devices()
-	
-		local k,v
-		for k,v in pairs(val) do
-			if type(v)~="string" or not (v:match("^eth[%d]+$") or v:match("^wlan[%d]+$")) then
-				tools.dbg("opt=%s val=%s Invalid interface prefix!", opt, tostring(v))
-				devices = nil
-				break
-			end
-			
-			if not devices or not tools.get_table_by_key_val(devices,v) then
-				tools.dbg("opt=%s val=%s Interface does NOT exist on system!",opt,tostring(v))
-				devices = nil
-				break
-			end
-		end
-		
-		if devices and uci.set("confine", "node", "rd_if_iso_parents", table.concat( val, " ") ) then
+		local ifaces = check_direct_ifaces( val, true )
+		tools.dbg( "iftable="..tools.table2string(ifaces, " ", 1).." ifstr="..tostring(table.concat(ifaces)) )
+		if ifaces and uci.set("confine", "node", "rd_if_iso_parents", tools.table2string(ifaces, " ", 1) ) then
 			return get_system_conf(sys_conf)
 		end
 		
-
 	elseif opt == "sliver_mac_prefix" and (val==null or val=="") then
 		
 		return get_system_conf(sys_conf)
