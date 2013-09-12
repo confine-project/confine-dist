@@ -644,6 +644,9 @@ confine_sliver_allocate() {
     local SLV_CFG=$( date +%s )-$BASHPID-allocate-sliver
     local OUT_DIR=$CONFINE_RPC_DIR
     
+    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+
+    
     cat $SRC > $SRC_DIR/$SRC_CFG
 
     local NODE_ID=$( uci_get confine.node.id )
@@ -820,6 +823,7 @@ confine_sliver_allocate() {
 	    err $FUNCNAME "Unsupported Sliver fs or type"
 	fi
 
+	uci_set lxc.$CT_NR.remount="$LXC_IMAGES_PATH/$CT_NR/confine:confine" add
 	uci_set lxc.$CT_NR.hostname=${SL_ID}_${NODE_ID}
 	uci_set lxc.$CT_NR.tag=confine-sliver-$SL_ID
 
@@ -962,6 +966,10 @@ confine_sliver_deploy() {
 
 	uci_set confine-slivers.$SL_ID.state=deploying
 
+
+	# Install sliver rootfs:
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/
+
 	local FS_URL=$( uci_get confine-slivers.$SL_ID.fs_template_url soft,quiet )
 	local FS_TPYE=$( uci_get confine-slivers.$SL_ID.fs_template_type soft,quiet )
 
@@ -982,17 +990,8 @@ confine_sliver_deploy() {
 
 	fi
 
-#	uci_show $SRC_CFG path=$SRC_DIR | \
-#	    grep -e "^$SRC_CFG.${SL_ID}_" | \
-#	    sed s/$SRC_CFG/confine-slice-attributes/ | \
-#	    uci_merge confine-slice-attributes
 
-
-	lxc.lib lxc_create $CT_NR lxc.$CT_NR
-
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/
-
-	# Install sliver rootfs:
+	# Install sliver exp_data:
 
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
 
@@ -1012,7 +1011,16 @@ confine_sliver_deploy() {
 	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
 	fi
 
+	# Install sliver confine data:
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR/confine
+	echo $(( 16#${SL_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/slice-id
+	echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
+#	REMOUNT_TO="$( echo $REMOUNT | awk -F':' '{print $2}' )"# done during lxc_create
+	
+	
 	# Finish sliver deployment:
+	
+	lxc.lib lxc_create $CT_NR lxc.$CT_NR # customization occurs here
 
 	uci_set confine-slivers.$SL_ID.state=deployed
 

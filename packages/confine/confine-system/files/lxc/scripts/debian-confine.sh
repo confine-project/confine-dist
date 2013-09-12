@@ -123,15 +123,6 @@ gateway $MGMT_GW
 EOF
 	fi
 
-
-
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/data
-
-	uci_show confine-slice-attributes | \
-	    grep -e "^confine-slice-attributes.${SL_ID}_" | \
-	    uci_dot_to_file confine-slice-attributes > $LXC_IMAGES_PATH/$CT_NR/rootfs/root/confine/uci/confine-slice-attributes
-
 	local USER_PUBKEY="$( uci_get confine-slivers.$SL_ID.user_pubkey soft,quiet )"
 
 	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/

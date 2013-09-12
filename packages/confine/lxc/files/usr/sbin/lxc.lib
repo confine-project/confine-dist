@@ -277,10 +277,13 @@ EOF
     if [ "$SL_REMOUNT" ]; then
 	local REMOUNT=
 	for REMOUNT in $SL_REMOUNT; do
-	    mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT
+	    REMOUNT_IN="$( echo $REMOUNT | awk -F':' '{print $1}' )"
+	    REMOUNT_TO="$( echo $REMOUNT | awk -F':' '{print $2}' )"
+	    REMOUNT_TO=${REMOUNT_TO:-$REMOUNT_IN}
+	    mkdir -p $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT_TO
 
 	    cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
-lxc.mount.entry = /$REMOUNT  $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT   none ro,bind 0 0
+lxc.mount.entry = /$REMOUNT_IN  $LXC_IMAGES_PATH/$SL_NAME/rootfs/$REMOUNT_TO   none ro,bind 0 0
 EOF
 	done
     fi
