@@ -131,6 +131,9 @@ define Package/confine-system/install
 
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/lib
+	$(INSTALL_DIR) $(1)/lib/upgrade
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 	$(INSTALL_DIR) $(1)/lxc
 	$(INSTALL_DIR) $(1)/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc
@@ -142,6 +145,7 @@ define Package/confine-system/install
 
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
+	$(CP)  ./files/lib/upgrade/keep.d/base-files-confine $(1)/lib/upgrade/keep.d/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/

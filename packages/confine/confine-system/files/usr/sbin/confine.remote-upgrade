@@ -3,7 +3,6 @@ SERVERS="10.228.207.4 distro.confine-project.eu"
 IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
-TO_SAVE="/etc/config /etc/tinc"
 
 error() {
 	echo "ERROR: $@"
@@ -19,9 +18,6 @@ check_md5() {
 
 upgrade_overlay() {
 	echo "Detected overlay"
-	for d in $TO_SAVE; do
-		find $d -type f -exec touch {} \;
-	done
 	confine.sysupgrade $OPTS $LIMG
 }
 
