@@ -16,19 +16,8 @@ check_md5() {
 	echo "Checksum match!"
 }
 
-upgrade_overlay() {
-	echo "Detected overlay"
-	confine.sysupgrade $OPTS $LIMG
-}
-
-upgrade_raw() {
-	echo "Detected raw filesystem"
-	confine.sysupgrade $OPTS -b $LIMG
-}
-
 rm -f "$LIMG" 2>/dev/null
 
-OK=0
 for S in $SERVERS; do
 	echo "Trying to fetch the image from $S"
 	wget --progress=dot:mega -t 2 -T 10  "http://$S/$IMG" -O "$LIMG"
@@ -41,5 +30,7 @@ echo "Firmware image download correctly!"
 
 OPTS="$@"
 
-(mount | grep -q overlay) && upgrade_overlay || upgrade_raw
+# Always give -b, with overlay it will be ignored
+echo "Performing upgrade"
+confine.sysupgrade $OPTS -b $LIMG
 
