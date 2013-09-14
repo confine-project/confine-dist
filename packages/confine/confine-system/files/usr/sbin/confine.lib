@@ -1011,12 +1011,14 @@ confine_sliver_deploy() {
 	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
 	fi
 
-	# Install sliver confine data:
+	# Install ro sliver confine data:
 	mkdir -p $LXC_IMAGES_PATH/$CT_NR/confine
 	echo $(( 16#${SL_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/slice-id
 	echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
 #	REMOUNT_TO="$( echo $REMOUNT | awk -F':' '{print $2}' )"# done during lxc_create
 	
+	[ -x $LXC_TEMPLATES_PATH/busybox-static ] || cp /bin/busybox-static $LXC_TEMPLATES_PATH/busybox-static || true
+	[ -x $LXC_TEMPLATES_PATH/busybox-static ] && ln $LXC_TEMPLATES_PATH/busybox-static $LXC_IMAGES_PATH/$CT_NR/confine/busybox-static || true
 	
 	# Finish sliver deployment:
 	
