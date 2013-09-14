@@ -44,6 +44,8 @@ define Package/confine-system
 	+tinc \
 	+file \
 	+losetup \
+	+coreutils-readlink \
+	+mount-utils \
 	+px5g \
 	+time \
 	+ntpd \

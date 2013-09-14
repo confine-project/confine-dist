@@ -98,7 +98,7 @@ uci_get() {
     local RET_VALUE=$?
 
     [ $RET_VALUE = 0 ] || err $FUNCNAME "$@" $CMD_SOFT,$CMD_QUIET
-    echo "$VAR_VALUE"
+    echo -n "$VAR_VALUE"
     return $RET_VALUE
 }
 

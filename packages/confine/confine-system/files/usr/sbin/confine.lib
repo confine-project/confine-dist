@@ -3,8 +3,6 @@
 set -u
 
 
-
-
 CONFINE_RPC_DIR=/var/run/confine/rpc
 
 CONFINE_CONTAINER_NR_MIN_DEC=1
@@ -662,6 +660,7 @@ confine_sliver_allocate() {
 
 	local USER_PUBKEY="$(   uci_get $SRC_CFG.$SL_ID.user_pubkey      soft,quiet,path=$SRC_DIR )"
 	local EXP_NAME="$(      uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
+	local FS_SIZE="$(       uci_get $SRC_CFG.$SL_ID.disk_mb          soft,quiet,path=$SRC_DIR )"
 	local FS_URL="$(        uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )"
 	local FS_TYPE="$(       uci_get $SRC_CFG.$SL_ID.fs_template_type soft,quiet,path=$SRC_DIR )"
 	local DATA_URL="$(      uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )"
@@ -721,6 +720,7 @@ confine_sliver_allocate() {
 	[ "$USER_PUBKEY" ] && uci_set $SLV_CFG.$SL_ID.user_pubkey="$USER_PUBKEY"  path=$OUT_DIR
 	[ "$EXP_NAME" ]    && uci_set $SLV_CFG.$SL_ID.exp_name="$EXP_NAME"        path=$OUT_DIR
 	[ "$VLAN_NR" ]     && uci_set $SLV_CFG.$SL_ID.vlan_nr="$VLAN_NR"          path=$OUT_DIR
+	[ "$FS_SIZE" ]     && uci_set $SLV_CFG.$SL_ID.disk_mb="$FS_SIZE"          path=$OUT_DIR
 	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
 	[ "$FS_TYPE" ]     && uci_set $SLV_CFG.$SL_ID.fs_template_type="$FS_TYPE" path=$OUT_DIR
 	[ "$DATA_URL" ]    && uci_set $SLV_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
@@ -921,13 +921,18 @@ confine_sliver_undeploy() {
 	
 	confine_sliver_stop $SL_ID > /dev/null
 	
+	local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+	local SL_STATE=$( uci_get confine-slivers.$SL_ID.state )
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
+
 	if ! [ "$CT_NR" ]; then
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SL_ID" "quiet,soft")
 	fi
 
-	if [ "$CT_NR" ] && [ "$( uci_get confine-slivers.$SL_ID.state )" = "deployed" ]; then
-
+	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
+	
+	    umount -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
+	    umount -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
 	    uci_set confine-slivers.$SL_ID.state=allocated
 	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
@@ -942,6 +947,7 @@ confine_sliver_undeploy() {
 confine_sliver_deploy() {
 
     # echo "$FUNCNAME $# $@" >&2
+CONFINE_SLIVER_DISK_MB=150
 
     local SL_ID=$( check_slice_id $1 )
 #   local SRC="${2:--}"
@@ -966,10 +972,9 @@ confine_sliver_deploy() {
 
 	uci_set confine-slivers.$SL_ID.state=deploying
 
+	mkdir -p $LXC_IMAGES_PATH/$CT_NR
 
-	# Install sliver rootfs:
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/
-
+	# Install sliver template:
 	local FS_URL=$( uci_get confine-slivers.$SL_ID.fs_template_url soft,quiet )
 	local FS_TPYE=$( uci_get confine-slivers.$SL_ID.fs_template_type soft,quiet )
 
@@ -985,17 +990,41 @@ confine_sliver_deploy() {
 	    [ "$FS_URL" = "${FS_SITE}${FS_NAME}.${FS_COMP}" ] ||\
                    err $FUNCNAME "Invalid $FS_URL != ${FS_SITE}${FS_NAME}.${FS_COMP}"
 	    
-	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs
-	    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
-
+	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
+		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir
+		    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_TEMPLATES_PATH/$FS_NAME.dir install
+	    fi
 	fi
+	
+	
+	# Install sliver overlay:
+	local FS_SIZE_MB=$( uci_get confine-slivers.$SL_ID.disk_mb soft,quiet || echo $CONFINE_SLIVER_DISK_MB )
+	
+	[ "$(df -P $LXC_IMAGES_PATH/$CT_NR/ | tail -1 | awk '{print $4}')" -gt "$(( ( $FS_SIZE_MB ) / 1024 ))" ] &&\
+		dd if=/dev/zero of=$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 bs=1M count=$FS_SIZE_MB &&\
+		mkdir -p $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ &&\
+		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 \
+		&&\
+		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount || {
+			confine_sliver_undeploy $SL_ID
+			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
+		}
 
+		
+	# Install sliver rootfs:
+	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
+		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ \
+		&&\
+		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
+			confine_sliver_undeploy $SL_ID
+			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
+		}
+		
 
 	# Install sliver exp_data:
-
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
-
-	if [ $EXP_URL ]; then
+	
+	if [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] && [ $EXP_URL ]; then
 
 	    local EXP_COMP=$( ( echo $EXP_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
                          ( echo $EXP_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
@@ -1007,29 +1036,25 @@ confine_sliver_deploy() {
 	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
                    err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
 	    
-	    mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/
 	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
 	fi
 
 	# Install ro sliver confine data:
-	mkdir -p $LXC_IMAGES_PATH/$CT_NR/confine
-	echo $(( 16#${SL_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/slice-id
-	echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
-#	REMOUNT_TO="$( echo $REMOUNT | awk -F':' '{print $2}' )"# done during lxc_create
-	
-	[ -x $LXC_TEMPLATES_PATH/busybox-static ] || cp /bin/busybox-static $LXC_TEMPLATES_PATH/busybox-static || true
-	[ -x $LXC_TEMPLATES_PATH/busybox-static ] && ln $LXC_TEMPLATES_PATH/busybox-static $LXC_IMAGES_PATH/$CT_NR/confine/busybox-static || true
+	if [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ]; then
+		mkdir -p $LXC_IMAGES_PATH/$CT_NR/confine
+		echo $(( 16#${SL_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/slice-id
+		echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
+		[ -x $LXC_TEMPLATES_PATH/busybox-static ] || cp /bin/busybox-static $LXC_TEMPLATES_PATH/busybox-static || true
+		[ -x $LXC_TEMPLATES_PATH/busybox-static ] && ln $LXC_TEMPLATES_PATH/busybox-static $LXC_IMAGES_PATH/$CT_NR/confine/busybox-static || true
+	fi	
 	
 	# Finish sliver deployment:
-	
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR # customization occurs here
-
 	uci_set confine-slivers.$SL_ID.state=deployed
-
 	uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 
     else
-	err $FUNCNAME "slice_id= $SL_ID not properly allocated"
+	err $FUNCNAME "slice_id=$SL_ID not properly allocated"
     fi
 }
 
@@ -1157,6 +1182,10 @@ confine_sliver_stop() {
 	check_slice_id $1 ); do
 
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
+	if ! [ "$CT_NR" ]; then
+		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SL_ID" "quiet,soft")
+	fi
+	
 
 	if  [ "$CT_NR" ] ; then
 	    
@@ -1192,7 +1221,7 @@ confine_sliver_remove() {
     for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
-
+	
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	if ! [ "$CT_NR" ]; then
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SLICE_ID" "quiet,soft")
@@ -1200,11 +1229,13 @@ confine_sliver_remove() {
 	fi	
 	
 	if [ "$CT_NR" ] ; then
-	    lxc.lib lxc_stop $CT_NR
-       	    confine_sliver_firewall_stop $CT_NR
-	    lxc.lib lxc_purge $CT_NR
+#		lxc.lib lxc_stop $CT_NR
+#		confine_sliver_firewall_stop $CT_NR
+		confine_sliver_stop $SLICE_ID
+		confine_sliver_undeploy $SLICE_ID
+		lxc.lib lxc_purge $CT_NR
 	fi
-
+	
 	local SLIVER_ID=
 	local SLIVERS="$( for SLIVER_ID in $( uci_get_sections confine-slice-attributes sliver ); \
 	    do echo $SLIVER_ID | grep -e "${SLICE_ID}_"; done )"

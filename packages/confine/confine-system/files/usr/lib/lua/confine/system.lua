@@ -27,6 +27,10 @@ LOG_SIZE = 1000000
 SERVER_BASE_PATH = "/confine/api"
 NODE_BASE_PATH = "/confine/api"
 
+DFLT_SLIVER_DISK_MAX_MB      = 2000
+DFLT_SLIVER_DISK_DFLT_MB     = 200
+DFLT_SLIVER_DISK_RESERVED_MB = 500
+
 node_state_file     = RUNTIME_DIR.."node_state"
 server_state_file   = RUNTIME_DIR.."server_state"
 system_state_file   = RUNTIME_DIR.."system_state"
@@ -192,8 +196,7 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.sl_pub_ipv4_proto     = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
-	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))
-
+	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))	
 
 	conf.direct_ifaces = check_direct_ifaces(
 				ctree.copy_recursive_rebase_keys(
@@ -214,6 +217,12 @@ function get_system_conf(sys_conf, arg)
 
 	local TEMPLATE_DIR_RD      = "/confine/templates/"
 	conf.sliver_template_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
+	
+	conf.sliver_disk_max_mb        = tonumber(uci.get("confine", "node", "sliver_disk_max_mb")      or DFLT_SLIVER_DISK_MAX_MB)
+	conf.sliver_disk_dflt_mb       = tonumber(uci.get("confine", "node", "sliver_disk_dflt_mb")     or DFLT_SLIVER_DISK_DFLT_MB)
+	conf.sliver_disk_reserved_mb   = tonumber(uci.get("confine", "node", "sliver_disk_reserved_mb") or DFLT_SLIVER_DISK_RESERVED_MB)
+	conf.sliver_disk_avail_mb      = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_exp_data_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.sliver_disk_reserved_mb
+	
 
 	data.file_put( conf, system_state_file )
 
@@ -289,6 +298,12 @@ function set_system_conf( sys_conf, opt, val, section)
 			return get_system_conf(sys_conf)
 		end
 		
+	elseif opt == "sliver_disk_max_mb" or opt == "sliver_disk_dflt_mb" and
+		type(val)=="number" and val <= 10000 and
+		uci.set("confine", "node", opt, val) then
+		
+		return get_system_conf(sys_conf)
+
 	elseif opt=="uci_sliver" and
 		type(val)=="table" and type(section)=="string" and
 		uci.set_section_opts( "confine-slivers", section, val) then
