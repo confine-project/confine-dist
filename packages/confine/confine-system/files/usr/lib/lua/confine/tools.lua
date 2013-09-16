@@ -268,3 +268,19 @@ function subfindex( str, start_pattern, end_pattern )
 		end
 	end
 end
+
+function min(a,b)
+	if tonumber(a) < tonumber(b) then
+		return tonumber(a)
+	else
+		return tonumber(b)
+	end
+end
+
+function max(a,b)
+	if tonumber(a) > tonumber(b) then
+		return tonumber(a)
+	else
+		return tonumber(b)
+	end
+end

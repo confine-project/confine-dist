@@ -20,7 +20,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
-PKG_VERSION:=r2013090600
+PKG_VERSION:=r2013091201
 PKG_RELEASE:=1
 
 #PKG_SOURCE_URL:=@SF/confine-system
@@ -44,6 +44,8 @@ define Package/confine-system
 	+tinc \
 	+file \
 	+losetup \
+	+coreutils-readlink \
+	+mount-utils \
 	+px5g \
 	+time \
 	+ntpd \
@@ -131,6 +133,9 @@ define Package/confine-system/install
 
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/lib
+	$(INSTALL_DIR) $(1)/lib/upgrade
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 	$(INSTALL_DIR) $(1)/lxc
 	$(INSTALL_DIR) $(1)/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc
@@ -142,6 +147,7 @@ define Package/confine-system/install
 
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
+	$(CP)  ./files/lib/upgrade/keep.d/base-files-confine $(1)/lib/upgrade/keep.d/
 	$(CP)  ./files/lxc/scripts/openwrt-confine.sh      $(1)/lxc/scripts/
 	$(CP)  ./files/lxc/scripts/debian-confine.sh       $(1)/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
@@ -154,6 +160,7 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/usr/sbin/confine.sysupgrade $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/usr/sbin/confine.remote-upgrade $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine

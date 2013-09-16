@@ -59,7 +59,13 @@ else
 fi
 
 RAM_ROOT=/tmp/root
-DEVICE=${2:-/dev/sda}
+DEVICE=${2:-"/dev/sda"}
+
+if [ -b ${DEVICE}4 ] && [ $IGNORE_FSTAB -eq 0 ] && [ ! grep -qs '/overlay ' /proc/mounts ]
+then
+    echo "WARNING: ${DEVICE}4 exists, but is not mounted."
+    echo "Either mount /overlay or specify -n to overwrite the partition table."
+fi
 
 ldd() { LD_TRACE_LOADED_OBJECTS=1 $*; }
 libs() { ldd $* | awk '{print $3}'; }
@@ -131,7 +137,7 @@ run_ramfs() { # <command> [...]
 }
 
 kill_remaining() { # [ <signal> ]
-    local sig="${1:-TERM}"
+    local sig="${1:-"TERM"}"
     local stat
     for stat in /proc/[0-9]*/stat; do
         [ -f "$stat" ] || continue
@@ -191,6 +197,13 @@ grep /home /proc/mounts > /dev/null && {
 
 if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     cp /etc/config/fstab /tmp/fstab
+
+    # Read files to save and touch them to place them in the overlay
+    add_conffiles "$CONFFILES"
+    for d in $CONFFILES; do
+        find $d -type f -exec touch {} \;
+    done
+
     run_ramfs "set -x
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
@@ -209,8 +222,11 @@ sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
 else
     if [ $SAVE_CONFIG -ne 0 ]; then
+
+        # Read files to save and do a tgz archive
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
+
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync

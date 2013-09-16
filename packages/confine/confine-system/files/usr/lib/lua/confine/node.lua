@@ -143,6 +143,9 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.sliver_pub_ipv4,
 	node.sliver_pub_ipv4_range = get_lnode_sliver_pub_ipv4(sys_conf)
 	
+	node.sliver_disk_max_mb    = sys_conf.sliver_disk_max_mb
+	node.sliver_disk_dflt_mb   = sys_conf.sliver_disk_dflt_mb
+	
 	node.boot_sn               = sys_conf.boot_sn
 	node.set_state             = cached_node.set_state
 	node.state                 = get_new_cycle_lnode_state( sys_conf, cached_node )
@@ -168,28 +171,15 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	return node
 end
 
-
-
-
-function cb2_set_sys_key_and_reboot( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_set_sys_key_and_reboot" end
-
-	local old = ctree.get_path_val(otree,path)
-	local new = ctree.get_path_val(ntree,path)
+function cb2_get_sys_key( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_get_sys_key" end
+	
 	local key = ctree.get_path_leaf(path)
-	local is_table = type(old)=="table" or type(new)=="table"
-
-	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new) then
-		if sys_conf[key]~=old then
-			dbg( "path=%s sys=%s old=%s new=%s", path, val2string(sys_conf[key]), val2string(old), val2string(new))
-			system.reboot()
-		end
-	elseif old ~= new then
-		assert(false, "ERR_SETUP...")
-	end
+	
+	ctree.set_path_val( otree, path, sys_conf[key] )
 end
 
-function cb2_set_sys_key_and_reboot_prepared( rules, sys_conf, otree, ntree, path )
+function set_sys_key_and_more( sys_conf, otree, ntree, path, sys_state, reboot )
 	if not rules then return "cb2_set_sys_key_and_reboot_prepared" end
 
 	local old = ctree.get_path_val(otree,path)
@@ -197,17 +187,39 @@ function cb2_set_sys_key_and_reboot_prepared( rules, sys_conf, otree, ntree, pat
 	local key = ctree.get_path_leaf(path)
 	local is_table = type(old)=="table" or type(new)=="table"
 
-	if old ~= new and not is_table and system.set_system_conf( sys_conf, key, new ) then
+	if new and old ~= new and not is_table and system.set_system_conf( sys_conf, key, new ) then
 		
 		if sys_conf[key]~=old then
 			dbg( "path=%s sys=%s old=%s new=%s", path, val2string(sys_conf[key]), val2string(old), val2string(new))
-			system.set_system_conf( sys_conf, "sys_state", "prepared" )
-			system.reboot()
+			if sys_state then
+				system.set_system_conf( sys_conf, "sys_state", sys_state )
+			end
+			if reboot then
+				system.reboot()
+			end
 		end
 		
-	elseif old ~= new then
+	elseif new and old ~= new then
 		assert(false, "ERR_SETUP...")
 	end
+end
+
+function cb2_set_sys_key( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_sys_key" end
+	
+	set_sys_key_and_more( sys_conf, otree, ntree, path, nil, nil )
+end
+
+function cb2_set_sys_key_and_reboot( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_sys_key_and_reboot" end
+	
+	set_sys_key_and_more( sys_conf, otree, ntree, path, nil, true )
+end
+
+function cb2_set_sys_key_and_reboot_prepared( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_set_sys_key_and_reboot_prepared" end
+	
+	set_sys_key_and_more( sys_conf, otree, ntree, path, "prepared", true )
 end
 
 function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
@@ -437,6 +449,10 @@ tmp_rules = in_rules2
 --	
 	table.insert(tmp_rules, {"/group",				crules.cb2_set})
 	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
+
+	table.insert(tmp_rules, {"/sliver_disk_dflt_mb",		cb2_set_sys_key})
+	table.insert(tmp_rules, {"/sliver_disk_max_mb",			cb2_set_sys_key})
+	
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
 	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})
@@ -448,6 +464,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
+	table.insert(tmp_rules, {"/sliver_disk_avail_mb",		cb2_get_sys_key})
 	
 
 
@@ -473,6 +490,10 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/sliver_pub_ipv6"})
 	table.insert(tmp_rules, {"/sliver_pub_ipv4"})
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_range"})
+
+	table.insert(tmp_rules, {"/sliver_disk_dflt_mb"})
+	table.insert(tmp_rules, {"/sliver_disk_max_mb"})
+	table.insert(tmp_rules, {"/sliver_disk_avail_mb"})
 
 	table.insert(tmp_rules, {"/mgmt_net"})
 	table.insert(tmp_rules, {"/mgmt_net/addr"})

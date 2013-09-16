@@ -1,0 +1,3 @@
+/etc/tinc/
+/etc/uhttpd.crt.pem
+/etc/uhttpd.key.pem

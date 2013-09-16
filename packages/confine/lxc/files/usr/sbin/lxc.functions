@@ -98,7 +98,7 @@ uci_get() {
     local RET_VALUE=$?
 
     [ $RET_VALUE = 0 ] || err $FUNCNAME "$@" $CMD_SOFT,$CMD_QUIET
-    echo "$VAR_VALUE"
+    echo -n "$VAR_VALUE"
     return $RET_VALUE
 }
 
@@ -408,8 +408,8 @@ install_url() {
 
 	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
             ( [ -d $INSTALL_PATH ] && \
-	    tar -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
-	    tar -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    tar --no-overwrite-dir -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    tar --no-overwrite-dir -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
 	    
 	    echo "nop" > /dev/null
 	    
