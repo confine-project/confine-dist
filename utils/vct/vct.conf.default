@@ -171,6 +171,14 @@ VCT_DEB_PACKAGES=" \
     virtinst \
     xmlstarlet \
     wget \
+    build-essential \
+    subversion \
+    ncurses-dev \
+    gawk \
+    unzip \
+    rsync \
+    gettext \
+    psmisc \
 "
 
 VCT_RPM_PACKAGES=" \

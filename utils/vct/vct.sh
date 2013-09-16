@@ -1569,6 +1569,55 @@ vct_node_unmount() {
 }
 
 
+vct_build_node_base_image() {
+    local CPUS="$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')"
+    local VCT_PATH="$(pwd)"
+    local CONFINE_PATH="$VCT_PATH/../.."
+    local IMAGE_NAME="vct-node-base-image-build.img.gz"
+    
+    cd $CONFINE_PATH &&\
+    make confclean &&\
+    make J=$CPUS &&\
+    ln -fs $CONFINE_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
+    echo &&\
+    echo "The new image is available via the controller portal at:" &&\
+    echo "administration->firmware->configuration->Image as:" &&\
+    echo "$IMAGE_NAME" || {
+	rm $VCT_DL_DIR/$IMAGE_NAME
+	echo
+	echo "Building new image failed!"
+	return 1
+    }
+}
+
+
+vct_build_sliver_exp_data() {
+    local VCT_PATH="$(pwd)"
+    local EXP_PATH=$1
+    local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
+    local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
+
+
+    [ -d experiments/$EXP_TAIL ] &&\
+    cd experiments/$EXP_TAIL &&\
+    tar --exclude=*~ --numeric-owner --group=root --owner=root -czvf $VCT_DL_DIR/$EXP_NAME * &&\
+    echo &&\
+    echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
+    echo "slices->[select slice]->exp_data as:" &&\
+    echo "$EXP_NAME" || {
+	rm $VCT_DL_DIR/$EXP_NAME
+	echo
+	echo "Building new slice/sliver exp-data failed!"
+	return 1
+    }
+
+}
+
+vct_build_sliver_template() {
+    echo "Sorry, not yet implemented"
+    return 1
+}
+
 
 vct_help() {
 
@@ -1577,50 +1626,45 @@ vct_help() {
 
     vct_help
 
-    vct_system_install [OVERRIDE_DIRECTIVES]              : install vct system requirements
-    vct_system_init                                       : initialize vct system on host
-    vct_system_cleanup [flush]                            : revert vct_system_init
-                                                            and optionally remove testbed data
-    vct_system_purge                                      : purge vct installation
+    vct_system_install [OVERRIDE_DIRECTIVES]    : install vct system requirements
+    vct_system_init                             : initialize vct system on host
+    vct_system_cleanup [flush]                  : revert vct_system_init
+                                                  and optionally remove testbed data
+    vct_system_purge                            : purge vct installation
 
 
     Node Management Functions
     -------------------------
 
-    vct_node_info      [NODE_SET]                         : summary of existing domain(s)
-    vct_node_create    <NODE_SET>                         : create domain with given NODE_ID
-    vct_node_start     <NODE_SET>                         : start domain with given NODE_ID
-    vct_node_stop      <NODE_SET>                         : stop domain with given NODE_ID
-    vct_node_remove    <NODE_SET>                         : remove domain with given NODE_ID
-    vct_node_console   <NODE_ID>                          : open console to running domain
+    vct_node_info      [NODE_SET]               : summary of existing domain(s)
+    vct_node_create    <NODE_SET>               : create domain with given NODE_ID
+    vct_node_start     <NODE_SET>               : start domain with given NODE_ID
+    vct_node_stop      <NODE_SET>               : stop domain with given NODE_ID
+    vct_node_remove    <NODE_SET>               : remove domain with given NODE_ID
+    vct_node_console   <NODE_ID>                : open console to running domain
 
-    vct_node_ssh       <NODE_SET> ["COMMANDS"]            : ssh connect via recovery IPv6
-    vct_node_scp       <NODE_SET> <SCP_ARGS>              : copy via recovery IPv6
+    vct_node_ssh       <NODE_SET> ["COMMANDS"]  : ssh connect via recovery IPv6
+    vct_node_scp       <NODE_SET> <SCP_ARGS>    : copy via recovery IPv6
     vct_node_mount     <NODE_SET>
     vct_node_unmount   <NODE_SET>
+
+    Build Functions
+    ---------------
+
+    vct_build_node_base_image                   : Build node image from scratch 
+    vct_build_sliver_exp_data <EXP_DIR>         : Build sliver exp_data from dir
 
 
     Argument Definitions
     --------------------
 
-    OVERRIDE_DIRECTIVES:= comma seperated list (NO spaces) of override directives: 
-                             override_node_template, override_server_template, override_keys
+    OVERRIDE_DIRECTIVES:= comma seperated list of directives:  node,server,keys
     NODE_ID:=             node id given by a 4-digit lower-case hex value (eg: 0a12)
-    NODE_SET:=            set of nodes given by: 'all', NODE_ID, or NODE_ID-NODE_ID (0001-0003)
+    NODE_SET:=            node set as: 'all', NODE_ID, NODE_ID-NODE_ID (0001-0003)
     COMMANDS:=            Commands to be executed on node
-    SCP_ARGS:=            MUST contain keyword='remote:' which is substituted by 'root@[IPv6]:'
-
--------------------------------------------------------------------------------------------
-
-    Future requests (commands not yet implemented)
-    ----------------------------------------------
-
-    vct_link_get [NODE_ID]                               : show configured links
-    vct_link_del [NODE_ID[:IF]] [NODE_ID[:IF]]           : del configured link(s)
-    vct_link_add <NODE_ID:IF> <NODE_ID:IF> [PACKET_LOSS] : add virtually link between
-                                                           given nodes and interfaces, eg:
-                                                           vct_link_add 0003:1 0005:1 10
-                                                           to setup link with 10% loss
+    SCP_ARGS:=            MUST include 'remote:' which is substituted by 'root@[IPv6]:'
+    EXP_DIR:=             a directoy name that must exist in utis/vct/experiments
+    OS_TYPE:=             either debian or openwrt
 
 EOF
 
@@ -1669,6 +1713,10 @@ else
 
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;
+
+        vct_build_node_base_image)  $CMD "$@";;
+        vct_build_sliver_exp_data)  $CMD "$@";;
+        vct_build_sliver_template)  $CMD "$@";;
 
 	*) vct_help;;
     esac
