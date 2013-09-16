@@ -1,6 +1,6 @@
 
 customize_rootfs() {
-    CT_NR=$1
+    CT_NR=$1    
 
 	local MY_NODE="$( uci_get confine.node.id )"
 	local TMP_SLICES="$( uci_get_sections confine-slivers sliver soft )"
@@ -14,12 +14,20 @@ customize_rootfs() {
 		fi
 	done
     
-	[ "$SL_ID" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES" 
+	[ "$SL_ID" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES"
+	
+	local BASE_PATH="$( readlink -f $LXC_IMAGES_PATH/$CT_NR )"
+	
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/hostname           | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/resolv.conf        | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh              | grep -e "^$BASE_PATH" >/dev/null || {
+		err $FUNCNAME "debian sliver=$SL_ID rootfs contains illegal links!"
+	}
+	
     
 	echo "${SL_ID}_${MY_NODE}" > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/hostname
-
-
-
+	
 	local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 	local TMP_KEY=
 	local PRIVATE_KEY=
@@ -47,8 +55,7 @@ customize_rootfs() {
 			break
 		fi
 	done
-
-
+	
 	cat <<EOF > $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
 
 auto lo
