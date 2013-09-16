@@ -218,10 +218,10 @@ function get_system_conf(sys_conf, arg)
 	local TEMPLATE_DIR_RD      = "/confine/templates/"
 	conf.sliver_template_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
 	
-	conf.sliver_disk_max_mb        = tonumber(uci.get("confine", "node", "sliver_disk_max_mb")      or DFLT_SLIVER_DISK_MAX_MB)
-	conf.sliver_disk_dflt_mb       = tonumber(uci.get("confine", "node", "sliver_disk_dflt_mb")     or DFLT_SLIVER_DISK_DFLT_MB)
-	conf.sliver_disk_reserved_mb   = tonumber(uci.get("confine", "node", "sliver_disk_reserved_mb") or DFLT_SLIVER_DISK_RESERVED_MB)
-	conf.sliver_disk_avail_mb      = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_exp_data_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.sliver_disk_reserved_mb
+	conf.disk_max_per_sliver   = tonumber(uci.get("confine", "node", "disk_max_per_sliver")  or DFLT_SLIVER_DISK_MAX_MB)
+	conf.disk_dflt_per_sliver  = tonumber(uci.get("confine", "node", "disk_dflt_per_sliver") or DFLT_SLIVER_DISK_DFLT_MB)
+	conf.disk_reserved         = tonumber(uci.get("confine", "node", "disk_reserved")        or DFLT_SLIVER_DISK_RESERVED_MB)
+	conf.disk_avail            = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_exp_data_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.disk_reserved
 	
 
 	data.file_put( conf, system_state_file )
@@ -298,7 +298,7 @@ function set_system_conf( sys_conf, opt, val, section)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "sliver_disk_max_mb" or opt == "sliver_disk_dflt_mb" and
+	elseif opt == "disk_max_per_sliver" or opt == "disk_dflt_per_sliver" and
 		type(val)=="number" and val <= 10000 and
 		uci.set("confine", "node", opt, val) then
 		
