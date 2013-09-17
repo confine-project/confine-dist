@@ -78,7 +78,7 @@ VCT_NODE_MAC_DB="$VCT_DIR/vct.nodes.local"
 #################################################
 
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.9.4' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_VERSION='0.9.5a5' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
@@ -171,6 +171,14 @@ VCT_DEB_PACKAGES=" \
     virtinst \
     xmlstarlet \
     wget \
+    build-essential \
+    subversion \
+    ncurses-dev \
+    gawk \
+    unzip \
+    rsync \
+    gettext \
+    psmisc \
 "
 
 VCT_RPM_PACKAGES=" \

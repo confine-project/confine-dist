@@ -22,6 +22,17 @@ customize_rootfs() {
 	[ "$SL_ID" ] || err $FUNCNAME "Can not find SLICE! TMP_SLICES=$TMP_SLICES"
 	
 	
+	local BASE_PATH="$( readlink -f $LXC_IMAGES_PATH/$CT_NR )"
+	
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/system                           | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/inittab                                 | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/network                          | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/uhttpd.orig                      | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config/uhttpd                           | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/dropbear/authorized_keys                | grep -e "^$BASE_PATH" >/dev/null &&\
+	readlink -f -m $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/000-backup-uci-defaults.sh | grep -e "^$BASE_PATH" >/dev/null || {
+		err $FUNCNAME "openwrt sliver=$SL_ID rootfs contains illegal links!"
+	}
     
 
 	#uci_set network.loopback.bla=blub path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config

@@ -143,8 +143,8 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.sliver_pub_ipv4,
 	node.sliver_pub_ipv4_range = get_lnode_sliver_pub_ipv4(sys_conf)
 	
-	node.sliver_disk_max_mb    = sys_conf.sliver_disk_max_mb
-	node.sliver_disk_dflt_mb   = sys_conf.sliver_disk_dflt_mb
+	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
+	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
 	
 	node.boot_sn               = sys_conf.boot_sn
 	node.set_state             = cached_node.set_state
@@ -450,8 +450,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/group",				crules.cb2_set})
 	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
 
-	table.insert(tmp_rules, {"/sliver_disk_dflt_mb",		cb2_set_sys_key})
-	table.insert(tmp_rules, {"/sliver_disk_max_mb",			cb2_set_sys_key})
+	table.insert(tmp_rules, {"/disk_dflt_per_sliver",		cb2_set_sys_key})
+	table.insert(tmp_rules, {"/disk_max_per_sliver",		cb2_set_sys_key})
 	
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
@@ -464,7 +464,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-	table.insert(tmp_rules, {"/sliver_disk_avail_mb",		cb2_get_sys_key})
+	table.insert(tmp_rules, {"/disk_avail",				cb2_get_sys_key})
 	
 
 
@@ -491,9 +491,9 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/sliver_pub_ipv4"})
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_range"})
 
-	table.insert(tmp_rules, {"/sliver_disk_dflt_mb"})
-	table.insert(tmp_rules, {"/sliver_disk_max_mb"})
-	table.insert(tmp_rules, {"/sliver_disk_avail_mb"})
+	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
+	table.insert(tmp_rules, {"/disk_max_per_sliver"})
+	table.insert(tmp_rules, {"/disk_avail"})
 
 	table.insert(tmp_rules, {"/mgmt_net"})
 	table.insert(tmp_rules, {"/mgmt_net/addr"})

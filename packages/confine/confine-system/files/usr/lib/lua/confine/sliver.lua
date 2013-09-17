@@ -238,19 +238,19 @@ function cb2_disk_mb ( rules, sys_conf, otree, ntree, path, begin, changed )
 	local oval = ctree.get_path_val(otree,path)
 	
 	if nval==nil or nval==null then
-		nval = ctree.get_path_val(ntree, (path:match("^/local_slivers/[^/]+/").."local_slice/disk_mb") )
+		nval = ctree.get_path_val(ntree, (path:match("^/local_slivers/[^/]+/").."local_slice/disk") )
 	end
 
 	if nval==nil or nval==null then
-		nval = sys_conf.sliver_disk_dflt_mb
+		nval = sys_conf.disk_dflt_per_sliver
 	end
 	
-	if type(nval)~="number" or nval < 1 or nval > sys_conf.sliver_disk_max_mb  then
+	if type(nval)~="number" or nval < 1 or nval > sys_conf.disk_max_per_sliver  then
 		
 		dbg( add_lslv_err( otree, path, "Invalid", nval) )
-		nval = sys_conf.sliver_disk_dflt_mb
+		nval = sys_conf.disk_dflt_per_sliver
 		
-	elseif (rules==alloc_rules or rules==deploy_rules) and nval >= sys_conf.sliver_disk_avail_mb then
+	elseif (rules==alloc_rules or rules==deploy_rules) and nval >= sys_conf.disk_avail then
 		
 		dbg( add_lslv_err( otree, path, "Exceeded available disk space for slivers", nval) )
 	end
@@ -517,7 +517,7 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
 	
-	table.insert(tmp_rules, {"/local_slivers/*/disk_mb",				cb2_disk_mb})
+	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
@@ -555,7 +555,7 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
-	table.insert(tmp_rules, {"/local_slivers/*/disk_mb",				cb2_disk_mb})
+	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
@@ -576,7 +576,7 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/disk_mb",				cb2_disk_mb})
+	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
 
 
 tmp_rules = undeploy_rules
@@ -654,7 +654,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			
 			slv.nr = tonumber(sv.sliver_nr, 16)
 			slv.instance_sn = tonumber(sv.api_instance_sn)
-			slv.disk_mb = tonumber(sv.disk_mb) or sys_conf.sliver_disk_dflt_mb
+			slv.disk = tonumber(sv.disk_mb) or sys_conf.disk_dflt_per_sliver
 			
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name
@@ -820,7 +820,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option fs_template_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_template.image_sha256..".tgz"}
 		sliver_desc = sliver_desc.."	option fs_template_type '%s'\n" %{api_slv.local_template.type}
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
-		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{tools.min(api_slv.disk_mb or api_slv.local_slice.disk_mb or sys_conf.sliver_disk_dflt_mb, sys_conf.sliver_disk_max_mb)}
+		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{tools.min(api_slv.disk or api_slv.local_slice.disk or sys_conf.disk_dflt_per_sliver, sys_conf.disk_max_per_sliver)}
 		
 		if api_slv.exp_data_sha256~=null then
 			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_exp_data_dir,api_slv.exp_data_sha256..".tgz"}
@@ -1173,7 +1173,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/properties/*", "iterate"})
 	table.insert(tmp_rules, {"/*/properties/*/*"})
 	table.insert(tmp_rules, {"/*/instance_sn"})
-	table.insert(tmp_rules, {"/*/disk_mb"})
+	table.insert(tmp_rules, {"/*/disk"})
 	table.insert(tmp_rules, {"/*/template"})
 	table.insert(tmp_rules, {"/*/template/uri"})
 	table.insert(tmp_rules, {"/*/exp_data_uri"})

@@ -59,13 +59,7 @@ else
 fi
 
 RAM_ROOT=/tmp/root
-DEVICE=${2:-"/dev/sda"}
-
-if [ -b ${DEVICE}4 ] && [ $IGNORE_FSTAB -eq 0 ] && [ ! grep -qs '/overlay ' /proc/mounts ]
-then
-    echo "WARNING: ${DEVICE}4 exists, but is not mounted."
-    echo "Either mount /overlay or specify -n to overwrite the partition table."
-fi
+DEVICE=${2:-/dev/sda}
 
 ldd() { LD_TRACE_LOADED_OBJECTS=1 $*; }
 libs() { ldd $* | awk '{print $3}'; }
@@ -101,9 +95,9 @@ install_bin() { # <file> [ <symlink> ... ]
 pivot() { # <new_root> <old_root>
     mount | grep "on $1 type" 2>&- 1>&- || mount -o bind $1 $1
     mkdir -p $1$2 $1/proc $1/sys $1/dev $1/tmp && \
-    mount -o move /proc $1/proc && \
+    mount -o bind /proc $1/proc && \
     pivot_root $1 $1$2 || {
-        umount $1 $1
+        echo "Failed to do pivot_root $1 $1$2"
         return 1
     }
 
@@ -137,7 +131,7 @@ run_ramfs() { # <command> [...]
 }
 
 kill_remaining() { # [ <signal> ]
-    local sig="${1:-"TERM"}"
+    local sig="${1:-TERM}"
     local stat
     for stat in /proc/[0-9]*/stat; do
         [ -f "$stat" ] || continue
@@ -209,7 +203,7 @@ dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 sync
-sleep 2
+sleep 5
 
 mkdir /part
 mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -222,15 +216,12 @@ sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
 else
     if [ $SAVE_CONFIG -ne 0 ]; then
-
-        # Read files to save and do a tgz archive
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
-
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 2
+sleep 5
 
 mkdir /part
 mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -244,7 +235,7 @@ echo b 2>/dev/null >/proc/sysrq-trigger"
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 2
+sleep 5
 
 reboot -f
 sleep 5
