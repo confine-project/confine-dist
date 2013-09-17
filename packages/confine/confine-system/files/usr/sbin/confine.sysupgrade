@@ -191,6 +191,13 @@ grep /home /proc/mounts > /dev/null && {
 
 if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     cp /etc/config/fstab /tmp/fstab
+
+    # Read files to save and touch them to place them in the overlay
+    add_conffiles "$CONFFILES"
+    for d in $CONFFILES; do
+        find $d -type f -exec touch {} \;
+    done
+
     run_ramfs "set -x
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
