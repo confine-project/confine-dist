@@ -1155,7 +1155,9 @@ function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
 	otree.slivers = {}
 	local i,v
 	for i,v in pairs(otree.local_slivers) do
-		otree.slivers[v.uri_id]=v
+		if v.uri_id then
+			otree.slivers[v.uri_id]=v
+		end
 	end
 end
 
