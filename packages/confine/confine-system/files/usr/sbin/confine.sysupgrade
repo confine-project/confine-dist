@@ -95,9 +95,9 @@ install_bin() { # <file> [ <symlink> ... ]
 pivot() { # <new_root> <old_root>
     mount | grep "on $1 type" 2>&- 1>&- || mount -o bind $1 $1
     mkdir -p $1$2 $1/proc $1/sys $1/dev $1/tmp && \
-    mount -o move /proc $1/proc && \
+    mount -o bind /proc $1/proc && \
     pivot_root $1 $1$2 || {
-        umount $1 $1
+        echo "Failed to do pivot_root $1 $1$2"
         return 1
     }
 
@@ -203,7 +203,7 @@ dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 sync
-sleep 2
+sleep 5
 
 mkdir /part
 mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -221,7 +221,7 @@ else
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 2
+sleep 5
 
 mkdir /part
 mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -235,7 +235,7 @@ echo b 2>/dev/null >/proc/sysrq-trigger"
         run_ramfs "set -x
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 2
+sleep 5
 
 reboot -f
 sleep 5
