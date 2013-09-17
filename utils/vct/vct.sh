@@ -71,10 +71,12 @@ vct_true() {
     "$@"
 }
 
+
 # Same as `vct_true()`, run command in shell.
 vct_true_sh() {
     vct_true sh -c "$@"
 }
+
 
 # In dry run mode print command to stderr and exit successfully.
 # Otherwise run argument(s) as a command and return result.
@@ -83,14 +85,15 @@ vct_do() {
 	echo ">>>>   $@   <<<<" >&2
 	return 0
     fi
-
     "$@"
 }
+
 
 # Same as `vct_do()`, run command in shell.
 vct_do_sh() {
     vct_do sh -c "$@"
 }
+
 
 # Same as `vct_do()`, run command with `sudo`.
 vct_sudo() {
@@ -125,6 +128,7 @@ vct_sudo() {
     return $?
 }
 
+
 vct_sudo_sh() {
     if [ "${VCT_DRY_RUN:-}" ]; then
 	vct_do sudo sh -c "$@"
@@ -157,6 +161,7 @@ vct_sudo_sh() {
     return $?
 }
 
+
 vct_do_ping() {
 	if echo $1 | grep -e ":" >/dev/null; then
 		PING="ping6 -c 1 -w 1 -W 1"
@@ -174,7 +179,6 @@ vct_do_ping() {
 ##########################################################################
 
 vct_system_config_check() {
-
     variable_check VCT_SUDO_ASK        quiet
     variable_check VCT_VIRT_DIR        quiet
     variable_check VCT_SYS_DIR         quiet
@@ -245,10 +249,7 @@ vct_system_config_check() {
 }
 
 
-
-
 vct_tinc_setup() {
-
     vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
     vct_do mkdir -p $VCT_TINC_DIR/$VCT_TINC_NET/hosts
 
@@ -259,14 +260,12 @@ Name = server
 StrictSubnets = yes
 EOF
 "
-
     vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server
 Address = $VCT_SERVER_TINC_IP
 Port = $VCT_SERVER_TINC_PORT
 Subnet = $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/128
 EOF
 "
-    
     #vct_do tincd -c $VCT_TINC_DIR/$VCT_TINC_NET  -K
     vct_do_sh "cat $VCT_KEYS_DIR/tinc/rsa_key.pub >> $VCT_TINC_DIR/$VCT_TINC_NET/hosts/server"
     vct_do ln -s $VCT_KEYS_DIR/tinc/rsa_key.priv $VCT_TINC_DIR/$VCT_TINC_NET/rsa_key.priv
@@ -277,7 +276,6 @@ ip -6 link set \\\$INTERFACE up mtu 1400
 ip -6 addr add $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
 EOF
 "
-
     vct_do_sh "cat <<EOF > $VCT_TINC_DIR/$VCT_TINC_NET/tinc-down
 #!/bin/sh
 ip -6 addr del $VCT_TESTBED_MGMT_IPV6_PREFIX48:0:0:0:0:2/48 dev \\\$INTERFACE
@@ -288,14 +286,14 @@ EOF
     
 }
 
+
 vct_tinc_start() {
     echo "$FUNCNAME $@" >&2
-
     vct_sudo $VCT_TINC_START
 }
 
-vct_tinc_stop() {
 
+vct_tinc_stop() {
     echo "$FUNCNAME $@" >&2
 
     local TINC_PID=$( [ -f $VCT_TINC_PID ] && cat $VCT_TINC_PID )
@@ -321,6 +319,7 @@ vct_tinc_stop() {
     fi
 }
 
+
 type_of_system() {
     if [ -f /etc/fedora-release ]; then
         echo "fedora"
@@ -328,6 +327,7 @@ type_of_system() {
         echo "debian"
     fi
 }
+
 
 is_rpm() {
     local tos=$(type_of_system)
@@ -337,6 +337,7 @@ is_rpm() {
     esac
 }
 
+
 is_deb() {
     local tos=$(type_of_system)
     case $tos in
@@ -344,6 +345,7 @@ is_deb() {
         *) false ;;
     esac
 }
+
 
 check_deb() {
     # check debian system, packages, tools, and kernel modules
@@ -386,6 +388,7 @@ check_deb() {
     fi
 }
 
+
 check_rpm() {
     touch .rpm-installed.cache
     for PKG in $VCT_RPM_PACKAGES; do
@@ -405,7 +408,6 @@ check_rpm() {
         fi
     done
 }
-
 
 
 vct_system_install_server() {
@@ -434,11 +436,8 @@ vct_system_install_server() {
     
     cd -
     
-    # We need to be sure that postgres is up and has a database controller and user confine:
+    # We need to be sure that postgres is up:
     vct_sudo service postgresql start
-    sudo su postgres -c "psql -c \"CREATE USER confine PASSWORD 'confine';\""
-    sudo su postgres -c "psql -c \"CREATE DATABASE controller OWNER confine;\""
-    # because this command fails if db controller does not exits !
     vct_sudo python "$VCT_DIR/server/manage.py" setuppostgres --db_name controller --db_user confine --db_password confine
     
     if [[ $CURRENT_VERSION != false ]]; then
@@ -450,10 +449,10 @@ vct_system_install_server() {
     fi
     
     vct_sudo python "$VCT_DIR/server/manage.py" setupceleryd --username $VCT_USER --processes 2 --greenlets 50
-
+    
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
-	vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
-	vct_sudo rm /etc/apache/sites-enabled/*
+        vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
+        vct_sudo rm /etc/apache/sites-enabled/*
     fi
     
     vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --address="${VCT_SERVER_TINC_IP}"
@@ -472,7 +471,8 @@ vct_system_install_server() {
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" syncfirmwareplugins
     
-    vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc
+    vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc --no-celeryd --no-celerybeat --no-apache2
+    vct_sudo python "$VCT_DIR/server/manage.py" restartservices
     vct_sudo $VCT_TINC_START
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
@@ -509,13 +509,14 @@ vct_system_install_server() {
     # Load further data into the database
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
-    vct_sudo python "$VCT_DIR/server/manage.py" restartservices
 }
+
 
 vct_system_purge_server() {
 	vct_sudo python "$VCT_DIR/server/manage.py" stopservices --no-postgresql  || true
 	ps aux | grep ^postgres > /dev/null || vct_sudo /etc/init.d/postgresql start # || true
 	sudo su postgres -c 'psql -c "DROP DATABASE controller;"'  # || true
+	vct_sudo pip uninstall confine-controller -y
 	#grep "^confine" /etc/passwd > /dev/null && vct_sudo deluser --force --remove-home confine  || true
 	#grep "^confine" /etc/group  > /dev/null && vct_sudo delgroup confine  || true
 	if [ -d $VCT_SERVER_DIR ]; then
@@ -525,7 +526,6 @@ vct_system_purge_server() {
 
 
 vct_system_install_check() {
-
     #echo $FUNCNAME $@ >&2
 
     local OPT_CMD=${1:-}
@@ -579,8 +579,6 @@ vct_system_install_check() {
 	    fi
     fi
 
-
-
     if ! vct_true uci help 2>/dev/null; then
 
 	cat <<EOF >&2
@@ -610,10 +608,7 @@ EOF
         fi
     fi
 
-
-
     # check ssh and tinc keys:
-
     if ! [ -d $VCT_KEYS_DIR ] && [ $CMD_INSTALL ] ; then 
 
 	echo "Copying $VCT_DIR/vct-default-keys to $VCT_KEYS_DIR. " >&2
@@ -666,10 +661,7 @@ EOF
 	{ err $FUNCNAME "$VCT_KEYS_DIR/id_rsa not existing" $CMD_SOFT || return 1 ;}
 
 
-
-
     # check tinc configuration:
-
     [ -d $VCT_TINC_DIR ] && [ $CMD_INSTALL ] && [ $UPD_TINC ] && vct_do rm -rf $VCT_TINC_DIR/$VCT_TINC_NET
 
     if ! [ -d $VCT_TINC_DIR/$VCT_TINC_NET ] &&  [ $CMD_INSTALL ] ; then
@@ -748,19 +740,15 @@ EOF
     if ! [ -d $VCT_SERVER_DIR ]; then
        err $FUNCNAME "Missing controller installation at $VCT_SERVER_DIR"
     fi
-
-
 }
+
 
 vct_system_install() {
     vct_system_install_check "install,$@"
 }
 
 
-
-
 vct_system_init_check(){
-
     local OPT_CMD=${1:-}
     local CMD_SOFT=$(  echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
     local CMD_QUICK=$( echo "$OPT_CMD" | grep -e "quick" > /dev/null && echo "quick," )
@@ -778,11 +766,9 @@ vct_system_init_check(){
 	fi
     done
 
-
     # check if libvirtd is running:
     ! virsh --connect qemu:///system list --all > /dev/null &&\
 	{ err $FUNCNAME "libvirt-bin service not running! " $CMD_SOFT || return 1 ;}
-
 
     # check if bridges are initialized:
     local BRIDGE=
@@ -804,7 +790,6 @@ vct_system_init_check(){
 		    vct_sudo ip link add $BR_DUMMY_DEV type dummy || \
 			{ err $FUNCNAME "Failed adding $BR_DUMMY_DEV" $CMD_SOFT || return 1 ;}
 		fi
-
 
 		if ! brctl show | grep $BR_NAME | grep $BR_DUMMY_DEV >/dev/null; then
 		    ( [ $CMD_INIT ] && \
@@ -917,15 +902,11 @@ EOF
 #		fi
 #	    fi
 
-
-
             # check if bridge is UP:
 	    if ! ip link show dev $BR_NAME | grep ",UP" >/dev/null; then
 		    ( [ $CMD_INIT ] && vct_sudo ip link set dev  $BR_NAME up ) ||\
                 	{ err $FUNCNAME "disabled link $BR_NAME" $CMD_SOFT || return 1 ;}
 	    fi
-
-  
 
 	fi
     done
@@ -933,7 +914,7 @@ EOF
     # check if controller system and management network is running:
     [ $CMD_INIT ] && vct_tinc_stop
     [ $CMD_INIT ] && vct_sudo service postgresql start
-    [ $CMD_INIT ] && vct_sudo python "$VCT_DIR/server/manage.py" restartservices
+    [ $CMD_INIT ] && vct_sudo python "$VCT_DIR/server/manage.py" startservices
     [ $CMD_INIT ] && vct_sudo $VCT_TINC_START
 }
 
@@ -944,7 +925,6 @@ vct_system_init() {
 
 
 vct_system_cleanup() {
-
     local FLUSH_ARG="${1:-}"
 
     case $FLUSH_ARG in
@@ -1042,7 +1022,6 @@ vct_system_purge() {
 
 
 vcrd_ids_get() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID_STATE=${2:-}
     local VCRD_ID=
@@ -1067,6 +1046,7 @@ vcrd_ids_get() {
     fi
 }
 
+
 vct_node_get_ip_from_db() {
 	local VCRD_ID=$1
 	local IP=
@@ -1078,6 +1058,7 @@ vct_node_get_ip_from_db() {
 	}
 	echo "$IP"
 }
+
 
 vct_node_get_mac() {
     local VCRD_ID=$1
@@ -1115,8 +1096,8 @@ vct_node_get_mac() {
     echo $MAC
 }
 
-vct_node_info() {
 
+vct_node_info() {
     local VCRD_ID_RANGE=${1:-}
 
     # virsh --connect qemu:///system list --all
@@ -1149,7 +1130,6 @@ vct_node_info() {
 
 
 vct_node_stop() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1169,7 +1149,6 @@ vct_node_stop() {
 
 
 vct_node_remove() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1213,7 +1192,6 @@ vct_node_remove() {
 
 
 vct_node_create() {
-
     vct_system_init_check quick
 
     local VCRD_ID_RANGE=$1
@@ -1274,8 +1252,6 @@ vct_node_create() {
             fi
         fi
 
-
-
 	local VCRD_NETW=""
 	local BRIDGE=
 	for BRIDGE in $VCT_BRIDGE_PREFIXES; do
@@ -1314,7 +1290,6 @@ vct_node_create() {
 	# fi
 	done
 
-
 	local TEMPLATE_TYPE=$( [ "$VCT_NODE_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_NODE_TEMPLATE_TYPE" )
 	local VIRT_CMD="\
     virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --os-type linux \
@@ -1337,7 +1312,6 @@ vct_node_create() {
 
 
 vct_node_start() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1364,7 +1338,6 @@ vct_node_start() {
 
 
 vct_node_console() {
-
     local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
     local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
@@ -1387,10 +1360,7 @@ vct_node_console() {
 }
 
 
-
 vct_node_ssh() {
-
-
     local VCRD_ID_RANGE=$1
     local COMMAND=${2:-}
     local VCRD_ID=
@@ -1440,8 +1410,8 @@ vct_node_ssh() {
     done
 }
 
-vct_node_scp() {
 
+vct_node_scp() {
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1479,7 +1449,6 @@ vct_node_scp() {
 	# [ "$COUNT" = 0 ] || echo >&2
 	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IP"
 
-
 	COUNT=0
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
@@ -1508,7 +1477,6 @@ vct_node_scp() {
 
 
 vct_node_mount() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1549,7 +1517,6 @@ vct_node_mount() {
 
 
 vct_node_unmount() {
-
     local VCRD_ID_RANGE=$1
     local VCRD_ID=
 
@@ -1597,7 +1564,6 @@ vct_build_sliver_exp_data() {
     local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
     local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
 
-
     [ -d experiments/$EXP_TAIL ] &&\
     cd experiments/$EXP_TAIL &&\
     tar --exclude=*~ --numeric-owner --group=root --owner=root -czvf $VCT_DL_DIR/$EXP_NAME * &&\
@@ -1620,7 +1586,6 @@ vct_build_sliver_template() {
 
 
 vct_help() {
-
     echo "usage..."
     cat <<EOF
 
@@ -1667,7 +1632,6 @@ vct_help() {
     OS_TYPE:=             either debian or openwrt
 
 EOF
-
 }
 
 
@@ -1677,8 +1641,6 @@ vct_system_config_check
 if [ $(whoami) != $VCT_USER ] || [ $(whoami) = root ] ;then
     err $0 "command must be executed as non-root user=$VCT_USER"  || return 1
 fi
-
-
 
 CMD=$( echo $0 | awk -F'/' '{print $(NF)}' )
 
