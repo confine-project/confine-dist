@@ -1559,14 +1559,12 @@ vct_build_node_base_image() {
 
 
 vct_build_sliver_exp_data() {
-    local VCT_PATH="$(pwd)"
     local EXP_PATH=$1
     local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
     local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
 
-    [ -d experiments/$EXP_TAIL ] &&\
-    cd experiments/$EXP_TAIL &&\
-    tar --exclude=*~ --numeric-owner --group=root --owner=root -czvf $VCT_DL_DIR/$EXP_NAME * &&\
+    [ -d $EXP_PATH ] &&\
+    tar -czvf $VCT_DL_DIR/$EXP_NAME  --exclude=*~ --numeric-owner --group=root --owner=root -C $EXP_PATH . &&\
     echo &&\
     echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
     echo "slices->[select slice]->exp_data as:" &&\
@@ -1580,7 +1578,39 @@ vct_build_sliver_exp_data() {
 }
 
 vct_build_sliver_template() {
-    echo "Sorry, not yet implemented"
+    local OS_TYPE=$1
+
+    mkdir -p $VCT_VIRT_DIR/sliver-templates
+
+    if echo $OS_TYPE | grep "debian" >/dev/null; then
+
+	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/debian
+	local TMPL_NAME=vct-sliver-template-build-debian.tgz
+	mkdir -p $TMPL_DIR
+	vct_sudo rm -rf $TMPL_DIR
+	vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
+	vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
+	vct_sudo rm $TMPL_DIR/rootfs/dev/shm
+	vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+
+	vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
+confine
+confine
+EOF
+
+	vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME --numeric-owner --directory=$TMPL_DIR/rootfs .
+	
+
+
+    elif echo $OS_TYPE | grep "openwrt" >/dev/null; then
+
+	echo "Sorry, not yet implemented"
+
+    fi
     return 1
 }
 

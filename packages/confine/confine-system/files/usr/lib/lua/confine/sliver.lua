@@ -94,7 +94,7 @@ local function add_lslv_err( tree, path, msg, val )
 	oslv.errors = oslv.errors or {}
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
-	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key)
+	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key.."/")
 	
 	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..cdata.val2string(val) })
 	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), cdata.val2string(val)
@@ -1155,7 +1155,9 @@ function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
 	otree.slivers = {}
 	local i,v
 	for i,v in pairs(otree.local_slivers) do
-		otree.slivers[v.uri_id]=v
+		if v.uri_id then
+			otree.slivers[v.uri_id]=v
+		end
 	end
 end
 
