@@ -1580,7 +1580,37 @@ vct_build_sliver_exp_data() {
 vct_build_sliver_template() {
     local OS_TYPE=$1
 
-    echo "Sorry, not yet implemented"
+    mkdir -p $VCT_VIRT_DIR/sliver-templates
+
+    if echo $OS_TYPE | grep "debian" >/dev/null; then
+
+	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/debian
+	local TMPL_NAME=vct-sliver-template-build-debian.tgz
+	mkdir -p $TMPL_DIR
+	vct_sudo rm -rf $TMPL_DIR
+	vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
+	vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
+	vct_sudo rm $TMPL_DIR/rootfs/dev/shm
+	vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
+	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+
+	vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
+confine
+confine
+EOF
+
+	vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME --numeric-owner --directory=$TMPL_DIR/rootfs .
+	
+
+
+    elif echo $OS_TYPE | grep "openwrt" >/dev/null; then
+
+	echo "Sorry, not yet implemented"
+
+    fi
     return 1
 }
 

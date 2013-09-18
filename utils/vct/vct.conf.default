@@ -179,6 +179,7 @@ VCT_DEB_PACKAGES=" \
     rsync \
     gettext \
     psmisc \
+    debootstrap \
 "
 
 VCT_RPM_PACKAGES=" \
@@ -235,3 +236,36 @@ VCT_OPT_PACKAGES=" \
 VCT_OPT_TOOL_TESTS=( \
     'arping -V' \
     )
+
+
+VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES="\
+ifupdown,\
+locales,\
+libui-dialog-perl,\
+dialog,\
+udhcpd,\
+netbase,\
+net-tools,\
+iproute,\
+\
+gettext,\
+psmisc,\
+gawk,\
+unzip,\
+rsync,\
+wget,\
+subversion,\
+openssh-server,\
+openssh-client,\
+screen,\
+tinc,\
+openvpn,\
+bridge-utils,\
+vlan,\
+ebtables,\
+ipcalc,\
+iproute,\
+iptables,\
+ipv6calc,\
+iputils-ping\
+"
