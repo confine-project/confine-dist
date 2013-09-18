@@ -746,10 +746,10 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 		
 		if next_state then
 			dbg("only uci_sliver=%s" %tostring(slv_key))
-			local k,v
-			for k,v in pairs(otree.local_slivers[slv_key]) do
-				otree.local_slivers[slv_key][k] = nil
-			end
+			--local k,v
+			--for k,v in pairs(otree.local_slivers[slv_key]) do
+			--	otree.local_slivers[slv_key][k] = nil
+			--end
 			otree.local_slivers[slv_key].state = next_state
 		else
 			dbg("sliver=%s" %tostring(slv_key))
