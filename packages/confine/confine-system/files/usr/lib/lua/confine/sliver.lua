@@ -43,6 +43,7 @@ SLIVER_TYPES = {
 	["debian"] = "^debian$",
 	["debian6"] = "^debian6$",
 	["debian7"] = "^debian7$",
+	["openwrt"] = "^openwrt$",
 	["openwrt-backfire"] = "^openwrt%-backfire$",
 	["openwrt-attitude-adjustment"] = "^openwrt%-attitude%-adjustment$"
 }
@@ -51,6 +52,7 @@ SLIVER_AUTH_FILES = {
 	["debian"] = "/rootfs/root/.ssh/authorized_keys",
 	["debian6"] = "/rootfs/root/.ssh/authorized_keys",
 	["debian7"] = "/rootfs/root/.ssh/authorized_keys",
+	["openwrt"] = "/rootfs/etc/dropbear/authorized_keys",
 	["openwrt-backfire"] = "/rootfs/etc/dropbear/authorized_keys",
 	["openwrt-attitude-adjustment"] = "/rootfs/etc/dropbear/authorized_keys"
 }
