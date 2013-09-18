@@ -94,9 +94,13 @@ local function add_lslv_err( tree, path, msg, val )
 	oslv.errors = oslv.errors or {}
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
-	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key.."/")
+	local member = path
+	member = member:gsub("/local_slivers/","/slivers/")
+	member = member:gsub("/local_slice/","/slice/")
+	member = member:gsub("/local_template/","/template/")
+	member = member:gsub("/local_group/","/group/")
 	
-	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..cdata.val2string(val) })
+	table.insert(oslv.errors, { member=member, message=tostring(msg).." value="..cdata.val2string(val) })
 	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), cdata.val2string(val)
 end
 
