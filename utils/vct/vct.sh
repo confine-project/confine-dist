@@ -1559,14 +1559,12 @@ vct_build_node_base_image() {
 
 
 vct_build_sliver_exp_data() {
-    local VCT_PATH="$(pwd)"
     local EXP_PATH=$1
     local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
     local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
 
-    [ -d experiments/$EXP_TAIL ] &&\
-    cd experiments/$EXP_TAIL &&\
-    tar --exclude=*~ --numeric-owner --group=root --owner=root -czvf $VCT_DL_DIR/$EXP_NAME * &&\
+    [ -d $EXP_PATH ] &&\
+    tar -czvf $VCT_DL_DIR/$EXP_NAME  --exclude=*~ --numeric-owner --group=root --owner=root -C $EXP_PATH . &&\
     echo &&\
     echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
     echo "slices->[select slice]->exp_data as:" &&\
@@ -1580,6 +1578,8 @@ vct_build_sliver_exp_data() {
 }
 
 vct_build_sliver_template() {
+    local OS_TYPE=$1
+
     echo "Sorry, not yet implemented"
     return 1
 }
