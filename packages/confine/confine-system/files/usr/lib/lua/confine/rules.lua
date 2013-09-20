@@ -26,7 +26,7 @@ function add_error( tree, path, msg, val )
 	return "Error path=%s value=%s msg=%s" , path, tostring(msg), data.val2string(val)
 end
 
-function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
+function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set, description )
 	
 	local val = ctree.get_path_val( ntree, path )
 	local success = false
@@ -53,7 +53,22 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set )
 		end
 		return val
 	else
-		dbg( err_func( otree, path, "Invalid", val) )
+		if not description and patterns then
+			description = "Invalid, must be one of:"
+			local i,v
+			for i,v in pairs(patterns) do
+				if type(i)=="string" then
+					description = description .. " " .. i
+				end
+			end
+			description = description .. " !"
+			
+		elseif not description then
+			description = "Invalid"
+		end
+	
+
+		dbg( err_func( otree, path, description, val) )
 	end
 end
 
