@@ -40,13 +40,19 @@ SERVER = {
 }
 
 SLIVER_TYPES = {
+	["debian"] = "^debian$",
 	["debian6"] = "^debian6$",
+	["debian7"] = "^debian7$",
+	["openwrt"] = "^openwrt$",
 	["openwrt-backfire"] = "^openwrt%-backfire$",
 	["openwrt-attitude-adjustment"] = "^openwrt%-attitude%-adjustment$"
 }
 
 SLIVER_AUTH_FILES = {
+	["debian"] = "/rootfs/root/.ssh/authorized_keys",
 	["debian6"] = "/rootfs/root/.ssh/authorized_keys",
+	["debian7"] = "/rootfs/root/.ssh/authorized_keys",
+	["openwrt"] = "/rootfs/etc/dropbear/authorized_keys",
 	["openwrt-backfire"] = "/rootfs/etc/dropbear/authorized_keys",
 	["openwrt-attitude-adjustment"] = "/rootfs/etc/dropbear/authorized_keys"
 }
@@ -94,9 +100,13 @@ local function add_lslv_err( tree, path, msg, val )
 	oslv.errors = oslv.errors or {}
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
-	local sub_path = path:gsub("^/local_slivers/"..slv_key.."/","/slivers/"..slv_key.."/")
+	local member = path
+	member = member:gsub("/local_slivers/","/slivers/")
+	member = member:gsub("/local_slice/","/slice/")
+	member = member:gsub("/local_template/","/template/")
+	member = member:gsub("/local_group/","/group/")
 	
-	table.insert(oslv.errors, { member=sub_path, message=tostring(msg).." value="..cdata.val2string(val) })
+	table.insert(oslv.errors, { member=member, message=tostring(msg).." value="..cdata.val2string(val) })
 	return "Error path=%s msg=%s val=%s" ,path, tostring(msg), cdata.val2string(val)
 end
 
@@ -746,10 +756,10 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 		
 		if next_state then
 			dbg("only uci_sliver=%s" %tostring(slv_key))
-			local k,v
-			for k,v in pairs(otree.local_slivers[slv_key]) do
-				otree.local_slivers[slv_key][k] = nil
-			end
+			--local k,v
+			--for k,v in pairs(otree.local_slivers[slv_key]) do
+			--	otree.local_slivers[slv_key][k] = nil
+			--end
 			otree.local_slivers[slv_key].state = next_state
 		else
 			dbg("sliver=%s" %tostring(slv_key))
