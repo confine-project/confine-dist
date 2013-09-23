@@ -154,6 +154,7 @@ VCT_INTERFACE_MODEL="e1000"
 VCT_INTERFACE_MAC24="52:54:00"    # leave untouched for qemu/kvm 
 
 VCT_DEB_PACKAGES=" \
+    coreutils \
     bridge-utils \
     ebtables \
     ipcalc \
@@ -250,22 +251,34 @@ iproute,\
 \
 gettext,\
 psmisc,\
+less,\
+nano,\
 gawk,\
 unzip,\
 rsync,\
 wget,\
 subversion,\
+screen,\
+curl,\
+iperf,\
+vim-tiny,\
+w3m,\
+man-db,\
+\
+tcpdump,\
+tshark,\
+openssl,\
 openssh-server,\
 openssh-client,\
-screen,\
 tinc,\
 openvpn,\
 bridge-utils,\
 vlan,\
 ebtables,\
 ipcalc,\
-iproute,\
 iptables,\
 ipv6calc,\
-iputils-ping\
+traceroute,\
+iputils-ping,\
+iputils-arping\
 "
