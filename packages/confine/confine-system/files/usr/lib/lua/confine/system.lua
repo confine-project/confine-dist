@@ -173,7 +173,7 @@ function get_system_conf(sys_conf, arg)
 --	conf.server_base_uri       = "https://controller.confine-project.eu/api"
 	conf.server_base_path      = conf.server_base_path or flags["server-base-path"] or uci.get("confine", "server", "base_path") or SERVER_BASE_PATH
 	assert(conf.server_base_path:match("/api$"), "server-base-path MUST end with /api")
-	conf.server_base_uri       = lsys.getenv("SERVER_URI") or "http://["..conf.mgmt_ipv6_prefix48.."::2]"..conf.server_base_path
+	conf.server_base_uri       = lsys.getenv("SERVER_URI") or "https://["..conf.mgmt_ipv6_prefix48.."::2]"..conf.server_base_path
 	
 	conf.local_iface           = uci.get("confine", "node", "local_ifname")
 	
