@@ -12,7 +12,7 @@ $ find /usr/local/lib/python2.6/dist-packages/controller/ -iname '*settings.py'|
 
 from django.core.files.storage import FileSystemStorage
 
-from controller.utils import add_app, remove_app
+from controller.utils.apps import add_app, remove_app
 from vct.utils import get_vct_config
 # Production settings
 #from controller.conf.production_settings import *
@@ -116,10 +116,7 @@ SLICES_SLIVER_OVERLAY_NAME = None
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
 
 # State
-STATE_NODE_SCHEDULE = 10
-STATE_NODE_EXPIRE_WINDOW = 150
-STATE_SLIVER_SCHEDULE = 10
-STATE_SLIVER_EXPIRE_WINDOW = 150
+STATE_SCHEDULE = 10
 
 # Public Key Infrastructure
 PKI_CA_PRIV_KEY_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/key.priv')
