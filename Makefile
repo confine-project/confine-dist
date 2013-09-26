@@ -83,6 +83,27 @@ define create_configs
 		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
 		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
 		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) )
+	@( ! [ "static binaries for confine slivers" ] && \
+		echo "CONFIG_BUILD_STATIC_TOOLS=y"                                  >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_STATIC=y"                               >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_SH_STANDALONE=y"                >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_ASH is not set"                       >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_SH_IS_ASH is not set"         >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_SH_IS_NONE=y"                   >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_ARP=y"                                  >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_IP=y"                                   >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IP_ADDRESS=y"                   >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IP_LINK=y"                      >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IP_ROUTE=y"                     >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_IP_TUNNEL is not set"         >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_IP_RULE is not set"           >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_IP_SHORT_FORMS is not set"    >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_IP_RARE_PROTOCOLS is not set" >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_IPCALC=y"                               >> $(CONFIG) && \
+		echo "# CONFIG_BUSYBOX_CONFIG_FEATURE_IPCALC_FANCY is not set"      >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IPCALC_LONG_OPTIONS=y"          >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_openssh-client=y"                              >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_openssh-sftp-server=y"                         >> $(CONFIG) || true )
 	@( [ "$(SUBTARGET)" ] && \
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
 	@( [ "$(PROFILE)" ] && \
