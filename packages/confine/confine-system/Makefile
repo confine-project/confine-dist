@@ -38,6 +38,7 @@ define Package/confine-system
 	+grub2 \
 	+bash \
 	+lxc \
+	+strace \
 	+gawk \
 	+ip +tc +iw \
 	+ebtables \
