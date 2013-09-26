@@ -20,7 +20,7 @@ local ctree  = require "confine.tree"
 
 local dbg    = tools.dbg
 
-local wget               = "/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q"
+local wget               = "(/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q & WID=$! ; /bin/sleep 10 & SID=$! ;echo -n  & ( /usr/bin/strace -p $SID >/dev/null 2>&1 ; kill $WID 2>/dev/null; ) & wait $WID >/dev/null 2>&1; kill $SID 2>/dev/null ; )"
 local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
 
 local json_pretty_print_tool   = "python -mjson.tool"
