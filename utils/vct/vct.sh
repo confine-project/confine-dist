@@ -1579,29 +1579,81 @@ vct_build_sliver_exp_data() {
 vct_build_sliver_template() {
     local OS_TYPE=$1
 
+    VCT_SLICE_TEMPLATE_PASSWD="confine"
+
     mkdir -p $VCT_VIRT_DIR/sliver-templates
 
     if echo $OS_TYPE | grep "debian" >/dev/null; then
-
 	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/debian
-	local TMPL_NAME=vct-sliver-template-build-debian.tgz
-	mkdir -p $TMPL_DIR
+	local TMPL_NAME=vct-sliver-template-build-debian
 	vct_sudo rm -rf $TMPL_DIR
-	vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
-	vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
-	vct_sudo rm $TMPL_DIR/rootfs/dev/shm
-	vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+	mkdir -p $TMPL_DIR
+	
 
-	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
-	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
-	vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+	if ! [ "LXCDEBCONFIG_SLIVER_TEMPLATE" ]; then
 
-	vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
+	    # Documentation: https://wiki.confine-project.eu/soft:debian-template
+
+	    VCT_LXC_PACKAGES_DIR="/usr/share/lxc/packages"
+	    VCT_LIVEDEB_CFG=$VCT_DIR/templates/debian,wheezy,i386.cfg
+	    VCT_LIVEDEB_PACKAGE_URL="http://live.debian.net/files/4.x/packages/live-debconfig/4.0~a27-1/live-debconfig_4.0~a27-1_all.deb"
+	    VCT_LIVEDEB_PACKAGE_SHA="7a7c154634711c1299d65eb5acb059eceff7d3328b5a34030b584ed275dea1fb"
+	    VCT_LIVEDEB_PACKAGE_DEB="$(echo $VCT_LIVEDEB_PACKAGE_URL | awk -F'/' '{print $NF}')"
+	    [ -f $VCT_LXC_PACKAGES_DIR/$VCT_LIVEDEB_PACKAGE_DEB ] && [ "$(sha256sum $VCT_LXC_PACKAGES_DIR/$VCT_LIVEDEB_PACKAGE_DEB |awk '{print $1}' )" = "$VCT_LIVEDEB_PACKAGE_SHA" ] || {
+		vct_sudo rm -f $VCT_LXC_PACKAGES_DIR/$VCT_LIVEDEB_PACKAGE_DEB
+		vct_sudo mkdir -p $VCT_LXC_PACKAGES_DIR
+		vct_sudo wget -P $VCT_LXC_PACKAGES_DIR $VCT_LIVEDEB_PACKAGE_URL
+	    }
+	    vct_sudo lxc-create -t debian -n $TMPL_NAME -B --dir $TMPL_DIR  -- --preseed-file=$VCT_LIVEDEB_CFG
+	    
+
+	elif [ "DEBOOTSTRAP_SLIVER_TEMPLATE" ]; then
+
+	    # Inspired by: http://www.wallix.org/2011/09/20/how-to-use-linux-containers-lxc-under-debian-squeeze/
+
+	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
+	    vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
+	    vct_sudo rm $TMPL_DIR/rootfs/dev/shm
+	    vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+	    
+	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
+	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
+	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+	    
+	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
 confine
 confine
 EOF
 
-	vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME --numeric-owner --directory=$TMPL_DIR/rootfs .
+	    vct_sudo_sh "cat <<EOF > $TMPL_DIR/rootfs/etc/inittab 
+id:2:initdefault:
+si::sysinit:/etc/init.d/rcS
+~:S:wait:/sbin/sulogin
+
+l0:0:wait:/etc/init.d/rc 0
+l1:1:wait:/etc/init.d/rc 1
+l2:2:wait:/etc/init.d/rc 2
+l3:3:wait:/etc/init.d/rc 3
+l4:4:wait:/etc/init.d/rc 4
+l5:5:wait:/etc/init.d/rc 5
+l6:6:wait:/etc/init.d/rc 6
+z6:6:respawn:/sbin/sulogin
+
+1:2345:respawn:/sbin/getty 38400 console
+
+EOF
+"
+
+	    vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME.tgz --numeric-owner --directory $TMPL_DIR/rootfs .
+
+	    echo 
+            echo "The slice/sliver template image is available via the controller portal at:"
+            echo "Slices->Templates->[select template]->image as:"
+	    echo $TMPL_NAME.tgz
+	    echo "You may have to delete and recreate the template to consider the new image"
+	    echo
+
+	fi
 	
 
 
