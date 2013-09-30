@@ -3,7 +3,7 @@ SERVERS="10.228.207.4 distro.confine-project.eu"
 IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
-TO_SAVE="/etc/config /etc/tinc /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
+TO_SAVE="/etc/config /etc/tinc /etc/dropbear /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
 
 error() {
 	echo "ERROR: $@"

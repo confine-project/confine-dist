@@ -20,7 +20,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=confine-system
-PKG_VERSION:=r2013091201
+PKG_VERSION:=$(shell date -d "`git log -n 1 --pretty=%ci`" --utc "+r%Y%m%d.%H%M")
 PKG_RELEASE:=1
 
 #PKG_SOURCE_URL:=@SF/confine-system
@@ -38,6 +38,7 @@ define Package/confine-system
 	+grub2 \
 	+bash \
 	+lxc \
+	+strace \
 	+gawk \
 	+ip +tc +iw \
 	+ebtables \
