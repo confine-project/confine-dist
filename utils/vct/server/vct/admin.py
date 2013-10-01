@@ -29,7 +29,9 @@ def local_files_form_factory(model_class, field_names, extensions=None, base_cla
         field_names = [field_names]
     attributes = {}
     for field_name in field_names:
-        attributes[field_name] = LocalFileField(required=True, label=field_name)
+        field = model_class._meta.get_field_by_name(field_name)[0]
+        attributes[field_name] = LocalFileField(required=True, help_text=field.help_text,
+                label=field.verbose_name.capitalize())
     
     def __init__(self, *args, **kwargs):
         base_class.__init__(self, *args, **kwargs)
