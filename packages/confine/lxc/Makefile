@@ -16,7 +16,8 @@ PKG_RELEASE:=2
 #PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
 #PKG_SOURCE_URL:=git://lxc.git.sourceforge.net/gitroot/lxc/lxc
-PKG_SOURCE_URL:=git://git.code.sf.net/p/lxc/code
+#PKG_SOURCE_URL:=git://git.code.sf.net/p/lxc/code
+PKG_SOURCE_URL:=https://github.com/lxc/lxc.git
 PKG_SOURCE_PROTO:=git
 PKG_REV:=60a742e0afd34e02299f64536df35116d68d888d
 PKG_VERSION:=r2013091801
