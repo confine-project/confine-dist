@@ -12,7 +12,10 @@ $ find /usr/local/lib/python2.6/dist-packages/controller/ -iname '*settings.py'|
 
 from django.core.files.storage import FileSystemStorage
 
-from controller.utils.apps import add_app, remove_app
+try:
+    from controller.utils.apps import add_app, remove_app
+except ImportError:
+    from controller.utils import add_app, remove_app
 from vct.utils import get_vct_config
 # Production settings
 #from controller.conf.production_settings import *
