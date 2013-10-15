@@ -22,7 +22,7 @@ from controller.conf.devel_settings import *
 
 # When DEBUG is enabled Django appends every executed SQL statement to django.db.connection.queries
 # this will grow unbounded in a long running process environment like celeryd
-if "celeryd" in sys.argv or 'celeryev' in sys.argv or 'celerybeat' in sys.argv:
+if "celery" in sys.argv or 'celeryev' in sys.argv or 'celerybeat' in sys.argv:
     DEBUG = False
 
 
@@ -136,6 +136,40 @@ DEFAULT_FROM_EMAIL = 'vct@localhost'
 SERVER_EMAIL = 'vct@localhost'
 ISSUES_SUPPORT_EMAILS = ['vct@localhost']
 
+
+TINC = ('tinc', '.*tincd', 1, 1)
+CELERY_W1 = ('celery_w1', '.*python.*celery.*-n w1\.', 3, None)
+CELERY_W2 = ('celery_w2', '.*python.*celery.*-n w2\.', 1, 1)
+CELERYEV = ('celeryev', '.*python .*celeryev', 1, 1)
+CELERYBEAT = ('celerybeat', '.*python .*celerybeat', 1, 1)
+APACHE2 = ('apache2', '.*apache2', 3, None)
+WSGI = ('wsgi', '\(wsgi', 2, None)
+POSTGRESQL = ('postgresql', '.*postgres', 1, None)
+RABBITMQ = ('rabbitmq', '.*rabbit', 2, 2)
+KVM = ('kvm', '.*kvm.*', None, None)
+
+MONITOR_MONITORS = (
+    ('monitor.monitors.NumPocessesMonitor', {
+            'processes': (TINC, CELERY_W1, CELERY_W2, CELERYEV, CELERYBEAT,
+                          APACHE2, WSGI, POSTGRESQL, RABBITMQ)
+        }),
+    ('monitor.monitors.LoadAvgMonitor',),
+    ('monitor.monitors.FreeMonitor',),
+    ('monitor.monitors.Apache2StatusMonitor', {
+            'url': 'http://localhost/server-status',
+        }),
+    ('monitor.monitors.DebugPageLoadTimeMonitor', {
+            'name': 'apiuserpageload',
+            'url': 'http://127.0.0.1/api/nodes/'
+        }),
+    ('monitor.monitors.BasicNetMonitor', {'iface': 'confine'}),
+    ('monitor.monitors.ProcessesCPUMonitor', {
+            'processes': (TINC, CELERY_W1, CELERY_W2, POSTGRESQL, RABBITMQ, KVM),
+        }),
+    ('monitor.monitors.ProcessesMemoryMonitor', {
+            'processes': (CELERY_W1, CELERY_W2, POSTGRESQL, KVM),
+        }),
+)
 
 # Custom settings
 try:
