@@ -25,12 +25,12 @@ def get_vct_config(var):
     return out.stdout
 
 
-def vct_node(action, node):
+def vct_node(action, node, silent=True):
     node_id = hex(node.id).split('0x')[1]
     node_id = '0'*(4-len(node_id)) + node_id
     wrapper = path.join(get_vct_root(), '%s')
     cmd = 'vct_node_%s %s' % (action, node_id)
-    return run(wrapper % cmd, display=False)
+    return run(wrapper % cmd, display=False, silent=silent)
 
 
 def get_vct_node_state(node):

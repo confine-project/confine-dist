@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+from django.core.management.base import CommandError
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -14,7 +15,7 @@ from .serializers import VMSerializer
 from .utils import vct_node, get_vct_node_state
 
 
-class VMManagementView(generics.RetrieveUpdateDestroyAPIView):
+class VMManagementView(APIView):
     """ VCT Virtual Machine managemente """
     url_name = 'vm'
     serializer_class = VMSerializer
@@ -24,7 +25,7 @@ class VMManagementView(generics.RetrieveUpdateDestroyAPIView):
         serializer = self.serializer_class(context={'request': request})
         state = get_vct_node_state(node)
         if not state:
-            state = 'novm'
+            return Response({'detail': 'VM does not exists'}, status=status.HTTP_404_NOT_FOUND)
         serializer.data['state'] = state
         return Response(serializer.data)
     
@@ -32,8 +33,21 @@ class VMManagementView(generics.RetrieveUpdateDestroyAPIView):
         node = get_object_or_404(Node, pk=pk)
         serializer = self.serializer_class(data=request.DATA)
         if serializer.is_valid():
+            try:
+                cmd = vct_node('create', node, silent=False)
+            except CommandError as e:
+                return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            state = get_vct_node_state(node)
+            serializer.data['state'] = state
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, pk, **kwargs):
+        node = get_object_or_404(Node, pk=pk)
+        serializer = self.serializer_class(data=request.DATA)
+        if serializer.is_valid():
             data = serializer.data
-            for action in ['stop', 'start', 'create']:
+            for action in ['stop', 'start']:
                 if data.get(action):
                     vct_node(action, node)
             state = get_vct_node_state(node)
