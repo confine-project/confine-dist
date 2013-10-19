@@ -23,3 +23,20 @@ def get_vct_config(var):
             fi """ % { 'vct_root': vct_root} }
     out = run("bash -c '%(source)s; echo $%(var)s'" % context, display=False, silent=False)
     return out.stdout
+
+
+def vct_node(action, node, silent=True):
+    node_id = hex(node.id).split('0x')[1]
+    node_id = '0'*(4-len(node_id)) + node_id
+    wrapper = path.join(get_vct_root(), '%s')
+    cmd = 'vct_node_%s %s' % (action, node_id)
+    return run(wrapper % cmd, display=False, silent=silent)
+
+
+def get_vct_node_state(node):
+    info = vct_node('info', node)
+    try:
+        state = info.stdout.splitlines()[-1]
+        return state.split(' ')[1] if not state.startswith('-----') else False
+    except IndexError:
+        return False

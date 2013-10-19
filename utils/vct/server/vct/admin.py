@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from controller.admin.utils import insert_change_view_action, get_modeladmin, insertattr
 from controller.models.utils import get_file_field_base_path
 
-from controller.utils import is_installed
+from controller.utils.apps import is_installed
 from nodes.models import Node
 from slices.admin import TemplateAdmin, SliceAdmin, SliceSliversAdmin
 from slices.models import Template, Sliver, Slice
@@ -24,34 +24,41 @@ class LocalFileField(forms.fields.FileField):
         return data
 
 
-def local_files_form_factory(model_class, field_name, extensions=None, base_class=forms.ModelForm):
+def local_files_form_factory(model_class, field_names, extensions=None, base_class=forms.ModelForm):
+    if not hasattr(field_names, '__iter__'):
+        field_names = [field_names]
     attributes = {}
-    attributes[field_name] = LocalFileField(required=True, label=field_name)
+    for field_name in field_names:
+        field = model_class._meta.get_field_by_name(field_name)[0]
+        attributes[field_name] = LocalFileField(required=True, help_text=field.help_text,
+                label=field.verbose_name.capitalize())
     
     def __init__(self, *args, **kwargs):
         base_class.__init__(self, *args, **kwargs)
-        path = get_file_field_base_path(model_class, field_name)
-        field = model_class._meta.get_field_by_name(field_name)[0]
-        choices = []
-        for name in os.listdir(path):
-            if extensions:
-                for extension in extensions:
-                    if name.endswith(extension):
-                        choices.append((name, name))
-                        break
-            else:
-                choices.append((name, name))
-        if field.blank:
-            choices = (('empty', '---------'),) + tuple(choices)
-            self.fields[field_name].required = False
-        self.fields[field_name].widget = forms.widgets.Select(choices=choices)
+        for field_name in field_names:
+            path = get_file_field_base_path(model_class, field_name)
+            field = model_class._meta.get_field_by_name(field_name)[0]
+            choices = []
+            for name in os.listdir(path):
+                if extensions:
+                    for extension in extensions:
+                        if name.endswith(extension):
+                            choices.append((name, name))
+                            break
+                else:
+                    choices.append((name, name))
+            if field.blank:
+                choices = (('empty', '---------'),) + tuple(choices)
+                self.fields[field_name].required = False
+            self.fields[field_name].widget = forms.widgets.Select(choices=choices)
     
-    def clean_field(self):
-        value = self.cleaned_data.get(field_name)
-        return value if value != 'empty' else ''
+    for field_name in field_names:
+        def clean_field(self, field_name=field_name):
+            value = self.cleaned_data.get(field_name)
+            return value if value != 'empty' else ''
+        attributes['clean_' + field_name] = clean_field
     
     attributes['__init__'] = __init__
-    attributes['clean_' + field_name] = clean_field
     return type('VCTLocalFileForm', (base_class,), attributes)
 
 
@@ -80,8 +87,8 @@ if is_installed('firmware'):
 if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
-    SliceAdmin.form = local_files_form_factory(Slice, 'exp_data',
+    SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
             base_class=SliceAdmin.form,
             extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
-    SliceSliversAdmin.form = local_files_form_factory(Sliver, 'exp_data',
+    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('exp_data', 'overlay'),
             extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)

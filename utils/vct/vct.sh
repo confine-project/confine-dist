@@ -420,7 +420,7 @@ vct_system_install_server() {
     # Don't know why /pki gets created as root.. but here a quick fix:
     vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     
-    # executes pip commands on /tmp because of garbage they generate
+    # Executes pip commands on /tmp because of garbage they generate
     cd /tmp
     if [[ ! $(pip freeze|grep confine-controller) ]]; then
         # First time controller gets installed
@@ -455,6 +455,7 @@ vct_system_install_server() {
         vct_sudo rm /etc/apache/sites-enabled/*
     fi
     
+    # Setup tincd
     vct_sudo python "$VCT_DIR/server/manage.py" setuptincd --noinput --address="${VCT_SERVER_TINC_IP}"
     python "$VCT_DIR/server/manage.py" updatetincd
 
@@ -466,16 +467,19 @@ vct_system_install_server() {
     # Move static files in a place where apache can get them
     python "$VCT_DIR/server/manage.py" collectstatic --noinput
 
+    # Setup and configure firmware generation
     vct_sudo python "$VCT_DIR/server/manage.py" setupfirmware
     vct_do python "$VCT_DIR/server/manage.py" loaddata firmwareconfig
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/firmwareconfig.json"
     vct_do python "$VCT_DIR/server/manage.py" syncfirmwareplugins
     
+    # Apply changes
     vct_sudo python "$VCT_DIR/server/manage.py" startservices --no-tinc --no-celeryd --no-celerybeat --no-apache2
     vct_sudo python "$VCT_DIR/server/manage.py" restartservices
     vct_sudo $VCT_TINC_START
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
+    # WARNING the following code is sensitive to indentation !!
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
 	from users.models import *
 	if not User.objects.filter(username='vct').exists():
@@ -506,9 +510,13 @@ vct_system_install_server() {
 	    AuthToken.objects.get_or_create(user=user, data=token_data)
 	
 	EOF
+
     # Load further data into the database
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
+
+    # Enable local system monitoring via crontab
+    vct_do python "$VCT_DIR/server/manage.py" setuplocalmonitor
 }
 
 

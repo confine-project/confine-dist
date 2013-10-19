@@ -1,12 +1,9 @@
-import os
-
 from django.template.response import TemplateResponse
 
-from controller.utils.system import run
 from firmware.actions import get_firmware
 from firmware.models import Build
 
-from vct.utils import get_vct_root
+from vct.utils import vct_node, get_vct_node_state
 
 
 def vm_management(modeladmin, request, queryset):
@@ -27,7 +24,6 @@ def vm_management(modeladmin, request, queryset):
     node = queryset.get()
     node_id = hex(node.id).split('0x')[1]
     node_id = '0'*(4-len(node_id)) + node_id
-    wrapper = os.path.join(get_vct_root(), '%s')
     cmd = None
     commands = [BUILD]
     
@@ -41,18 +37,12 @@ def vm_management(modeladmin, request, queryset):
             build = None
     
     if name in ['create', 'start', 'stop', 'remove']:
-        cmd = 'vct_node_%s %s' % (name, node_id)
-        cmd = run(wrapper % cmd, display=False)
+        cmd = vct_node(name, node)
     
-    info = 'vct_node_info %s' % node_id
-    info = run(wrapper % info, display=False)
+    info = vct_node('info', node)
     
     if build:
-        try:
-            state = info.stdout.splitlines()[-1]
-            state = state.split(' ')[1] if not state.startswith('-----') else False
-        except IndexError:
-            state = False
+        state = get_vct_node_state(node)
         
         commands = [INFO]
         if build.state in [Build.DELETED, Build.OUTDATED, Build.FAILED]:
