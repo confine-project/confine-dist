@@ -243,6 +243,7 @@ VCT_OPT_TOOL_TESTS=( \
 VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES="\
 ifupdown,\
 locales,\
+aptitude,\
 libui-dialog-perl,\
 dialog,\
 isc-dhcp-client,\
