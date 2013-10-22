@@ -162,6 +162,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
 	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
+	$(CP)  ./files/etc/screenrc                        $(1)/etc/
 
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
