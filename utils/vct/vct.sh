@@ -1485,6 +1485,27 @@ vct_node_scp() {
     done
 }
 
+vct_node_scp_cns() {
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+    
+    local CNS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-system/files"
+    local LXC_FILES_DIR="$VCT_DIR/../../packages/confine/lxc/files"
+
+#  This is automatic but slow:
+#    for f in $(cd $CNS_FILES_DIR && find | grep -v "/etc/config"); do
+#	echo $f
+#	[ -f $CNS_FILES_DIR/$f ] && \
+#	    vct_node_scp $VCRD_ID remote:/$f $CNS_FILES_DIR/$f || true
+#    done
+
+#  This is manual but faster:
+    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua $CNS_FILES_DIR/usr/lib/lua/confine/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*        $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/lxc/scripts/*-confine.sh  $CNS_FILES_DIR/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/init.d/confine        $CNS_FILES_DIR/etc/init.d/
+    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst  $CNS_FILES_DIR/etc/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*            $LXC_FILES_DIR/usr/sbin/
+}
 
 vct_node_mount() {
     local VCRD_ID_RANGE=$1
@@ -1763,6 +1784,7 @@ else
 	vct_node_console)           $CMD "$@";;
 	vct_node_ssh)               $CMD "$@";;
 	vct_node_scp)               $CMD "$@";;
+	vct_node_scp_cns)           $CMD "$@";;
 
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;
