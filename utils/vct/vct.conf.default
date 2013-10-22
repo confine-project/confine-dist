@@ -267,6 +267,10 @@ vim-tiny,\
 w3m,\
 man-db,\
 \
+default-jre,\
+python2.7,\
+python2.7-minimal,\
+\
 tcpdump,\
 tshark,\
 openssl,\
