@@ -1086,8 +1086,6 @@ vct_node_get_mac() {
 
     else
 
-	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
-
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
 	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" >/dev/null; then
@@ -1099,6 +1097,10 @@ vct_node_get_mac() {
 	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
 	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
 	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+
+	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
+
+
     fi
 
     echo $MAC
@@ -1379,7 +1381,7 @@ vct_node_ssh() {
 
         local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-        if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+        if ! ( [ -f $VCT_NODE_MAC_DB  ]  && grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
             err $FUNCNAME "$VCRD_NAME not running"
         fi
 
@@ -1430,7 +1432,7 @@ vct_node_scp() {
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+	if ! ( [ -f $VCT_NODE_MAC_DB  ]  && grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
 	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 	
@@ -1453,7 +1455,7 @@ vct_node_scp() {
 	    COUNT=$(( $COUNT + 1 ))
 	done
 
-	echo >&2
+	#echo >&2
 	# [ "$COUNT" = 0 ] || echo >&2
 	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IP"
 
@@ -1461,23 +1463,23 @@ vct_node_scp() {
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
 	    echo > $VCT_KEYS_DIR/known_hosts
-	    ssh $VCT_SSH_OPTIONS root@$IP "exit" && break
+	    ssh $VCT_SSH_OPTIONS root@$IP "exit" 2>/dev/null && break
 	    sleep 1
 	    
 	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
-	echo >&2
+	#echo >&2
 	# [ "$COUNT" = 0 ] || echo >&2
 	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IP"
 
 	echo > $VCT_KEYS_DIR/known_hosts
 
 	if [ $IS_IPV6 -ne 0 ]; then
-		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IP\]:/ )
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IP\]:/ ) 2>/dev/null
 	else
-		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@$IP:/ )
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@$IP:/ )  2>/dev/null
 	fi
 
     done
