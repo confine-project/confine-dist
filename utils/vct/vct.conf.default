@@ -245,7 +245,7 @@ ifupdown,\
 locales,\
 libui-dialog-perl,\
 dialog,\
-udhcpd,\
+isc-dhcp-client,\
 netbase,\
 net-tools,\
 iproute,\
