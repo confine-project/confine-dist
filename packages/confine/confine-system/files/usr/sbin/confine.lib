@@ -850,10 +850,10 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=internal
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 
 		elif [ "$IF_TYPE" = "public" ] || [ "$IF_TYPE" = "public4" ]; then
@@ -863,8 +863,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
 
 		#    if [ "$PUBLIC4_PROTO" = "static" ] ; then
 		#	uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
@@ -878,8 +878,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 
 		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_VLANTAG" ]; then
@@ -1110,9 +1110,10 @@ confine_sliver_firewall_restart() {
 	    local IF_PAIR="$(     uci_get lxc.$CT_NR.if${IF_KEY}_pair )"
 
 	    local IF_MAC="$(      uci_get lxc.$CT_NR.if${IF_KEY}_mac )"
-	    local IF_IPV4="$(     uci_get lxc.$CT_NR.if${IF_KEY}_ipv4 soft,quiet | cut -d '/' -f 1 )"
-	    local IF_PROT4="$(    uci_get lxc.$CT_NR.if${IF_KEY}_ipv4_proto soft,quiet )"
-	    local IF_IPV6="$(     uci_get lxc.$CT_NR.if${IF_KEY}_ipv6 soft,quiet | cut -d '/' -f 1 )"
+	    
+	    local IF_IPV4="$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 soft,quiet | cut -d '/' -f 1 )"
+	    local IF_PROT4="$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4_proto soft,quiet )"
+	    local IF_IPV6="$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv6 soft,quiet | cut -d '/' -f 1 )"
 
 	    # set default policy ...
 	    ebtables -I FORWARD -i $IF_PAIR -j DROP
