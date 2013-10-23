@@ -1062,6 +1062,8 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 
 			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1) or not NODE[oslv.state]) then
 				
+				oslv = ctree.set_path_val(otree, "/local_slivers/"..key, {state=NODE.registered })
+				
 				if nslv then
 					if not slv_iterate( iargs, register_rules, NODE.registered, NODE.registered, NODE.registered) then break end
 				end
