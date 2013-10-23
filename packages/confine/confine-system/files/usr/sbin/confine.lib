@@ -929,11 +929,15 @@ confine_sliver_undeploy() {
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SL_ID" "quiet,soft")
 	fi
 
-	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
+	if [ "$CT_NR" ]; then
 	
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
+	fi
+	
+	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
+	
 	    uci_set confine-slivers.$SL_ID.state=allocated
 	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	        
