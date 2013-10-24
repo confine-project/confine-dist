@@ -20,7 +20,7 @@ local ctree  = require "confine.tree"
 
 local dbg    = tools.dbg
 
-local wget               = "(/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q & WID=$! ; /bin/sleep 3600 & SID=$! ;echo -n  & ( /usr/bin/strace -p $SID >/dev/null 2>&1 ; kill $WID 2>/dev/null; ) & wait $WID >/dev/null 2>&1; kill $SID 2>/dev/null ; )"
+local wget               = "(/usr/bin/wget %s -t3 -T2 --random-wait=1 -q -O %s %s %s %s & WID=$! ; /bin/sleep 3600 & SID=$! ;echo -n  & ( /usr/bin/strace -p $SID >/dev/null 2>&1 ; kill $WID 2>/dev/null; ) & wait $WID >/dev/null 2>&1; kill $SID 2>/dev/null ; )"
 local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
 
 local json_pretty_print_tool   = [=[python -c "import json, sys; print json.dumps(json.loads(sys.stdin.read().decode('utf8', errors='replace')), indent=4)" ]=]
@@ -101,7 +101,7 @@ function http_get_raw( url, dst, cert_file )
 	else
 		cert_opt = "--no-check-certificate"
 	end
-	local cmd = wget %{ cert_opt, dst, url }
+	local cmd = wget %{ cert_opt, dst, url, "", "" }
 	dbg (cmd)
 	return (os.execute( cmd ) == 0) and true or false
 end
@@ -113,12 +113,12 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 	local base_key,index_key = ctree.get_url_keys( url )
 	local cached             = cache and cache[base_key] and ((index_key and cache[base_key][index_key]) or (not index_key and cache[base_key])) or false
 	
-	url = base_uri..base_key..(index_key or "")
-	dbg("%6s url=%-60s base_key=%s index_key=%s", cached and "cached" or "wget", url, tostring(base_key), tostring(index_key))
+	url = base_uri..base_key..(index_key or "") --.. ".invalid"
 	
-	if cached then
+	if cached and cached.sqn and cached.sqn == cache.sqn then
 		
-		return cached, index_key
+		dbg("%6s url=%-60s base_key=%s index_key=%s", "CACHED", url, tostring(base_key), tostring(index_key))
+		return cached.data, index_key
 	
 	else
 		local cert_opt
@@ -128,32 +128,69 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			cert_opt = "--no-check-certificate"
 		end
 		
-		local cmd = wget %{ cert_opt, "-", url }	
+		local wget_etag = cached and cached.etag or "0000"
+		local wget_response_file = os.tmpname()
+		local wget_stderr_redirect = "2>" .. wget_response_file
+		local wget_data_file = os.tmpname()
+		local wget_condition = [[ --server-response --header 'If-None-Match: %q' ]] %{ wget_etag }
+		local wget_cmd = wget %{ cert_opt, wget_data_file, url, wget_condition, wget_stderr_redirect, wget_stderr_redirect }
+		local wget_dbg = lutil.exec( wget_cmd )
+		local wget_response = nixio.fs.readfile( wget_response_file )
+		local wget_data_fd = io.open(wget_data_file, "r")
 		
-		local fd = io.popen(cmd, "r")
-		assert(fd, "Failed to execute %s" %{ cmd })
-	
-		local src = ltn12.source.file(fd)
-		local jsd = json.Decoder(true)
+		--dbg("wget cmd: "..wget_cmd.." data saved to: "..wget_data_file.." response from "..url..": "..tostring(wget_response))
 
+		local src = ltn12.source.file(wget_data_fd)
+		local jsd = json.Decoder(true)
 		local result = ltn12.pump.all(src, jsd:sink())
-		assert(result, "Failed processing json input from: %s"%{url} )
 		
-		result = jsd:get()
+		os.remove(wget_response_file)
+		os.remove(wget_data_file)
 		
-		result = ctree.copy_recursive_rebase_keys(result)
-		assert(type(result) == "table", "Failed rebasing json keys from: %s"%{url} )
---		dbg("http:get(): got rebased:")
---		ctree.dump(result)
+		if wget_response:match("HTTP/1.1 404 NOT FOUND") then
 			
-		if cache then
-			if not cache[base_key] then cache[base_key] = {} end
-			if index_key then
-				cache[base_key][index_key] = result
-			else
-				cache[base_key] = result
+			dbg("%6s url=%-60s base_key=%s index_key=%s", "MISSING", url, tostring(base_key), tostring(index_key))
+			assert( false, "wget returned: '404 NOT FOUND' full response: " .. tostring(wget_response) )
+			
+		elseif wget_response:match("HTTP/1.1 200 OK") then
+			
+			dbg("%6s url=%-60s base_key=%s index_key=%s", cache and "MODIFIED" or "NO CACHE", url, tostring(base_key), tostring(index_key))
+			
+			wget_etag = (wget_response:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n","")
+			--dbg("wget_etag="..wget_etag)
+			
+			assert(result, "Failed processing json input from: %s"%{url} )
+		
+			result = jsd:get()
+			result = ctree.copy_recursive_rebase_keys(result)
+			assert(type(result) == "table", "Failed rebasing json keys from: %s"%{url} )
+			--dbg("http:get(): got rebased:")
+			--ctree.dump(result)
+			
+			if cache then
+				if not cache[base_key] then cache[base_key] = {} end
+				
+				if index_key then
+					cache[base_key][index_key] = {sqn=cache.sqn, etag=wget_etag, data=result}
+				else
+					cache[base_key] = {sqn=cache.sqn, etag=wget_etag, data=result}
+				end
 			end
+			
+			
+		elseif wget_response:match("HTTP/1.1 304 NOT MODIFIED") then
+			
+			dbg("%6s url=%-60s base_key=%s index_key=%s", "UNCHANGED", url, tostring(base_key), tostring(index_key))
+			
+			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache")
+			result = cached.data
+			cached.sqn = cache.sqn
+			
+		else
+			dbg("%6s url=%-60s base_key=%s index_key=%s", "ERROR!!", url, tostring(base_key), tostring(index_key))
+			dbg("wget cmd: "..wget_cmd.." data saved to: "..wget_data_file.." response from "..url..": "..tostring(wget_response))			
 		end
+		
 		
 		return result, index_key
 		

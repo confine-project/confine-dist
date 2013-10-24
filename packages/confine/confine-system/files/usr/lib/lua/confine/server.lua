@@ -43,11 +43,14 @@ local function get_local_group(sys_conf, obj, cert_file, cache)
 end
 
 
-function get_server_node(sys_conf)
+function get_server_node(sys_conf, cache)
 
 	dbg("------ retrieving new node ------")
 
-	local cache = {}
+	if cache then
+		cache.sqn = cache.sqn and (cache.sqn + 1) or 2
+	end
+	
 	local cert_file = sys_conf.server_cert_file
 	
 	if require_server_cert and not cert_file then
@@ -125,6 +128,36 @@ function get_server_node(sys_conf)
 	end
 	
 --	tree.dump(node.local_group)
+
+	-- cleanup cache:
+	
+	if cache then
+		local k1,v1
+		for k1,v1 in pairs(cache) do
+			if type(v1)=="table" then
+				if v1.sqn then
+					if v1.sqn < cache.sqn then
+						cache[k1] = nil
+					end
+				else
+					local k2,v2
+					local empty=true
+					for k2,v2 in pairs(v1) do
+						if v2.sqn < cache.sqn then
+							v1[k2] = nil
+						else
+							empty=false
+						end
+					end
+					
+					if empty then
+						cache[k1] = nil
+					end
+				end
+			end
+		end
+	end
+
 
 	return node
 end
