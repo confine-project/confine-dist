@@ -609,10 +609,16 @@ confine_node_enable() {
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24 )
 
 	iptables -L POSTROUTING -t nat -n | \
-		grep -e "MASQUERADE *all *-- *${NODE_PRIV_IPV4_PREFIX24}.0/25 *0.0.0.0/0" >/dev/null || \
+		grep -e "^MASQUERADE *all *-- *${NODE_PRIV_IPV4_PREFIX24}.0/25 *0.0.0.0/0$" >/dev/null || \
 		iptables -I POSTROUTING -t nat -o br-local -s ${NODE_PRIV_IPV4_PREFIX24}.0/25 -j MASQUERADE
 
+	iptables -L INPUT -t filter -n | \
+		grep -e "^DROP *tcp *-- *0.0.0.0/0 *0.0.0.0/0 *tcp *dpts:49152:65535 *state *INVALID,NEW,RELATED,UNTRACKED" >/dev/null || \
+		iptables -t filter -A INPUT -p tcp --dport 49152:65535 -i br-local -m state ! --state ESTABLISHED -j DROP
 
+	iptables -L INPUT -t filter -n | \
+		grep -e "^DROP *udp *-- *0.0.0.0/0 *0.0.0.0/0 *udp *dpts:49152:65535 *state *INVALID,NEW,RELATED,UNTRACKED" >/dev/null || \
+		iptables -t filter -A INPUT -p udp --dport 49152:65535 -i br-local -m state ! --state ESTABLISHED -j DROP
 
 	confine_tinc_stop
 	confine_tinc_start
