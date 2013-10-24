@@ -23,7 +23,7 @@ local dbg    = tools.dbg
 local wget               = "(/usr/bin/wget %q -t3 -T2 --random-wait=1 -q -O %q %q & WID=$! ; /bin/sleep 3600 & SID=$! ;echo -n  & ( /usr/bin/strace -p $SID >/dev/null 2>&1 ; kill $WID 2>/dev/null; ) & wait $WID >/dev/null 2>&1; kill $SID 2>/dev/null ; )"
 local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
 
-local json_pretty_print_tool   = "python -mjson.tool"
+local json_pretty_print_tool   = [=[python -c "import json, sys; print json.dumps(json.loads(sys.stdin.read().decode('utf8', errors='replace')), indent=4)" ]=]
 
 null = json.null
 
@@ -54,15 +54,15 @@ function file_put( data, file, dir )
 		assert(out, "Failed to open %s" %dir .. file)	
 		ltn12.pump.all(json.Encoder(data):source(), ltn12.sink.file(out))
 		
-		if os.execute( 'echo "{}" | ' .. json_pretty_print_tool .. " > /dev/null" ) == 0 then
-			local tmp = os.tmpname()
-			local cmd = "cat "..dir..file.." | "..json_pretty_print_tool.." > "..tmp
---			dbg("json_pretty_print_tool=" .. json_pretty_print_tool .. " available! exec: "..cmd)
-			
-			os.execute( cmd )
+		local tmp = os.tmpname()
+		local cmd = "cat "..dir..file.." | "..json_pretty_print_tool.." > "..tmp
+		
+		if os.execute( cmd ) == 0 then
 			nixio.fs.move( tmp, dir..file)
+		else
+			os.remove(tmp)
 		end
---		out:close()
+		
 	elseif data then
 		local k,v
 		for k,v in pairs(data) do
