@@ -1643,13 +1643,15 @@ vct_build_sliver_template() {
 	    # Inspired by: http://www.wallix.org/2011/09/20/how-to-use-linux-containers-lxc-under-debian-squeeze/
 
 	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
-	    vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
-	    vct_sudo rm $TMPL_DIR/rootfs/dev/shm
-	    vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+	    vct_sudo rm -f $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
+	    vct_sudo rm -f $TMPL_DIR/rootfs/dev/shm
+	    vct_sudo mkdir -p $TMPL_DIR/rootfs/dev/shm
 	    
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+
+	    vct_sudo chroot $TMPL_DIR/rootfs mknod
 	    
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
 confine
@@ -1658,7 +1660,10 @@ EOF
 
 	    vct_sudo_sh "cat <<EOF > $TMPL_DIR/rootfs/etc/inittab 
 id:2:initdefault:
+
 si::sysinit:/etc/init.d/rcS
+
+#removed in vctc
 ~:S:wait:/sbin/sulogin
 
 l0:0:wait:/etc/init.d/rc 0
@@ -1668,9 +1673,19 @@ l3:3:wait:/etc/init.d/rc 3
 l4:4:wait:/etc/init.d/rc 4
 l5:5:wait:/etc/init.d/rc 5
 l6:6:wait:/etc/init.d/rc 6
+
 z6:6:respawn:/sbin/sulogin
 
 1:2345:respawn:/sbin/getty 38400 console
+
+# new from vctc:
+c1:12345:respawn:/sbin/getty 38400 tty1 linux
+c2:12345:respawn:/sbin/getty 38400 tty2 linux
+c3:12345:respawn:/sbin/getty 38400 tty3 linux
+c4:12345:respawn:/sbin/getty 38400 tty4 linux
+
+p0::powerfail:/sbin/init 0
+p6::ctrlaltdel:/sbin/init 6
 
 EOF
 "

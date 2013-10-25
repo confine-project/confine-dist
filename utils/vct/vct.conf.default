@@ -171,6 +171,7 @@ VCT_DEB_PACKAGES=" \
     udhcpd \
     virtinst \
     xmlstarlet \
+    ca-certificates \
     wget \
     build-essential \
     subversion \
