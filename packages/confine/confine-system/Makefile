@@ -44,6 +44,7 @@ define Package/confine-system
 	+ebtables \
 	+tinc \
 	+file \
+	+diffutils \
 	+losetup \
 	+coreutils-readlink \
 	+mount-utils \
