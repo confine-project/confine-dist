@@ -244,6 +244,8 @@ VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES="\
 ifupdown,\
 locales,\
 aptitude,\
+rsyslog,\
+logrotate,\
 libui-dialog-perl,\
 dialog,\
 isc-dhcp-client,\
