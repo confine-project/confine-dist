@@ -1499,12 +1499,13 @@ vct_node_scp_cns() {
 #    done
 
 #  This is manual but faster:
-    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua $CNS_FILES_DIR/usr/lib/lua/confine/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*        $CNS_FILES_DIR/usr/sbin/
-    vct_node_scp $VCRD_ID remote:/lxc/scripts/*-confine.sh  $CNS_FILES_DIR/lxc/scripts/
-    vct_node_scp $VCRD_ID remote:/etc/init.d/confine        $CNS_FILES_DIR/etc/init.d/
-    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst  $CNS_FILES_DIR/etc/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*            $LXC_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua   $CNS_FILES_DIR/usr/lib/lua/confine/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*          $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/lxc/scripts/*-confine.sh    $CNS_FILES_DIR/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/config/confine-defaults $CNS_FILES_DIR/etc/config/
+    vct_node_scp $VCRD_ID remote:/etc/init.d/confine          $CNS_FILES_DIR/etc/init.d/
+    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst    $CNS_FILES_DIR/etc/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*              $LXC_FILES_DIR/usr/sbin/
 }
 
 vct_node_mount() {
@@ -1651,7 +1652,18 @@ vct_build_sliver_template() {
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
-	    vct_sudo chroot $TMPL_DIR/rootfs mknod
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot.sh           || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkfs.sh             || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mtab.sh                || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot-bootclean.sh || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclockfirst.sh        || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclock.sh             || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr kmod                   || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr module-init-tools      || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountall.sh            || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountkernfs.sh         || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountfs               || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountroot             || true
 	    
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
 confine
@@ -1663,8 +1675,7 @@ id:2:initdefault:
 
 si::sysinit:/etc/init.d/rcS
 
-#removed in vctc
-~:S:wait:/sbin/sulogin
+#~:S:wait:/sbin/sulogin
 
 l0:0:wait:/etc/init.d/rc 0
 l1:1:wait:/etc/init.d/rc 1
