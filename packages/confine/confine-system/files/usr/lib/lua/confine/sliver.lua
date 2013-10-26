@@ -81,6 +81,7 @@ local register_rules = {}
 local alloc_rules = {}
 local dealloc_rules = {}
 local deploy_rules = {}
+local deployed_rules = {}
 local undeploy_rules = {}
 local start_rules = {}
 local stop_rules = {}
@@ -577,6 +578,15 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
 
+tmp_rules = deployed_rules
+	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
+	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -1116,7 +1126,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				
 			elseif (oslv.state==NODE.deployed and nslv_set_state==SERVER.deploy) then
 				
-				if not slv_iterate( iargs, deploy_rules, NODE.deployed, NODE.deployed, nil) then break end
+				if not slv_iterate( iargs, deployed_rules, NODE.deployed, NODE.deployed, nil) then break end
 	
 			elseif (oslv.state==NODE.deployed or (oslv.state==NODE.fail_start and i==1)) and
 				(nslv_set_state==SERVER.start) then
