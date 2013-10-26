@@ -193,6 +193,27 @@ function get_table_by_key_val( t, val, key )
 	return nil
 end
 
+function is_table_value( t, val, path )
+	local k,v
+	for k,v in pairs(t) do
+		
+		local curr = (path and path.."/"..k) or "/"..k
+		
+		if v == val then
+			
+			return curr
+		
+		elseif type(v)=="table" then
+			
+			local found = is_table_value( v, val, curr )
+			
+			if found then
+				return found
+			end
+		end
+	end
+end
+
 function fname()
 	return debug.getinfo(2).name.."() "
 end

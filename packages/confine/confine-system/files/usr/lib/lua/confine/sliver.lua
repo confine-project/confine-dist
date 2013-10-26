@@ -231,35 +231,6 @@ function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
 	return sliver_pub_ipv4_avail
 end
 
-function cb2_disk_mb ( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_disk_mb" end
-	
-	local nval = ctree.get_path_val(ntree,path)
-	local oval = ctree.get_path_val(otree,path)
-	
-	if nval==nil or nval==null then
-		nval = ctree.get_path_val(ntree, (path:match("^/local_slivers/[^/]+/").."local_slice/disk") )
-	end
-
-	if nval==nil or nval==null then
-		nval = sys_conf.disk_dflt_per_sliver
-	end
-	
-	if type(nval)~="number" or nval < 1 or nval > sys_conf.disk_max_per_sliver  then
-		
-		dbg( add_lslv_err( otree, path, "Invalid", nval) )
-		nval = sys_conf.disk_dflt_per_sliver
-		
-	elseif (rules==alloc_rules or rules==deploy_rules) and nval >= sys_conf.disk_avail then
-		
-		dbg( add_lslv_err( otree, path, "Exceeded available disk space for slivers", nval) )
-	end
-	
-	if nval~=oval then
-		ctree.set_path_val( otree, path, nval )
-	end	
-end
-
 
 
 function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
@@ -344,6 +315,63 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 		end		
 	end
 end
+
+
+function purge_templates( sys_conf, otree )
+	
+	local disk_avail_old = sys_conf.disk_avail
+	
+	if sys_conf.disk_avail < sys_conf.disk_max_per_sliver then
+		local k,file
+		for k,file in pairs(luci.fs.dir(sys_conf.sliver_template_dir)) do
+			if not file:match("^%.") then
+				local hash = file:gsub("\.tgz$",""):gsub("\.dir$","")
+				local found = tools.is_table_value( sys_conf.uci_slivers, hash ) or tools.is_table_value( otree, hash )
+				if found then
+					dbg("keeping used  data=%s path=%s", sys_conf.sliver_template_dir..file, found)
+				else
+					dbg("PURGING stale data=%s", sys_conf.sliver_template_dir..file)
+					nixio.fs.remover( sys_conf.sliver_template_dir..file )
+				end
+			end
+		end
+	end
+	
+	csystem.get_system_conf( sys_conf )
+
+	dbg("disk_max_per_sliver=%d disk_avail: %d -> %d ", sys_conf.disk_max_per_sliver, disk_avail_old, sys_conf.disk_avail)
+end
+
+
+function cb2_disk_mb ( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_disk_mb" end
+	
+	local nval = ctree.get_path_val(ntree,path)
+	local oval = ctree.get_path_val(otree,path)
+	
+	if nval==nil or nval==null then
+		nval = ctree.get_path_val(ntree, (path:match("^/local_slivers/[^/]+/").."local_slice/disk") )
+	end
+
+	if nval==nil or nval==null then
+		nval = sys_conf.disk_dflt_per_sliver
+	end
+	
+	if type(nval)~="number" or nval < 1 or nval > sys_conf.disk_max_per_sliver  then
+		
+		dbg( add_lslv_err( otree, path, "Invalid", nval) )
+		nval = sys_conf.disk_dflt_per_sliver
+		
+	elseif (rules==alloc_rules or rules==deploy_rules) and nval >= sys_conf.disk_avail then
+		
+		dbg( add_lslv_err( otree, path, "Exceeded available disk space for slivers", nval) )
+	end
+	
+	if nval~=oval then
+		ctree.set_path_val( otree, path, nval )
+	end	
+end
+
 
 function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_template" end

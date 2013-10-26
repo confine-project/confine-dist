@@ -179,6 +179,16 @@ function cb2_get_sys_key( rules, sys_conf, otree, ntree, path )
 	ctree.set_path_val( otree, path, sys_conf[key] )
 end
 
+
+
+function cb2_get_disk_avail( rules, sys_conf, otree, ntree, path )
+	if not rules then return "cb2_get_disk_avail" end
+
+	sliver.purge_templates( sys_conf, otree )
+	
+	return cb2_get_sys_key( rules, sys_conf, otree, ntree, path )	
+end
+
 function set_sys_key_and_more( sys_conf, otree, ntree, path, sys_state, reboot )
 	if not rules then return "cb2_set_sys_key_and_reboot_prepared" end
 
@@ -464,7 +474,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-	table.insert(tmp_rules, {"/disk_avail",				cb2_get_sys_key})
+	table.insert(tmp_rules, {"/disk_avail",				cb2_get_disk_avail})
 	
 
 
