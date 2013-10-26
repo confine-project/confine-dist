@@ -1065,7 +1065,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 		while (oslv.state~=prev_state) do
 			
 			dbg("processing i=%s sliver=%s node_state=%s server_sliver_state=%s node_sliver_state=%s err=%s",
-				i, key, otree.state, nslv_set_state, tostring(oslv.state), ctree.as_string(oslv.errors) )
+				i, key, otree.state, tostring(nslv_set_state), tostring(oslv.state), ctree.as_string(oslv.errors) )
 			
 			prev_state = oslv.state
 			
@@ -1166,7 +1166,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 		end
 		
 		dbg("finished   i=%s sliver=%s node_state=%s server_sliver_state=%s node_sliver_state=%s err=%s",
-			i, key, otree.state, nslv_set_state, tostring((otree.local_slivers[key] or {}).state), ctree.as_string((otree.local_slivers[key] or {}).errors) )
+			i, key, otree.state, tostring(nslv_set_state), tostring((otree.local_slivers[key] or {}).state), ctree.as_string((otree.local_slivers[key] or {}).errors) )
 
 	end	
 
