@@ -852,6 +852,7 @@ vct_system_init_check(){
 		local DHCPD_IP_MIN=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MIN soft 2>/dev/null )
 		local DHCPD_IP_MAX=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MAX soft 2>/dev/null )
 		local DHCPD_DNS=$( variable_check ${BRIDGE}_V4_DHCPD_DNS soft 2>/dev/null )
+		local DHCPD_MASK=$( variable_check ${BRIDGE}_V4_DHCPD_MASK soft 2>/dev/null )
 
 		local UDHCPD_CONF_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.conf
 		local UDHCPD_LEASE_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.leases
@@ -867,7 +868,7 @@ vct_system_init_check(){
 		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID && sleep 1
 		
 
-		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
+		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ] && [ $DHCPD_MASK ]; then
 		    if [ $CMD_INIT ] ; then
 			vct_do_sh "cat <<EOF > $UDHCPD_CONF_FILE
 start           $DHCPD_IP_MIN
@@ -876,6 +877,7 @@ interface       $BR_NAME
 lease_file      $UDHCPD_LEASE_FILE
 option router   $( echo $BR_V4_LOCAL_IP | awk -F'/' '{print $1}' )
 option dns      $DHCPD_DNS
+option subnet   $DHCPD_MASK
 EOF
 "
 
