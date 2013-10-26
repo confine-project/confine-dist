@@ -117,12 +117,12 @@ function get_server_node(sys_conf, cache)
 			sliver_obj.exp_data_sha256 = data.null
 		end
 		
-		if not sliver_obj.set_state or sliver_obj.set_state==data.null or
-			(slice_obj.set_state==csliver.SERVER.register) or
-			(slice_obj.set_state==csliver.SERVER.deploy and (sliver_obj.set_state==csliver.SERVER.start))
-			then
-			sliver_obj.set_state = slice_obj.set_state
-		end
+		--if not sliver_obj.set_state or sliver_obj.set_state==data.null or
+		--	(slice_obj.set_state==csliver.SERVER.register) or
+		--	(slice_obj.set_state==csliver.SERVER.deploy and (sliver_obj.set_state==csliver.SERVER.start))
+		--	then
+		--	sliver_obj.set_state = slice_obj.set_state
+		--end
 
 		
 	end
