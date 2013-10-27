@@ -107,23 +107,19 @@ function get_server_node(sys_conf, cache)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
-		if not sliver_obj.exp_data_uri or sliver_obj.exp_data_uri==data.null or sliver_obj.exp_data_uri=="" then
-			sliver_obj.exp_data_uri = slice_obj.exp_data_uri
-			sliver_obj.exp_data_sha256 = slice_obj.exp_data_sha256
+		if type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 and
+			type(sliver_obj.exp_data_sha256)=="string" and sliver_obj.exp_data_sha256:len() then
+			
+			sliver_obj.local_exp_data = {exp_data_uri=sliver_obj.exp_data_uri, exp_data_sha256=sliver_obj.exp_data_sha256}
+			
+		elseif type(slice_obj.exp_data_uri)=="string" and slice_obj.exp_data_uri:len() > 0 and
+			type(slice_obj.exp_data_sha256)=="string" and slice_obj.exp_data_sha256:len() then
+			
+			sliver_obj.local_exp_data = {exp_data_uri=slice_obj.exp_data_uri, exp_data_sha256=slice_obj.exp_data_sha256}
+			
+		else
+			sliver_obj.local_exp_data = {exp_data_uri=data.null, exp_data_sha256=data.null}
 		end
-		
-		if not ( type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 ) then
-			sliver_obj.exp_data_uri = data.null
-			sliver_obj.exp_data_sha256 = data.null
-		end
-		
-		--if not sliver_obj.set_state or sliver_obj.set_state==data.null or
-		--	(slice_obj.set_state==csliver.SERVER.register) or
-		--	(slice_obj.set_state==csliver.SERVER.deploy and (sliver_obj.set_state==csliver.SERVER.start))
-		--	then
-		--	sliver_obj.set_state = slice_obj.set_state
-		--end
-
 		
 	end
 	

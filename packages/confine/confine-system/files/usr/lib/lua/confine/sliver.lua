@@ -477,8 +477,8 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 	elseif rules==alloc_rules and oslv then
 		
-		local uri = oslv.exp_data_uri
-		local sha = oslv.exp_data_sha256
+		local uri = oslv.local_exp_data.exp_data_uri
+		local sha = oslv.local_exp_data.exp_data_sha256
 		
 		if type(uri)~="string" or type(sha)~="string" then
 			dbg( "missing exp_data_uri=%s or exp_data_sha256=%s", cdata.val2string(uri), cdata.val2string(sha) )
@@ -560,11 +560,15 @@ tmp_rules = register_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_template
 --	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_template
 --	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
-	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set}) --cb2_template_uri})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set}) --crules.cb2_nop}) --handled by cb2_template_uri
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
 
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			crules.cb2_set})
+	
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_uri",	cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_sha256",	cb2_exp_data})
 
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
@@ -587,7 +591,8 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_uri",	cb2_exp_data})
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -711,8 +716,9 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 
-			slv.exp_data_uri = sv.api_exp_data_uri or null
-			slv.exp_data_sha256 = sv.api_exp_data_sha256 or null
+			slv.local_exp_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
+						{api_exp_data_uri=sv.api_exp_data_uri, exp_data_sha256=sv.api_exp_data_sha256} or
+						{exp_data_uri=null, exp_data_sha256=null}
 			
 			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
@@ -857,8 +863,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{tools.min(api_slv.disk or api_slv.local_slice.disk or sys_conf.disk_dflt_per_sliver, sys_conf.disk_max_per_sliver)}
 		
-		if api_slv.exp_data_sha256~=null then
-			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_exp_data_dir,api_slv.exp_data_sha256..".tgz"}
+		if type(api_slv.local_exp_data.exp_data_sha256)=="string" then
+			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_exp_data_dir,api_slv.local_exp_data.exp_data_sha256..".tgz"}
 		end
 		
 		if type(api_slv.local_slice.vlan_nr)=="number" then
@@ -900,8 +906,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
-				api_exp_data_uri = (api_slv.exp_data_uri~=null) and api_slv.exp_data_uri or nil,
-				api_exp_data_sha256 = (api_slv.exp_data_sha256~=null) and api_slv.exp_data_sha256 or nil
+				api_exp_data_uri = type(api_slv.local_exp_data.exp_data_uri)=="string" and api_slv.local_exp_data.exp_data_uri or nil,
+				api_exp_data_sha256 = type(api_slv.local_exp_data.exp_data_sha256)=="string" and api_slv.local_exp_data.exp_data_sha256 or nil
 			}
 			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
