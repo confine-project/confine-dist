@@ -45,6 +45,7 @@ define Package/confine-system
 	+tinc \
 	+file \
 	+diffutils \
+	+procps \
 	+losetup \
 	+coreutils-readlink \
 	+mount-utils \
