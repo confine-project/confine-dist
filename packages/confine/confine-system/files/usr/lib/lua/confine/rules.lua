@@ -35,7 +35,7 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set, de
 		assert( type(patterns)=="table" )
 		local i,v
 		for i,v in pairs(patterns) do
-			if (type(val)=="string" and type(v)=="string" and val:match(v)) or (val==v) then
+			if ( (val==v) or type(val)=="string" and type(v)=="string" and val:match(v) ) then
 				success=true
 				break
 			end
@@ -57,8 +57,16 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set, de
 			description = "Invalid, must be one of:"
 			local i,v
 			for i,v in pairs(patterns) do
-				if type(i)=="string" then
-					description = description .. " " .. i
+				if type(v)=="string" then
+					description = description .. ' stringPattern:"' .. v .. '"'
+				elseif type(v) == "boolean" then
+					description = description .. " " .. tostring(v)
+				elseif type(v) == "number" then
+					description = description .. " " .. tostring(v)
+				elseif v == null then
+					description = description .. " " .. "null"
+				elseif v == nil then
+					description = description .. " " .. "nil"
 				end
 			end
 			description = description .. " !"
