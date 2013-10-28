@@ -212,16 +212,12 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.sliver_system_dir     = uci.get("lxc", "general", "lxc_images_path").."/"
 	
-	local EXP_DATA_DIR_RD      = "/confine/exp_data/"
-	conf.sliver_exp_data_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
-
-	local TEMPLATE_DIR_RD      = "/confine/templates/"
 	conf.sliver_template_dir   = uci.get("lxc", "general", "lxc_templates_path").."/"
 	
 	conf.disk_max_per_sliver   = tonumber(uci.get("confine", "node", "disk_max_per_sliver")  or DFLT_SLIVER_DISK_MAX_MB)
 	conf.disk_dflt_per_sliver  = tonumber(uci.get("confine", "node", "disk_dflt_per_sliver") or DFLT_SLIVER_DISK_DFLT_MB)
 	conf.disk_reserved         = tonumber(uci.get("confine", "node", "disk_reserved")        or DFLT_SLIVER_DISK_RESERVED_MB)
-	conf.disk_avail            = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_exp_data_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.disk_reserved
+	conf.disk_avail            = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_template_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.disk_reserved
 	
 
 	data.file_put( conf, system_state_file )

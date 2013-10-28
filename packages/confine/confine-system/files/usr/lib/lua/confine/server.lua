@@ -110,15 +110,30 @@ function get_server_node(sys_conf, cache)
 		if type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 and
 			type(sliver_obj.exp_data_sha256)=="string" and sliver_obj.exp_data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {exp_data_uri=sliver_obj.exp_data_uri, exp_data_sha256=sliver_obj.exp_data_sha256}
+			sliver_obj.local_exp_data = {uri=sliver_obj.exp_data_uri, sha256=sliver_obj.exp_data_sha256}
 			
 		elseif type(slice_obj.exp_data_uri)=="string" and slice_obj.exp_data_uri:len() > 0 and
 			type(slice_obj.exp_data_sha256)=="string" and slice_obj.exp_data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {exp_data_uri=slice_obj.exp_data_uri, exp_data_sha256=slice_obj.exp_data_sha256}
+			sliver_obj.local_exp_data = {uri=slice_obj.exp_data_uri, sha256=slice_obj.exp_data_sha256}
 			
 		else
-			sliver_obj.local_exp_data = {exp_data_uri=data.null, exp_data_sha256=data.null}
+			sliver_obj.local_exp_data = {uri=data.null, sha256=data.null}
+		end
+		
+		
+		if type(sliver_obj.overlay_uri)=="string" and sliver_obj.overlay_uri:len() > 0 and
+			type(sliver_obj.overlay_sha256)=="string" and sliver_obj.overlay_sha256:len() then
+			
+			sliver_obj.local_overlay = {uri=sliver_obj.overlay_uri, sha256=sliver_obj.overlay_sha256}
+			
+		elseif type(slice_obj.overlay_uri)=="string" and slice_obj.overlay_uri:len() > 0 and
+			type(slice_obj.overlay_sha256)=="string" and slice_obj.overlay_sha256:len() then
+			
+			sliver_obj.local_overlay = {uri=slice_obj.overlay_uri, sha256=slice_obj.overlay_sha256}
+			
+		else
+			sliver_obj.local_overlay = {uri=data.null, sha256=data.null}
 		end
 		
 	end

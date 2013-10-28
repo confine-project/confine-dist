@@ -455,39 +455,39 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 	end	
 end
 
-function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_exp_data" end
-	
+function cb2_sha_data( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_sha_data" end
+	if not begin then return end
 
-	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
-	local nslv = ctree.get_path_val(ntree,path:match("^/local_slivers/[^/]+/"))
 	local nval = ctree.get_path_val(ntree,path)
 	local oval = ctree.get_path_val(otree,path)
-	local key  = ctree.get_path_leaf(path)
 	
-	if rules==register_rules then
+	if rules==register_rules and nval then
 		
-		if key=="exp_data_uri" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, nil, {null, "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} )
-		end
+		if not oval then ctree.set_path_val(otree,path,{}) end
 		
-		if key=="exp_data_sha256" then
-			crules.set_or_err( add_lslv_err, otree, ntree, path, nil, {null, "^[%x]+$"} )
-		end
+		local failure = false
 		
-	elseif rules==alloc_rules and oslv then
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/", nil, {null, "^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} ) or failure	
+		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."sha256/", nil, {null, "^[%x]+$"} ) or failure
 		
-		local uri = oslv.local_exp_data.exp_data_uri
-		local sha = oslv.local_exp_data.exp_data_sha256
+		if failure then
+			ctree.set_path_val( otree, path, nil )
+		end		
+		
+	elseif rules==alloc_rules and oval then
+		
+		local uri = ctree.get_path_val(otree,path.."uri/")
+		local sha = ctree.get_path_val(otree,path.."sha256/")
 		
 		if type(uri)~="string" or type(sha)~="string" then
-			dbg( "missing exp_data_uri=%s or exp_data_sha256=%s", cdata.val2string(uri), cdata.val2string(sha) )
+			dbg( "missing path=%s uri=%s or sha256=%s", path, cdata.val2string(uri), cdata.val2string(sha) )
 			return
 		end
 
-		local dst = sys_conf.sliver_exp_data_dir..sha
+		local dst = sys_conf.sliver_template_dir..sha
 		
-		tools.mkdirr( sys_conf.sliver_exp_data_dir )
+		tools.mkdirr( sys_conf.sliver_template_dir )
 		
 		if nixio.fs.stat(dst) then
 			if ssl.dgst_sha256(dst) ~= sha then
@@ -499,16 +499,16 @@ function cb2_exp_data( rules, sys_conf, otree, ntree, path, begin, changed )
 		end
 		
 		if not nixio.fs.stat(dst) then
-			--TODO: check for sys_conf.sliver_exp_data_dir size limit and remove unused files
+			--TODO: check for sys_conf.sliver_template_dir size limit and remove unused files
 			if cdata.http_get_raw(uri, dst) then
 				if ssl.dgst_sha256(dst) ~= sha then
 					nixio.fs.remover( dst )
-					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, nval) )
+					dbg( add_lslv_err(otree, path, "Incorrect sha256=%s for uri=%s" %{sha,uri}, uri) )
 				else
 					nixio.fs.symlink( dst, dst..".tgz" )
 				end
 			else
-				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, nval) )
+				dbg( add_lslv_err(otree, path, "Inaccessible uri=%s" %{uri}, uri) )
 			end
 		end
 	end
@@ -565,11 +565,11 @@ tmp_rules = register_rules
 
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			crules.cb2_set})
-	
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_uri",	cb2_exp_data})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_sha256",	cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
 
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
@@ -591,8 +591,8 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			crules.cb2_nop})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data/exp_data_uri",	cb2_exp_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 tmp_rules = dealloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -717,9 +717,13 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 
 			slv.local_exp_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
-						{api_exp_data_uri=sv.api_exp_data_uri, exp_data_sha256=sv.api_exp_data_sha256} or
-						{exp_data_uri=null, exp_data_sha256=null}
+						{uri=sv.api_exp_data_uri, sha256=sv.api_exp_data_sha256} or
+						{uri=null, sha256=null}
 			
+			slv.local_overlay = (sv.api_overlay_uri and sv.api_overlay_sha256) and
+						{uri=sv.api_overlay_uri, sha256=sv.api_overlay_sha256} or
+						{uri=null, sha256=null}
+						
 			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
 			local ifk,ifv
@@ -863,10 +867,14 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{tools.min(api_slv.disk or api_slv.local_slice.disk or sys_conf.disk_dflt_per_sliver, sys_conf.disk_max_per_sliver)}
 		
-		if type(api_slv.local_exp_data.exp_data_sha256)=="string" then
-			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_exp_data_dir,api_slv.local_exp_data.exp_data_sha256..".tgz"}
+		if type(api_slv.local_exp_data.sha256)=="string" then
+			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_exp_data.sha256..".tgz"}
 		end
 		
+		if type(api_slv.local_overlay.sha256)=="string" then
+			sliver_desc = sliver_desc.."	option overlay_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_overlay.sha256..".tgz"}
+		end
+
 		if type(api_slv.local_slice.vlan_nr)=="number" then
 			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.vlan_nr}
 		end
@@ -906,8 +914,10 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
-				api_exp_data_uri = type(api_slv.local_exp_data.exp_data_uri)=="string" and api_slv.local_exp_data.exp_data_uri or nil,
-				api_exp_data_sha256 = type(api_slv.local_exp_data.exp_data_sha256)=="string" and api_slv.local_exp_data.exp_data_sha256 or nil
+				api_exp_data_uri = type(api_slv.local_exp_data.uri)=="string" and api_slv.local_exp_data.uri or nil,
+				api_exp_data_sha256 = type(api_slv.local_exp_data.sha256)=="string" and api_slv.local_exp_data.sha256 or nil,
+				api_overlay_uri = type(api_slv.local_overlay.uri)=="string" and api_slv.local_overlay.uri or nil,
+				api_overlay_sha256 = type(api_slv.local_overlay.sha256)=="string" and api_slv.local_overlay.sha256 or nil
 			}
 			csystem.set_system_conf( sys_conf, "uci_sliver", sliver_opts, uci_key)
 			sys_get_lsliver( sys_conf, otree, uci_key )
@@ -1238,6 +1248,8 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/template/uri"})
 	table.insert(tmp_rules, {"/*/exp_data_uri"})
 	table.insert(tmp_rules, {"/*/exp_data_sha256"})
+	table.insert(tmp_rules, {"/*/overlay_uri"})
+	table.insert(tmp_rules, {"/*/overlay_sha256"})
 	table.insert(tmp_rules, {"/*/interfaces"})
 	table.insert(tmp_rules, {"/*/interfaces/*", "number_p1"})
 	table.insert(tmp_rules, {"/*/interfaces/*/nr"})

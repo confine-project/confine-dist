@@ -670,6 +670,7 @@ confine_sliver_allocate() {
 	local FS_URL="$(        uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )"
 	local FS_TYPE="$(       uci_get $SRC_CFG.$SL_ID.fs_template_type soft,quiet,path=$SRC_DIR )"
 	local DATA_URL="$(      uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )"
+	local OVERLAY_URL="$(   uci_get $SRC_CFG.$SL_ID.overlay_url      soft,quiet,path=$SRC_DIR )"
 	local MAC_PREFIX16="$(  uci_get confine.node.mac_prefix16 )"
 	local PUBLIC4_PROTO="$( uci_get confine.node.sl_public_ipv4_proto soft)"
 
@@ -730,6 +731,7 @@ confine_sliver_allocate() {
 	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
 	[ "$FS_TYPE" ]     && uci_set $SLV_CFG.$SL_ID.fs_template_type="$FS_TYPE" path=$OUT_DIR
 	[ "$DATA_URL" ]    && uci_set $SLV_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
+	[ "$OVERLAY_URL" ] && uci_set $SLV_CFG.$SL_ID.overlay_url="$OVERLAY_URL"  path=$OUT_DIR
 
 
 
@@ -1008,7 +1010,7 @@ CONFINE_SLIVER_DISK_MB=150
 	fi
 	
 	
-	# Install sliver overlay:
+	# Install empty sliver overlay:
 	local FS_SIZE_MB=$( uci_get confine-slivers.$SL_ID.disk_mb soft,quiet || echo $CONFINE_SLIVER_DISK_MB )
 	
 	[ "$(df -P $LXC_IMAGES_PATH/$CT_NR/ | tail -1 | awk '{print $4}')" -gt "$(( ( $FS_SIZE_MB ) / 1024 ))" ] &&\
@@ -1021,16 +1023,42 @@ CONFINE_SLIVER_DISK_MB=150
 			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
 		}
 
-		
+
+	# Install sliver sliver overlay data:
+	local OVERLAY_URL=$( uci_get confine-slivers.$SL_ID.overlay_url soft,quiet )
+	
+	if [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ $OVERLAY_URL ]; then
+
+	    local OVERLAY_COMP=$( ( echo $OVERLAY_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $OVERLAY_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $OVERLAY_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+	    
+	    local OVERLAY_NAME=$(echo $OVERLAY_URL | awk -F'/' '{print $(NF)}' | awk -F".${OVERLAY_COMP}" '{print $1}')
+	    local OVERLAY_SITE=$(echo $OVERLAY_URL | awk -F"${OVERLAY_NAME}.${OVERLAY_COMP}" '{print $1}')
+	    
+	    [ "$OVERLAY_URL" = "${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $OVERLAY_URL != ${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}"
+	    
+	    install_url $OVERLAY_URL $OVERLAY_SITE $OVERLAY_NAME $OVERLAY_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install &&\
+    	    echo "installed overlay data $OVERLAY_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
+		confine_sliver_undeploy $SL_ID
+		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
+	    }
+	    
+	else
+		echo "NO overlay data available"
+	fi
+
+
 	# Install sliver rootfs:
 	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
-		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ \
-		&&\
+		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+		echo "installed sliver rootfs" &&\
 		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
 		}
-		
+
 
 	# Install sliver exp_data:
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
@@ -1046,9 +1074,14 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
                    err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
-	    
-	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
+	    	    
+	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install &&\
+	    echo "installed sliver exp_data" || {
+		confine_sliver_undeploy $SL_ID
+		err $FUNCNAME "installing sliver=$SL_ID exp_data failed!"
+	    }
 	fi
+
 
 	# Install ro sliver confine data:
 	if [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ]; then
@@ -1057,12 +1090,14 @@ CONFINE_SLIVER_DISK_MB=150
 		echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
 		[ -x $LXC_TEMPLATES_PATH/busybox-static ] || cp /bin/busybox-static $LXC_TEMPLATES_PATH/busybox-static || true
 		[ -x $LXC_TEMPLATES_PATH/busybox-static ] && ln $LXC_TEMPLATES_PATH/busybox-static $LXC_IMAGES_PATH/$CT_NR/confine/busybox-static || true
+		echo "installed sliver confine data"
 	fi	
 	
 	# Finish sliver deployment:
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR # customization occurs here
 	uci_set confine-slivers.$SL_ID.state=deployed
 	uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
+	echo "$FUNCNAME $SL_ID done"
 
     else
 	err $FUNCNAME "slice_id=$SL_ID not properly allocated"
