@@ -1667,6 +1667,10 @@ vct_build_sliver_template() {
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountfs               || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountroot             || true
 	    
+	    vct_sudo_sh "cat <<EOF >> $TMPL_DIR/rootfs/etc/ssh/sshd_config
+PasswordAuthentication no
+EOF
+"
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
 confine
 confine
