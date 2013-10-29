@@ -56,6 +56,7 @@ define Package/confine-system
 	+dropbearconvert \
 	+openssh-keygen +openssl-util \
 	+wget \
+	+curl \
 	\
 	+lua \
 	+luasignal \

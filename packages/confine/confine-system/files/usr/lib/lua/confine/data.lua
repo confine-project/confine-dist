@@ -20,9 +20,6 @@ local ctree  = require "confine.tree"
 
 local dbg    = tools.dbg
 
-local wget               = "(/usr/bin/wget %s -t3 -T2 --random-wait=1 -q -O %s %s %s %s & WID=$! ; /bin/sleep 3600 & SID=$! ;echo -n  & ( /usr/bin/strace -p $SID >/dev/null 2>&1 ; kill $WID 2>/dev/null; ) & wait $WID >/dev/null 2>&1; kill $SID 2>/dev/null ; )"
-local wpost              = "/usr/bin/wget --no-check-certificate -q --post-data=%q -O- %q"
-
 local json_pretty_print_tool   = [=[python -c "import json, sys; print json.dumps(json.loads(sys.stdin.read().decode('utf8', errors='replace')), indent=4)" ]=]
 
 null = json.null
@@ -88,23 +85,31 @@ function file_get( file )
 
 end
 
-
+function curl(url, data, header, etag, cert, compressed, timeout, stderr)
+		
+		assert(url)
+		assert(data)
+		local header_opt = header and ("--dump-header %s" %{header}) or ""
+		local etag_opt = etag and ([[ --header 'If-None-Match: %q' ]] %{etag}) or ""
+		local cert_opt = cert and ("--ca-certificate=%s" %{cert}) or "--insecure"
+		local compressed_opt = compressed and "--compressed" or ""		
+		local timeout_opt = timeout and ("--max-time %s --connect-timeout %s" %{timeout, timeout}) or "3600"
+		local stderr_log = stderr and "" or "2>/dev/null"
+		
+		local cmd = [[ /usr/bin/curl -gG %s %s %s --output %s %s %s %s %s ]]
+				%{cert_opt, compressed_opt, timeout_opt, data, header_opt, etag_opt, url, stderr_log}
+				
+		return os.execute( cmd )
+end
 
 function http_get_raw( url, dst, cert_file )
 	if not url then return nil end
 	
 	assert(url and dst and not nixio.fs.stat(dst))
 	
-	local cert_opt
-	if cert_file then
-		cert_opt = "--ca-certificate="..cert_file
-	else
-		cert_opt = "--no-check-certificate"
-	end
-	local cmd = wget %{ cert_opt, dst, url, "", "" }
-	dbg (cmd)
-	return (os.execute( cmd ) == 0) and true or false
+	return ( curl( url, dst, false, false, cert_file, false, "3600", true) == 0) and true or false
 end
+
 
 function http_get_keys_as_table(url, base_uri, cert_file, cache)
 
@@ -121,64 +126,55 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 		return cached.data, index_key
 	
 	else
-		local cert_opt
-		if cert_file then
-			cert_opt = "--ca-certificate="..cert_file
-		else
-			cert_opt = "--no-check-certificate"
-		end
-		
-		local wget_etag = cached and cached.etag or "0000"
-		local wget_response_file = os.tmpname()
-		local wget_stderr_redirect = "2>" .. wget_response_file
-		local wget_data_file = os.tmpname()
-		local wget_condition = [[ --server-response --header 'If-None-Match: %q' ]] %{ wget_etag }
-		local wget_cmd = wget %{ cert_opt, wget_data_file, url, wget_condition, wget_stderr_redirect, wget_stderr_redirect }
-		local wget_dbg = lutil.exec( wget_cmd )
-		local wget_response = nixio.fs.readfile( wget_response_file )
-		local wget_data_fd = io.open(wget_data_file, "r")
-		
-		--dbg("wget cmd: "..wget_cmd.." data saved to: "..wget_data_file.." response from "..url..": "..tostring(wget_response))
 
-		local src = ltn12.source.file(wget_data_fd)
+		local etag = (cached and cached.etag or "0000")
+		local header_file = os.tmpname()
+		local data_file = os.tmpname()
+		
+		curl( url, data_file, header_file, etag, cert_file, true, "20")
+
+		local header = nixio.fs.readfile( header_file )
+		local data_fd = io.open(data_file, "r")
+		
+		local src = ltn12.source.file(data_fd)
 		local jsd = json.Decoder(true)
 		local result = ltn12.pump.all(src, jsd:sink())
 		
-		os.remove(wget_response_file)
-		os.remove(wget_data_file)
+		os.remove(header_file)
+		os.remove(data_file)
 		
-		if wget_response:match("HTTP/1.1 404 NOT FOUND") then
+		if header:match("HTTP/1.1 404 NOT FOUND") then
 			
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "MISSING", url, tostring(base_key), tostring(index_key))
-			assert( false, "wget returned: '404 NOT FOUND' full response: " .. tostring(wget_response) )
+			assert( false, "wget returned: '404 NOT FOUND' full response: " .. tostring(header) )
 			
-		elseif wget_response:match("HTTP/1.1 200 OK") then
+		elseif header:match("HTTP/1.1 200 OK") then
 			
-			dbg("%6s url=%-60s base_key=%s index_key=%s", cache and "MODIFIED" or "NO CACHE", url, tostring(base_key), tostring(index_key))
+			header_etag = (header:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n",""):match("^[^;]+")
 			
-			wget_etag = (wget_response:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n","")
-			--dbg("wget_etag="..wget_etag)
+			dbg("%6s url=%-60s base_key=%s index_key=%s etag=%s", cache and "MODIFIED" or "NO CACHE", url, tostring(base_key), tostring(index_key), tostring(header_etag))
 			
 			assert(result, "Failed processing json input from: %s"%{url} )
-		
+			
 			result = jsd:get()
+			
+			assert(type(result)=="table", "Failed decoding json input from: %s"%{url} )
+			
 			result = ctree.copy_recursive_rebase_keys(result)
 			assert(type(result) == "table", "Failed rebasing json keys from: %s"%{url} )
-			--dbg("http:get(): got rebased:")
-			--ctree.dump(result)
 			
 			if cache then
 				if not cache[base_key] then cache[base_key] = {} end
 				
 				if index_key then
-					cache[base_key][index_key] = {sqn=cache.sqn, etag=wget_etag, data=result}
+					cache[base_key][index_key] = {sqn=cache.sqn, etag=header_etag, data=result}
 				else
-					cache[base_key] = {sqn=cache.sqn, etag=wget_etag, data=result}
+					cache[base_key] = {sqn=cache.sqn, etag=header_etag, data=result}
 				end
 			end
 			
 			
-		elseif wget_response:match("HTTP/1.1 304 NOT MODIFIED") then
+		elseif header:match("HTTP/1.1 304 NOT MODIFIED") then
 			
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "UNCHANGED", url, tostring(base_key), tostring(index_key))
 			
@@ -188,7 +184,7 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			
 		else
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "ERROR!!", url, tostring(base_key), tostring(index_key))
-			dbg("wget cmd: "..wget_cmd.." data saved to: "..wget_data_file.." response from "..url..": "..tostring(wget_response))			
+			dbg("curl data saved to: "..data_file.." response from "..url..": "..tostring(header))
 		end
 		
 		
