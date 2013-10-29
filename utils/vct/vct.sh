@@ -1654,15 +1654,15 @@ vct_build_sliver_template() {
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
 
-	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot.sh           || true
-	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkfs.sh             || true
-	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mtab.sh                || true
-	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot-bootclean.sh || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot.sh           || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkfs.sh             || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mtab.sh                || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot-bootclean.sh || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclockfirst.sh        || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclock.sh             || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr kmod                   || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr module-init-tools      || true
-	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountall.sh            || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountall.sh            || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountkernfs.sh         || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountfs               || true
 	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountroot             || true
