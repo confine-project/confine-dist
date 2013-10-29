@@ -662,7 +662,6 @@ confine_sliver_allocate() {
 
 	confine_sliver_remove $SL_ID quiet
 
-
 	local USER_PUBKEY="$(   uci_get $SRC_CFG.$SL_ID.user_pubkey      soft,quiet,path=$SRC_DIR )"
 	local EXP_NAME="$(      uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
 	local FS_SIZE="$(       uci_get $SRC_CFG.$SL_ID.disk_mb          soft,quiet,path=$SRC_DIR )"
@@ -930,7 +929,7 @@ confine_sliver_undeploy() {
 	confine_sliver_stop $SL_ID > /dev/null
 	
 	local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
-	local SL_STATE=$( uci_get confine-slivers.$SL_ID.state )
+	local SL_STATE=$( uci_get confine-slivers.$SL_ID.state soft )
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
 
 	if ! [ "$CT_NR" ]; then
@@ -938,18 +937,16 @@ confine_sliver_undeploy() {
 	fi
 
 	if [ "$CT_NR" ]; then
-	
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
 	fi
 	
 	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
-	
+		
 	    uci_set confine-slivers.$SL_ID.state=allocated
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
-	        
-	elif ! [ "$CT_NR" ] || [ "$( uci_get confine-slivers.$SL_ID.state )" != "allocated" ]; then
+	    
+	elif ! [ "$CT_NR" ] || [ "$( uci_get confine-slivers.$SL_ID.state soft )" != "allocated" ]; then
 	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID or NOT in deployed state" soft
 	fi
     done
@@ -1204,7 +1201,6 @@ confine_sliver_start() {
 
 	if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 	    uci_set confine-slivers.$SL_ID.state=started
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	else
 	    lxc.lib lxc_stop $CT_NR
 	    uci_set confine-slivers.$SL_ID.state=error
@@ -1241,11 +1237,9 @@ confine_sliver_stop() {
 
 	    confine_sliver_firewall_stop $CT_NR
 	    
-	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
+	    if [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "started" ] ; then
 		uci_set confine-slivers.$SL_ID.state=deployed
 	    fi
-	    
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	    
 	else
 	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID " soft
@@ -1267,16 +1261,14 @@ confine_sliver_remove() {
     for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
-	
+
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	if ! [ "$CT_NR" ]; then
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SLICE_ID" "quiet,soft")
-		err $FUNCNAME "Failed retrieving container_nr=$CT_NR for slice_id=$SLICE_ID" soft
-	fi	
+		err $FUNCNAME "retried container_nr=$CT_NR for slice_id=$SLICE_ID" soft
+	fi
 	
 	if [ "$CT_NR" ] ; then
-#		lxc.lib lxc_stop $CT_NR
-#		confine_sliver_firewall_stop $CT_NR
 		confine_sliver_stop $SLICE_ID
 		confine_sliver_undeploy $SLICE_ID
 		lxc.lib lxc_purge $CT_NR
