@@ -28,7 +28,7 @@ SERVER_BASE_PATH = "/confine/api"
 NODE_BASE_PATH = "/confine/api"
 
 DFLT_SLIVER_DISK_MAX_MB      = 2000
-DFLT_SLIVER_DISK_DFLT_MB     = 200
+DFLT_SLIVER_DISK_DFLT_MB     = 400
 DFLT_SLIVER_DISK_RESERVED_MB = 500
 
 node_state_file     = RUNTIME_DIR.."node_state"
