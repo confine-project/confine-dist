@@ -90,7 +90,9 @@ stop = false
 function handler(signo)
 	nixio.signal(nixio.const.SIGINT,  "ign")
 	nixio.signal(nixio.const.SIGTERM, "ign")
-	dbg("going to stop now...")
+	if not stop then
+		dbg("going to stop now...")
+	end
 	stop = true
 end
 

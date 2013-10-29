@@ -647,9 +647,8 @@ confine_sliver_allocate() {
     local SRC_DIR=$CONFINE_RPC_DIR
     local SLV_CFG=$( date +%s )-$BASHPID-allocate-sliver
     local OUT_DIR=$CONFINE_RPC_DIR
-    
-    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
 
+    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
     
     cat $SRC > $SRC_DIR/$SRC_CFG
 
@@ -1336,7 +1335,7 @@ confine_daemon_stop() {
 	local CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
 
 	while [ "$CPID" ] && [ -d /proc/$CPID ] ;do
-		kill $CPID
+		kill -15 $CPID
 		sleep 1
 		[ -d /proc/$CPID ] && echo "confine-daemon-pid=$CPID still running. This may take a while..."
 		CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
