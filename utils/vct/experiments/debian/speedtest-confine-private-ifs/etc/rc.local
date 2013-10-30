@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+# Sliver requirements for this experiment:
+# - Debian7 based sliver system (template image)
+# - The exp-data.tgz providing this file
+# - A private interfaces (default)
+
+
+EXP_RESULTS=/root/experiment.data
+EXP_DELAY=20
+
+DL_SIZE="3000000"
+DL_URL="http://media.confine-project.eu/misc/"
+DL_DST="/tmp/test"
+
+/bin/date >> $EXP_RESULTS
+
+(/bin/sleep $EXP_DELAY; time sh -c "ulimit -f $(( $DL_SIZE / 512 )); /usr/bin/wget -r -O /tmp/test $DL_URL"; /bin/ls -l $DL_DST) >> $EXP_RESULTS 2>&1 &
+
+exit 0

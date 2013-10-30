@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash
 #
 # rc.local
 #
@@ -11,6 +11,14 @@
 #
 # By default this script does nothing.
 
-/root/confine-exp.sh /root/confine-exp.log &
+# Sliver requirements for this experiment:
+# - Debian7 based sliver system (template image)
+# - The exp-data.tgz providing this file
+# - A public4 interface
+# - Other slivers running the same experiment
+
+EXP_RESULTS=/root/experiment.data
+
+/root/confine-exp.sh $EXP_RESULTS &
 
 exit 0
