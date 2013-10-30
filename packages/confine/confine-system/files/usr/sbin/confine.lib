@@ -1287,6 +1287,25 @@ confine_sliver_remove() {
     done
 }
 
+confine_sliver_dump_overlay() {
+
+	local SL_ID=$( check_slice_id $1 )
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
+	local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+	local DUMP_PATH=/root/overlay-dump.tgz
+	local NODE_ID=$( uci_get confine.node.id )
+
+	if [ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
+	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
+	   [ "$CT_NR" ] && \
+	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
+		tar -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
+		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
+	else
+		echo "sliver=$SL_ID NOT in deployed state"
+	fi
+}
 
 confine_info() {
 
@@ -1380,6 +1399,7 @@ confine_sliver_start    <SLICE_ID|all>
 confine_sliver_stop     <SLICE_ID|all>
 confine_sliver_undeploy <SLICE_ID|all>
 confine_sliver_remove   <SLICE_ID|all>
+confine_sliver_dump_overlay <SLICE_ID>
 EOF
 }
 
@@ -1400,7 +1420,7 @@ else
     case "$CMD" in
 	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
-	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove) $CMD $1 ${2:-};;
+	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove|confine_sliver_dump_overlay) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;
 	*) help;;
     esac

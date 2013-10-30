@@ -180,6 +180,7 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_dump_overlay
 endef
 
 
