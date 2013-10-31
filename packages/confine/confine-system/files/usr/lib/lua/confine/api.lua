@@ -205,7 +205,7 @@ function conditional_response(request, response)
     -- Returns response based on If-None-Match request header
     local request_etag = request['headers']["If-None-Match"]
     local modified = true
-    if request_etag and request_etag == response['headers']['Etag'] then
+    if request_etag and request_etag == response['headers']['ETag'] then
         response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
         response['content'] = ''
         modified = false
