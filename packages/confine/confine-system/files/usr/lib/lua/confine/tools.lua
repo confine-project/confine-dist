@@ -96,6 +96,13 @@ function handler(signo)
 	stop = true
 end
 
+wakeup = false
+
+function wakeup(signo)
+   dbg("going to wakeup now...")
+   wakeup = true
+end
+
 function sleep(sec)
 	local interval=1
 	if stop then
@@ -105,7 +112,10 @@ function sleep(sec)
 	end
 		
 	while sec>0 do
-		if stop then return end
+		if stop or wakeup then
+			wakeup = false
+			return
+		end
 		if sec > interval then
 			sec = sec - interval
 		else

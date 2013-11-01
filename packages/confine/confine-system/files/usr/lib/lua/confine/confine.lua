@@ -182,6 +182,7 @@ if system.check_pid() then
 	
 	sig.signal(sig.SIGINT,  tools.handler)
 	sig.signal(sig.SIGTERM, tools.handler)
+	sig.signal(sig.SIGCONT, tools.wakeup)
 	
 	local sys_conf = system.get_system_conf( nil, arg )
 	assert(sys_conf)
