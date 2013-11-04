@@ -199,11 +199,13 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     done
 
     run_ramfs "set -x
+sync
+sleep 2
 dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
 sync
-sleep 5
+sleep 2
 
 mkdir /part
 mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -219,9 +221,11 @@ else
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
         run_ramfs "set -x
+sync
+sleep 2
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 5
+sleep 2
 
 mkdir /part
 mount -t ext2 -o rw,noatime ${DEVICE}1 /part
@@ -233,9 +237,11 @@ sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     else
         run_ramfs "set -x
+sync
+sleep 2
 $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
 sync
-sleep 5
+sleep 2
 
 reboot -f
 sleep 5
