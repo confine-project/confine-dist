@@ -190,7 +190,6 @@ function cb2_get_disk_avail( rules, sys_conf, otree, ntree, path )
 end
 
 function set_sys_key_and_more( sys_conf, otree, ntree, path, sys_state, reboot )
-	if not rules then return "cb2_set_sys_key_and_reboot_prepared" end
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
