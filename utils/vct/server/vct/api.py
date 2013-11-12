@@ -32,13 +32,14 @@ class VMView(APIView):
     
     def post(self, request, pk, *args, **kwargs):
         node = get_object_or_404(Node, pk=pk)
-        if request.DATA is None:
+        if not request.DATA:
             try:
                 cmd = vct_node('create', node, silent=False)
             except CommandError as e:
                 return Response({"detail": str(e)},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             state = get_vct_node_state(node)
+            serializer = self.serializer_class(context={'request': request})
             serializer.data['state'] = state
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         raise exceptions.ParseError(detail='This endpoint only accepts null data')
