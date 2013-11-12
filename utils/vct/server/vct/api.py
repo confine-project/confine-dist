@@ -61,6 +61,9 @@ class VMView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    def patch(self, request, pk, **kwargs):
+        return self.put(request, pk, **kwargs)
+
     def delete(self, request, pk, format=None):
         node = get_object_or_404(Node, pk=pk)
         vct_node('remove', node)
