@@ -90,8 +90,17 @@ stop = false
 function handler(signo)
 	nixio.signal(nixio.const.SIGINT,  "ign")
 	nixio.signal(nixio.const.SIGTERM, "ign")
-	dbg("going to stop now...")
+	if not stop then
+		dbg("going to stop now...")
+	end
 	stop = true
+end
+
+wakeup = false
+
+function wakeup(signo)
+   dbg("going to wakeup now...")
+   wakeup = true
 end
 
 function sleep(sec)
@@ -103,7 +112,10 @@ function sleep(sec)
 	end
 		
 	while sec>0 do
-		if stop then return end
+		if stop or wakeup then
+			wakeup = false
+			return
+		end
 		if sec > interval then
 			sec = sec - interval
 		else
@@ -191,6 +203,27 @@ function get_table_by_key_val( t, val, key )
 		end
 	end
 	return nil
+end
+
+function is_table_value( t, val, path )
+	local k,v
+	for k,v in pairs(t) do
+		
+		local curr = (path and path.."/"..k) or "/"..k
+		
+		if v == val then
+			
+			return curr
+		
+		elseif type(v)=="table" then
+			
+			local found = is_table_value( v, val, curr )
+			
+			if found then
+				return found
+			end
+		end
+	end
 end
 
 function fname()

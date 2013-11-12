@@ -852,6 +852,7 @@ vct_system_init_check(){
 		local DHCPD_IP_MIN=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MIN soft 2>/dev/null )
 		local DHCPD_IP_MAX=$( variable_check ${BRIDGE}_V4_DHCPD_IP_MAX soft 2>/dev/null )
 		local DHCPD_DNS=$( variable_check ${BRIDGE}_V4_DHCPD_DNS soft 2>/dev/null )
+		local DHCPD_MASK=$( variable_check ${BRIDGE}_V4_DHCPD_MASK soft 2>/dev/null )
 
 		local UDHCPD_CONF_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.conf
 		local UDHCPD_LEASE_FILE=$VCT_VIRT_DIR/udhcpd-$BR_NAME.leases
@@ -867,7 +868,7 @@ vct_system_init_check(){
 		[ $CMD_INIT ] && [ ${UDHCPD_PID:-} ] && echo "kill udhcpd" >&2 && vct_sudo kill $UDHCPD_PID && sleep 1
 		
 
-		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ]; then
+		if [ $DHCPD_IP_MIN ] && [ $DHCPD_IP_MAX ] && [ $DHCPD_DNS ] && [ $DHCPD_MASK ]; then
 		    if [ $CMD_INIT ] ; then
 			vct_do_sh "cat <<EOF > $UDHCPD_CONF_FILE
 start           $DHCPD_IP_MIN
@@ -876,6 +877,7 @@ interface       $BR_NAME
 lease_file      $UDHCPD_LEASE_FILE
 option router   $( echo $BR_V4_LOCAL_IP | awk -F'/' '{print $1}' )
 option dns      $DHCPD_DNS
+option subnet   $DHCPD_MASK
 EOF
 "
 
@@ -1086,8 +1088,6 @@ vct_node_get_mac() {
 
     else
 
-	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
-
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
 	if ! virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" >/dev/null; then
@@ -1099,6 +1099,10 @@ vct_node_get_mac() {
 	    -v child::source/attribute::* -o " " -v child::mac/attribute::address -n | \
 	    grep -e "^$VCT_RD_LOCAL_BRIDGE " | awk '{print $2 }' || \
 	    err $FUNCNAME "Failed resolving MAC address for $VCRD_NAME $VCT_RD_LOCAL_BRIDGE" )
+
+	[ "$CMD_QUIET" ] || echo $FUNCNAME "connecting to virtual node=$VCRD_ID mac=$MAC" >&2
+
+
     fi
 
     echo $MAC
@@ -1379,7 +1383,7 @@ vct_node_ssh() {
 
         local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-        if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+        if ! ( [ -f $VCT_NODE_MAC_DB  ]  && grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
             err $FUNCNAME "$VCRD_NAME not running"
         fi
 
@@ -1430,7 +1434,7 @@ vct_node_scp() {
 
 	local VCRD_NAME="${VCT_RD_NAME_PREFIX}${VCRD_ID}"
 
-	if ! ( grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
+	if ! ( [ -f $VCT_NODE_MAC_DB  ]  && grep -e "^$VCRD_ID" $VCT_NODE_MAC_DB >&2 || virsh -c qemu:///system dominfo $VCRD_NAME | grep -e "^State:" | grep "running" >/dev/null ); then
 	    err $FUNCNAME "$VCRD_NAME not running"
 	fi
 	
@@ -1453,7 +1457,7 @@ vct_node_scp() {
 	    COUNT=$(( $COUNT + 1 ))
 	done
 
-	echo >&2
+	#echo >&2
 	# [ "$COUNT" = 0 ] || echo >&2
 	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ping6 to node=$VCRD_ID via $IP"
 
@@ -1461,28 +1465,50 @@ vct_node_scp() {
 	while [ "$COUNT" -le $COUNT_MAX ]; do 
 
 	    echo > $VCT_KEYS_DIR/known_hosts
-	    ssh $VCT_SSH_OPTIONS root@$IP "exit" && break
+	    ssh $VCT_SSH_OPTIONS root@$IP "exit" 2>/dev/null && break
 	    sleep 1
 	    
 	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID to accept ssh..." >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
-	echo >&2
+	#echo >&2
 	# [ "$COUNT" = 0 ] || echo >&2
 	[ "$COUNT" -le $COUNT_MAX ] || err $FUNCNAME "Failed ssh to node=$VCRD_ID via $IP"
 
 	echo > $VCT_KEYS_DIR/known_hosts
 
 	if [ $IS_IPV6 -ne 0 ]; then
-		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IP\]:/ )
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@\[$IP\]:/ ) 2>/dev/null
 	else
-		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@$IP:/ )
+		scp $VCT_SSH_OPTIONS $( echo $WHAT | sed s/remote:/root@$IP:/ )  2>/dev/null
 	fi
 
     done
 }
 
+vct_node_scp_cns() {
+    local VCRD_ID=$1; check_rd_id $VCRD_ID quiet
+    
+    local CNS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-system/files"
+    local LXC_FILES_DIR="$VCT_DIR/../../packages/confine/lxc/files"
+
+#  This is automatic but slow:
+#    for f in $(cd $CNS_FILES_DIR && find | grep -v "/etc/config"); do
+#	echo $f
+#	[ -f $CNS_FILES_DIR/$f ] && \
+#	    vct_node_scp $VCRD_ID remote:/$f $CNS_FILES_DIR/$f || true
+#    done
+
+#  This is manual but faster:
+    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua   $CNS_FILES_DIR/usr/lib/lua/confine/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*          $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/lxc/scripts/*-confine.sh    $CNS_FILES_DIR/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/config/confine-defaults $CNS_FILES_DIR/etc/config/
+    vct_node_scp $VCRD_ID remote:/etc/init.d/confine          $CNS_FILES_DIR/etc/init.d/
+    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst    $CNS_FILES_DIR/etc/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*              $LXC_FILES_DIR/usr/sbin/
+}
 
 vct_node_mount() {
     local VCRD_ID_RANGE=$1
@@ -1620,14 +1646,31 @@ vct_build_sliver_template() {
 	    # Inspired by: http://www.wallix.org/2011/09/20/how-to-use-linux-containers-lxc-under-debian-squeeze/
 
 	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
-	    vct_sudo rm $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
-	    vct_sudo rm $TMPL_DIR/rootfs/dev/shm
-	    vct_sudo mkdir $TMPL_DIR/rootfs/dev/shm
+	    vct_sudo rm -f $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
+	    vct_sudo rm -f $TMPL_DIR/rootfs/dev/shm
+	    vct_sudo mkdir -p $TMPL_DIR/rootfs/dev/shm
 	    
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f umountfs remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclock.sh remove
 	    vct_sudo chroot $TMPL_DIR/rootfs /usr/sbin/update-rc.d -f hwclockfirst.sh remove
+
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot.sh           || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkfs.sh             || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mtab.sh                || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr checkroot-bootclean.sh || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclockfirst.sh        || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr hwclock.sh             || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr kmod                   || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr module-init-tools      || true
+#	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountall.sh            || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr mountkernfs.sh         || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountfs               || true
+	    vct_sudo chroot $TMPL_DIR/rootfs /sbin/insserv -fr umountroot             || true
 	    
+	    vct_sudo_sh "cat <<EOF >> $TMPL_DIR/rootfs/etc/ssh/sshd_config
+PasswordAuthentication no
+EOF
+"
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
 confine
 confine
@@ -1635,8 +1678,10 @@ EOF
 
 	    vct_sudo_sh "cat <<EOF > $TMPL_DIR/rootfs/etc/inittab 
 id:2:initdefault:
+
 si::sysinit:/etc/init.d/rcS
-~:S:wait:/sbin/sulogin
+
+#~:S:wait:/sbin/sulogin
 
 l0:0:wait:/etc/init.d/rc 0
 l1:1:wait:/etc/init.d/rc 1
@@ -1645,9 +1690,19 @@ l3:3:wait:/etc/init.d/rc 3
 l4:4:wait:/etc/init.d/rc 4
 l5:5:wait:/etc/init.d/rc 5
 l6:6:wait:/etc/init.d/rc 6
+
 z6:6:respawn:/sbin/sulogin
 
 1:2345:respawn:/sbin/getty 38400 console
+
+# new from vctc:
+c1:12345:respawn:/sbin/getty 38400 tty1 linux
+c2:12345:respawn:/sbin/getty 38400 tty2 linux
+c3:12345:respawn:/sbin/getty 38400 tty3 linux
+c4:12345:respawn:/sbin/getty 38400 tty4 linux
+
+p0::powerfail:/sbin/init 0
+p6::ctrlaltdel:/sbin/init 6
 
 EOF
 "
@@ -1761,6 +1816,7 @@ else
 	vct_node_console)           $CMD "$@";;
 	vct_node_ssh)               $CMD "$@";;
 	vct_node_scp)               $CMD "$@";;
+	vct_node_scp_cns)           $CMD "$@";;
 
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;

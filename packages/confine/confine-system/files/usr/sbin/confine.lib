@@ -609,10 +609,16 @@ confine_node_enable() {
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24 )
 
 	iptables -L POSTROUTING -t nat -n | \
-		grep -e "MASQUERADE *all *-- *${NODE_PRIV_IPV4_PREFIX24}.0/25 *0.0.0.0/0" >/dev/null || \
+		grep -e "^MASQUERADE *all *-- *${NODE_PRIV_IPV4_PREFIX24}.0/25 *0.0.0.0/0$" >/dev/null || \
 		iptables -I POSTROUTING -t nat -o br-local -s ${NODE_PRIV_IPV4_PREFIX24}.0/25 -j MASQUERADE
 
+	iptables -L INPUT -t filter -n | \
+		grep -e "^DROP *tcp *-- *0.0.0.0/0 *0.0.0.0/0 *tcp *dpts:49152:65535 *state *INVALID,NEW,RELATED,UNTRACKED" >/dev/null || \
+		iptables -t filter -A INPUT -p tcp --dport 49152:65535 -i br-local -m state ! --state ESTABLISHED -j DROP
 
+	iptables -L INPUT -t filter -n | \
+		grep -e "^DROP *udp *-- *0.0.0.0/0 *0.0.0.0/0 *udp *dpts:49152:65535 *state *INVALID,NEW,RELATED,UNTRACKED" >/dev/null || \
+		iptables -t filter -A INPUT -p udp --dport 49152:65535 -i br-local -m state ! --state ESTABLISHED -j DROP
 
 	confine_tinc_stop
 	confine_tinc_start
@@ -641,9 +647,8 @@ confine_sliver_allocate() {
     local SRC_DIR=$CONFINE_RPC_DIR
     local SLV_CFG=$( date +%s )-$BASHPID-allocate-sliver
     local OUT_DIR=$CONFINE_RPC_DIR
-    
-    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
 
+    local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
     
     cat $SRC > $SRC_DIR/$SRC_CFG
 
@@ -657,13 +662,13 @@ confine_sliver_allocate() {
 
 	confine_sliver_remove $SL_ID quiet
 
-
 	local USER_PUBKEY="$(   uci_get $SRC_CFG.$SL_ID.user_pubkey      soft,quiet,path=$SRC_DIR )"
 	local EXP_NAME="$(      uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
 	local FS_SIZE="$(       uci_get $SRC_CFG.$SL_ID.disk_mb          soft,quiet,path=$SRC_DIR )"
 	local FS_URL="$(        uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )"
 	local FS_TYPE="$(       uci_get $SRC_CFG.$SL_ID.fs_template_type soft,quiet,path=$SRC_DIR )"
 	local DATA_URL="$(      uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )"
+	local OVERLAY_URL="$(   uci_get $SRC_CFG.$SL_ID.overlay_url      soft,quiet,path=$SRC_DIR )"
 	local MAC_PREFIX16="$(  uci_get confine.node.mac_prefix16 )"
 	local PUBLIC4_PROTO="$( uci_get confine.node.sl_public_ipv4_proto soft)"
 
@@ -724,6 +729,7 @@ confine_sliver_allocate() {
 	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
 	[ "$FS_TYPE" ]     && uci_set $SLV_CFG.$SL_ID.fs_template_type="$FS_TYPE" path=$OUT_DIR
 	[ "$DATA_URL" ]    && uci_set $SLV_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
+	[ "$OVERLAY_URL" ] && uci_set $SLV_CFG.$SL_ID.overlay_url="$OVERLAY_URL"  path=$OUT_DIR
 
 
 
@@ -767,6 +773,7 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6  path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4  path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO path=$OUT_DIR
 		    
 
 		elif [ "$IF_TYPE" = "public4" ]; then
@@ -775,7 +782,7 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4=$PUBLIC4_IPV4  path=$OUT_DIR
-		    
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO path=$OUT_DIR
 
 		elif [ "$IF_TYPE" = "management" ]; then
 
@@ -850,10 +857,10 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=internal
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 
 		elif [ "$IF_TYPE" = "public" ] || [ "$IF_TYPE" = "public4" ]; then
@@ -863,8 +870,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4_proto=$PUBLIC4_PROTO
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
 
 		#    if [ "$PUBLIC4_PROTO" = "static" ] ; then
 		#	uci_set lxc.$CT_NR.if${IF_KEY}_ipv4=$IF_IPV4
@@ -878,8 +885,8 @@ confine_sliver_allocate() {
 		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
 		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
 		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
-		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+#		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 
 		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_VLANTAG" ]; then
@@ -922,22 +929,24 @@ confine_sliver_undeploy() {
 	confine_sliver_stop $SL_ID > /dev/null
 	
 	local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
-	local SL_STATE=$( uci_get confine-slivers.$SL_ID.state )
+	local SL_STATE=$( uci_get confine-slivers.$SL_ID.state soft )
 	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
 
 	if ! [ "$CT_NR" ]; then
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SL_ID" "quiet,soft")
 	fi
 
-	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
-	
+	if [ "$CT_NR" ]; then
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
 	    umount -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
+	fi
+	
+	if [ "$CT_NR" ] && ( [ "$SL_STATE" = "deployed" ] || [ "$SL_STATE" = "deploying" ] ); then
+		
 	    uci_set confine-slivers.$SL_ID.state=allocated
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
-	        
-	elif ! [ "$CT_NR" ] || [ "$( uci_get confine-slivers.$SL_ID.state )" != "allocated" ]; then
+	    
+	elif ! [ "$CT_NR" ] || [ "$( uci_get confine-slivers.$SL_ID.state soft )" != "allocated" ]; then
 	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID or NOT in deployed state" soft
 	fi
     done
@@ -997,7 +1006,7 @@ CONFINE_SLIVER_DISK_MB=150
 	fi
 	
 	
-	# Install sliver overlay:
+	# Install empty sliver overlay:
 	local FS_SIZE_MB=$( uci_get confine-slivers.$SL_ID.disk_mb soft,quiet || echo $CONFINE_SLIVER_DISK_MB )
 	
 	[ "$(df -P $LXC_IMAGES_PATH/$CT_NR/ | tail -1 | awk '{print $4}')" -gt "$(( ( $FS_SIZE_MB ) / 1024 ))" ] &&\
@@ -1010,16 +1019,42 @@ CONFINE_SLIVER_DISK_MB=150
 			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
 		}
 
-		
+
+	# Install sliver sliver overlay data:
+	local OVERLAY_URL=$( uci_get confine-slivers.$SL_ID.overlay_url soft,quiet )
+	
+	if [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ $OVERLAY_URL ]; then
+
+	    local OVERLAY_COMP=$( ( echo $OVERLAY_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $OVERLAY_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $OVERLAY_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+	    
+	    local OVERLAY_NAME=$(echo $OVERLAY_URL | awk -F'/' '{print $(NF)}' | awk -F".${OVERLAY_COMP}" '{print $1}')
+	    local OVERLAY_SITE=$(echo $OVERLAY_URL | awk -F"${OVERLAY_NAME}.${OVERLAY_COMP}" '{print $1}')
+	    
+	    [ "$OVERLAY_URL" = "${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $OVERLAY_URL != ${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}"
+	    
+	    install_url $OVERLAY_URL $OVERLAY_SITE $OVERLAY_NAME $OVERLAY_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install &&\
+    	    echo "installed overlay data $OVERLAY_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
+		confine_sliver_undeploy $SL_ID
+		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
+	    }
+	    
+	else
+		echo "NO overlay data available"
+	fi
+
+
 	# Install sliver rootfs:
 	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
-		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ \
-		&&\
+		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+		echo "installed sliver rootfs" &&\
 		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
 		}
-		
+
 
 	# Install sliver exp_data:
 	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
@@ -1035,9 +1070,14 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
                    err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
-	    
-	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install
+	    	    
+	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install &&\
+	    echo "installed sliver exp_data" || {
+		confine_sliver_undeploy $SL_ID
+		err $FUNCNAME "installing sliver=$SL_ID exp_data failed!"
+	    }
 	fi
+
 
 	# Install ro sliver confine data:
 	if [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ]; then
@@ -1046,12 +1086,14 @@ CONFINE_SLIVER_DISK_MB=150
 		echo $(( 16#${NODE_ID} )) > $LXC_IMAGES_PATH/$CT_NR/confine/node-id
 		[ -x $LXC_TEMPLATES_PATH/busybox-static ] || cp /bin/busybox-static $LXC_TEMPLATES_PATH/busybox-static || true
 		[ -x $LXC_TEMPLATES_PATH/busybox-static ] && ln $LXC_TEMPLATES_PATH/busybox-static $LXC_IMAGES_PATH/$CT_NR/confine/busybox-static || true
+		echo "installed sliver confine data"
 	fi	
 	
 	# Finish sliver deployment:
 	lxc.lib lxc_create $CT_NR lxc.$CT_NR # customization occurs here
 	uci_set confine-slivers.$SL_ID.state=deployed
 	uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
+	echo "$FUNCNAME $SL_ID done"
 
     else
 	err $FUNCNAME "slice_id=$SL_ID not properly allocated"
@@ -1106,9 +1148,10 @@ confine_sliver_firewall_restart() {
 	    local IF_PAIR="$(     uci_get lxc.$CT_NR.if${IF_KEY}_pair )"
 
 	    local IF_MAC="$(      uci_get lxc.$CT_NR.if${IF_KEY}_mac )"
-	    local IF_IPV4="$(     uci_get lxc.$CT_NR.if${IF_KEY}_ipv4 soft,quiet | cut -d '/' -f 1 )"
-	    local IF_PROT4="$(    uci_get lxc.$CT_NR.if${IF_KEY}_ipv4_proto soft,quiet )"
-	    local IF_IPV6="$(     uci_get lxc.$CT_NR.if${IF_KEY}_ipv6 soft,quiet | cut -d '/' -f 1 )"
+	    
+	    local IF_IPV4="$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4 soft,quiet | cut -d '/' -f 1 )"
+	    local IF_PROT4="$(    uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv4_proto soft,quiet )"
+	    local IF_IPV6="$(     uci_get confine-slivers.$SL_ID.if${IF_KEY}_ipv6 soft,quiet | cut -d '/' -f 1 )"
 
 	    # set default policy ...
 	    ebtables -I FORWARD -i $IF_PAIR -j DROP
@@ -1158,7 +1201,6 @@ confine_sliver_start() {
 
 	if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
 	    uci_set confine-slivers.$SL_ID.state=started
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	else
 	    lxc.lib lxc_stop $CT_NR
 	    uci_set confine-slivers.$SL_ID.state=error
@@ -1195,11 +1237,9 @@ confine_sliver_stop() {
 
 	    confine_sliver_firewall_stop $CT_NR
 	    
-	    if [ "$( uci_get confine-slivers.$SL_ID.state )" = "started" ] ; then
+	    if [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "started" ] ; then
 		uci_set confine-slivers.$SL_ID.state=deployed
 	    fi
-	    
-	    uci_show confine-slivers.$SL_ID | uci_dot_to_file confine-slivers
 	    
 	else
 	    err $FUNCNAME "Failed retrieving sliver_nr for slice_id=$SL_ID " soft
@@ -1221,16 +1261,14 @@ confine_sliver_remove() {
     for SLICE_ID in $( [ "$SLIVER_ARG" = "all" ] && \
 	( uci_get_sections confine-slivers sliver soft,quiet || true ) || \
 	check_slice_id $SLIVER_ARG ); do
-	
+
 	local CT_NR=$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,$CMD_QUIET )
 	if ! [ "$CT_NR" ]; then
 		CT_NR=$( uci_get_section_by_option "lxc" "container" "tag" "confine-sliver-$SLICE_ID" "quiet,soft")
-		err $FUNCNAME "Failed retrieving container_nr=$CT_NR for slice_id=$SLICE_ID" soft
-	fi	
+		err $FUNCNAME "retried container_nr=$CT_NR for slice_id=$SLICE_ID" soft
+	fi
 	
 	if [ "$CT_NR" ] ; then
-#		lxc.lib lxc_stop $CT_NR
-#		confine_sliver_firewall_stop $CT_NR
 		confine_sliver_stop $SLICE_ID
 		confine_sliver_undeploy $SLICE_ID
 		lxc.lib lxc_purge $CT_NR
@@ -1249,6 +1287,25 @@ confine_sliver_remove() {
     done
 }
 
+confine_sliver_dump_overlay() {
+
+	local SL_ID=$( check_slice_id $1 )
+	local CT_NR=$( uci_get confine-slivers.$SL_ID.sliver_nr soft )
+	local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
+	local DUMP_PATH=/root/overlay-dump.tgz
+	local NODE_ID=$( uci_get confine.node.id )
+
+	if [ "$( uci_get confine-slivers.$SL_ID soft )" = "sliver" ] && \
+	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
+	   [ "$CT_NR" ] && \
+	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
+		tar -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
+		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
+	else
+		echo "sliver=$SL_ID NOT in deployed state"
+	fi
+}
 
 confine_info() {
 
@@ -1289,7 +1346,7 @@ confine_daemon_stop() {
 	local CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
 
 	while [ "$CPID" ] && [ -d /proc/$CPID ] ;do
-		kill $CPID
+		kill -15 $CPID
 		sleep 1
 		[ -d /proc/$CPID ] && echo "confine-daemon-pid=$CPID still running. This may take a while..."
 		CPID=$( [ -f /var/run/confine/pid ] && cat /var/run/confine/pid )
@@ -1342,6 +1399,7 @@ confine_sliver_start    <SLICE_ID|all>
 confine_sliver_stop     <SLICE_ID|all>
 confine_sliver_undeploy <SLICE_ID|all>
 confine_sliver_remove   <SLICE_ID|all>
+confine_sliver_dump_overlay <SLICE_ID>
 EOF
 }
 
@@ -1362,7 +1420,7 @@ else
     case "$CMD" in
 	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
-	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove) $CMD $1 ${2:-};;
+	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove|confine_sliver_dump_overlay) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;
 	*) help;;
     esac

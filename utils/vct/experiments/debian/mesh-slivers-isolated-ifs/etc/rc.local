@@ -1,0 +1,40 @@
+#!/bin/bash
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+
+# Sliver requirements for this experiment:
+# - Debian7 based sliver system (template image)
+# - The exp-data.tgz providing this file
+# - Bmx6 binary provided via sliver overlay like this:
+# - Isolated interfaces named as iso[0..4]
+# - Other slivers running the same experiment and some of them
+#   having physical links between the parent interaces of the 
+#   defined isolated interfaces
+# - All involved slivers must have started within the defined 
+#   EXP_DELAY (before the EXP_RESULTS are created)
+
+# Alternatively, the bmx6 binary can be created manually like this:
+# $ apt-get install git-core build-essential
+# $ git clone https://github.com/axn/bmx6.git
+# $ cd bmx6; make; make install
+
+EXP_RESULTS=/root/experiment.data
+EXP_DURATION=3600
+
+/bin/date >> $EXP_RESULTS
+
+/usr/sbin/bmx6 dev=iso0 dev=iso1 dev=iso2 dev=iso3 dev=iso4
+
+(/usr/sbin/bmx6 loopInterval=10000 -lc show=status show=interfaces show=links show=originators /r=1 show=tunnels descriptions /r=0 >> $EXP_RESULTS& sleep $EXP_DURATION; killall bmx6 ) &
+
+exit 0

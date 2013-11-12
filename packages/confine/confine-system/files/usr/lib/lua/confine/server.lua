@@ -43,11 +43,14 @@ local function get_local_group(sys_conf, obj, cert_file, cache)
 end
 
 
-function get_server_node(sys_conf)
+function get_server_node(sys_conf, cache)
 
 	dbg("------ retrieving new node ------")
 
-	local cache = {}
+	if cache then
+		cache.sqn = cache.sqn and (cache.sqn + 1) or 2
+	end
+	
 	local cert_file = sys_conf.server_cert_file
 	
 	if require_server_cert and not cert_file then
@@ -104,27 +107,68 @@ function get_server_node(sys_conf)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
-		if not sliver_obj.exp_data_uri or sliver_obj.exp_data_uri==data.null or sliver_obj.exp_data_uri=="" then
-			sliver_obj.exp_data_uri = slice_obj.exp_data_uri
-			sliver_obj.exp_data_sha256 = slice_obj.exp_data_sha256
+		if type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 and
+			type(sliver_obj.exp_data_sha256)=="string" and sliver_obj.exp_data_sha256:len() then
+			
+			sliver_obj.local_exp_data = {uri=sliver_obj.exp_data_uri, sha256=sliver_obj.exp_data_sha256}
+			
+		elseif type(slice_obj.exp_data_uri)=="string" and slice_obj.exp_data_uri:len() > 0 and
+			type(slice_obj.exp_data_sha256)=="string" and slice_obj.exp_data_sha256:len() then
+			
+			sliver_obj.local_exp_data = {uri=slice_obj.exp_data_uri, sha256=slice_obj.exp_data_sha256}
+			
+		else
+			sliver_obj.local_exp_data = {uri=data.null, sha256=data.null}
 		end
 		
-		if not ( type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 ) then
-			sliver_obj.exp_data_uri = data.null
-			sliver_obj.exp_data_sha256 = data.null
-		end
 		
-		if not sliver_obj.set_state or sliver_obj.set_state==data.null or
-			(slice_obj.set_state==csliver.SERVER.register) or
-			(slice_obj.set_state==csliver.SERVER.deploy and (sliver_obj.set_state==csliver.SERVER.start))
-			then
-			sliver_obj.set_state = slice_obj.set_state
+		if type(sliver_obj.overlay_uri)=="string" and sliver_obj.overlay_uri:len() > 0 and
+			type(sliver_obj.overlay_sha256)=="string" and sliver_obj.overlay_sha256:len() then
+			
+			sliver_obj.local_overlay = {uri=sliver_obj.overlay_uri, sha256=sliver_obj.overlay_sha256}
+			
+		elseif type(slice_obj.overlay_uri)=="string" and slice_obj.overlay_uri:len() > 0 and
+			type(slice_obj.overlay_sha256)=="string" and slice_obj.overlay_sha256:len() then
+			
+			sliver_obj.local_overlay = {uri=slice_obj.overlay_uri, sha256=slice_obj.overlay_sha256}
+			
+		else
+			sliver_obj.local_overlay = {uri=data.null, sha256=data.null}
 		end
-
 		
 	end
 	
 --	tree.dump(node.local_group)
+
+	-- cleanup cache:
+	
+	if cache then
+		local k1,v1
+		for k1,v1 in pairs(cache) do
+			if type(v1)=="table" then
+				if v1.sqn then
+					if v1.sqn < cache.sqn then
+						cache[k1] = nil
+					end
+				else
+					local k2,v2
+					local empty=true
+					for k2,v2 in pairs(v1) do
+						if v2.sqn < cache.sqn then
+							v1[k2] = nil
+						else
+							empty=false
+						end
+					end
+					
+					if empty then
+						cache[k1] = nil
+					end
+				end
+			end
+		end
+	end
+
 
 	return node
 end

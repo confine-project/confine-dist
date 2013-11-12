@@ -44,6 +44,8 @@ define Package/confine-system
 	+ebtables \
 	+tinc \
 	+file \
+	+diffutils \
+	+procps \
 	+losetup \
 	+coreutils-readlink \
 	+mount-utils \
@@ -55,6 +57,7 @@ define Package/confine-system
 	+dropbearconvert \
 	+openssh-keygen +openssl-util \
 	+wget \
+	+curl \
 	\
 	+lua \
 	+luasignal \
@@ -162,6 +165,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
 	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
+	$(CP)  ./files/etc/screenrc                        $(1)/etc/
 
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
@@ -176,6 +180,7 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_remove
+	ln -sf confine.lib  $(1)/usr/sbin/confine_sliver_dump_overlay
 endef
 
 

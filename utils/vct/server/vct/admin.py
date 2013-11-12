@@ -7,7 +7,10 @@ from django.core.exceptions import ValidationError
 from controller.admin.utils import insert_change_view_action, get_modeladmin, insertattr
 from controller.models.utils import get_file_field_base_path
 
-from controller.utils.apps import is_installed
+try:
+    from controller.utils.apps import is_installed
+except ImportError:
+    from controller.utils import is_installed
 from nodes.models import Node
 from slices.admin import TemplateAdmin, SliceAdmin, SliceSliversAdmin
 from slices.models import Template, Sliver, Slice

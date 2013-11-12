@@ -77,6 +77,7 @@ end
 function main_loop( sys_conf )
 	local local_node
 	local iteration = 1
+	local cache = {}
 	
 	while true do
 		local success = true
@@ -98,9 +99,9 @@ function main_loop( sys_conf )
 		dbg("getting server node...")
 		local server_node
 		if sys_conf.debug  then
-			server_node = server.get_server_node(sys_conf)
+			server_node = server.get_server_node(sys_conf, cache)
 		else
-			success,server_node = pcall( server.get_server_node, sys_conf )
+			success,server_node = pcall( server.get_server_node, sys_conf, cache )
 			if not success then
 				dbg( crules.add_error(local_node, "/", "ERR_RETRY "..server_node, nil) )
 			end
@@ -181,6 +182,7 @@ if system.check_pid() then
 	
 	sig.signal(sig.SIGINT,  tools.handler)
 	sig.signal(sig.SIGTERM, tools.handler)
+	sig.signal(sig.SIGCONT, tools.wakeup)
 	
 	local sys_conf = system.get_system_conf( nil, arg )
 	assert(sys_conf)

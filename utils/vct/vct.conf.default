@@ -78,7 +78,7 @@ VCT_NODE_MAC_DB="$VCT_DIR/vct.nodes.local"
 #################################################
 
 VCT_SERVER_DIR=${VCT_VIRT_DIR}/server
-VCT_SERVER_VERSION='0.9.5' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
+VCT_SERVER_VERSION='0.9.7' # get installed: "python -c 'import controller; print controller.VERSION'" and latest with: "pip search confine-controller"
 VCT_SERVER_NODE_IMAGE_NAME="confine-firmware-NODE_ID-i686.img.gz"
 
 #################################################
@@ -102,7 +102,7 @@ VCT_NODE_SL_PUBLIC_IPV4_PROTO=dhcp       # dhcp or static and following addresse
 VCT_NODE_PUBLIC_IPV4_AVAIL="8"
 
 VCT_NODE_PUBLIC_IPV4_PREFIX16="10.241"   # completes to prefix16.node-id-lsb.X/24
-VCT_NODE_PUBLIC_IPV4_PL=16
+VCT_NODE_PUBLIC_IPV4_MASK=255.255.0.0
 VCT_NODE_PUBLIC_IPV4_DNS=141.1.1.1
 VCT_NODE_PUBLIC_IPV4_GW=10.241.0.254
 
@@ -129,6 +129,7 @@ VCT_BR00_V4_LOCAL_IP="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.254/16"
 VCT_BR00_V4_DHCPD_IP_MIN="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.1"
 VCT_BR00_V4_DHCPD_IP_MAX="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.199"
 VCT_BR00_V4_DHCPD_DNS="$VCT_NODE_PUBLIC_IPV4_DNS"
+VCT_BR00_V4_DHCPD_MASK="$VCT_NODE_PUBLIC_IPV4_MASK"
 
 VCT_BR00_V4_NAT_OUT_DEV="auto"   # auto (dev of default route), eth0, ... or undefine (="") to disable NAT/SNAT
 VCT_BR00_V4_NAT_OUT_SRC="$VCT_NODE_PUBLIC_IPV4_PREFIX16.0.0/24"
@@ -171,6 +172,7 @@ VCT_DEB_PACKAGES=" \
     udhcpd \
     virtinst \
     xmlstarlet \
+    ca-certificates \
     wget \
     build-essential \
     subversion \
@@ -242,9 +244,12 @@ VCT_OPT_TOOL_TESTS=( \
 VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES="\
 ifupdown,\
 locales,\
+aptitude,\
+rsyslog,\
+logrotate,\
 libui-dialog-perl,\
 dialog,\
-udhcpd,\
+isc-dhcp-client,\
 netbase,\
 net-tools,\
 iproute,\
@@ -264,6 +269,10 @@ iperf,\
 vim-tiny,\
 w3m,\
 man-db,\
+\
+default-jre,\
+python2.7,\
+python2.7-minimal,\
 \
 tcpdump,\
 tshark,\

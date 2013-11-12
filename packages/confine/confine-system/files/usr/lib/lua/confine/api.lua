@@ -14,6 +14,9 @@ function set_configuration()
     SERVER_API_PATH_PREFIX = sys_conf.server_base_path
     WWW_PATH = '/var/confine/'
     NODE_ID = sys_conf.id
+    DAEMON_PID_FILE = '/var/run/confine/pid'
+    PULL_REQUEST_LOCK_FILE = '/dev/shm/confine.pull.lock'
+    PULL_REQUEST_THROTTLE = 60
 end
 
 
@@ -142,6 +145,7 @@ function get_links(request, name, patterns)
         ['node_node'] = {'node/', 'node/node'},
         ['node_slivers'] = { 'slivers/', 'node/sliver-list'},
         ['node_templates'] = {'templates/', 'node/template-list'},
+        ['node_pull'] = {'node/ctl/pull', 'node/do-pull'},
     }
     local server_links = {
         ['server_base'] = {'', 'server/base'},
@@ -184,8 +188,8 @@ function get_links(request, name, patterns)
                     'server_node_source', 'server_base', 'server_server', 'server_nodes',
                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
                     'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'server_nodes', 'server_node_source', 'server_reboot',
-                    'server_cache_cndb'},
+        ['node'] = {'node_base',  'node_pull', 'server_nodes', 'server_node_source',
+                    'server_reboot', 'server_cache_cndb'},
         ['slivers'] = {'node_base', 'server_slivers'},
         ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
                       'server_update', 'server_upload_exp_data'},
@@ -205,7 +209,7 @@ function conditional_response(request, response)
     -- Returns response based on If-None-Match request header
     local request_etag = request['headers']["If-None-Match"]
     local modified = true
-    if request_etag and request_etag == response['headers']['Etag'] then
+    if request_etag and request_etag == response['headers']['ETag'] then
         response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
         response['content'] = ''
         modified = false
@@ -344,6 +348,44 @@ function file_view(request, name, patterns)
 end
 
 
+function pullrequest_view(request, name, patterns)
+    -- Wakes up confine daemon in order to make it pull the server
+    -- TODO use POST instead of GET
+    local headers = {}
+    
+    local lock_date_handle = io.popen('date -r '..PULL_REQUEST_LOCK_FILE..' +"%s"')
+    local lock_date = tonumber(lock_date_handle:read('*all'))
+    lock_date_handle:close()
+    
+    now_handle = io.popen('date +"%s"')
+    now = now_handle:read('*all')
+    now_handle:close()
+    
+    if not lock_date or (lock_date < now-PULL_REQUEST_THROTTLE) then
+        local pid_file = io.open(DAEMON_PID_FILE, "rb")
+        if pid_file then
+            -- Wakeup confine daemon by sending a CONT signal
+            pid = pid_file:read('*all')
+            pid_file:close()
+            os.execute('kill -s CONT ' .. pid)
+            os.execute('touch ' .. PULL_REQUEST_LOCK_FILE)
+            content = '{\n    "detail": "Node instructed to pull the server"\n}'
+        else
+            headers['Status'] = "HTTP/1.0 500 Internal Server Error"
+            content = '{\n    "detail": "Confine daemon is not running"\n}'
+        end
+    else
+        headers['Status'] = "HTTP/1.0 403 Forbidden"
+        content = '{\n    "detail": "Too many requests"\n}'
+    end
+    local response = {
+        ['headers'] = headers,
+        ['content'] = content
+    }
+    return handle_response(request, response)
+end
+
+
 -- REQUEST/RESPONSE CYCLE FUNCTIONS
 
 function handle_response(request, response)
@@ -375,6 +417,7 @@ function api_path_dispatch(request, api_path)
     -- Mapping between API paths and functions (views/handlers)
     local map = {
         ['^/$'] = {file_view, 'base'},
+        ['^/node/ctl/pull/$'] = {pullrequest_view, 'ctl'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
         ['^/slivers/$'] = {listdir_view, 'slivers'},
