@@ -63,11 +63,11 @@ class VMView(APIView):
     
     def patch(self, request, pk, **kwargs):
         return self.put(request, pk, **kwargs)
-
+    
     def delete(self, request, pk, format=None):
         node = get_object_or_404(Node, pk=pk)
         vct_node('remove', node)
-        return self.get(request, pk, format=None)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 insert_ctl(NodeDetail, VMView)
