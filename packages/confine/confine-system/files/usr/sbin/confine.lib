@@ -1000,8 +1000,13 @@ CONFINE_SLIVER_DISK_MB=150
                    err $FUNCNAME "Invalid $FS_URL != ${FS_SITE}${FS_NAME}.${FS_COMP}"
 	    
 	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
-		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir
-		    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_TEMPLATES_PATH/$FS_NAME.dir install
+		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir && \
+		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" || {
+#		    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_TEMPLATES_PATH/$FS_NAME.dir install,soft || {
+			rm -rf $LXC_TEMPLATES_PATH/$FS_NAME.dir
+			rm -f $LXC_TEMPLATES_PATH/$FS_NAME
+			err $FUNCNAME "installing sliver=$SL_ID template to $LXC_TEMPLATES_PATH/$FS_NAME.dir failed!"
+		    }
 	    fi
 	fi
 	
@@ -1035,7 +1040,7 @@ CONFINE_SLIVER_DISK_MB=150
 	    [ "$OVERLAY_URL" = "${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}" ] ||\
                    err $FUNCNAME "Invalid $OVERLAY_URL != ${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}"
 	    
-	    install_url $OVERLAY_URL $OVERLAY_SITE $OVERLAY_NAME $OVERLAY_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install &&\
+	    install_url $OVERLAY_URL $OVERLAY_SITE $OVERLAY_NAME $OVERLAY_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install,soft &&\
     	    echo "installed overlay data $OVERLAY_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 		confine_sliver_undeploy $SL_ID
 		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
@@ -1071,7 +1076,7 @@ CONFINE_SLIVER_DISK_MB=150
 	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
                    err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
 	    	    
-	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install &&\
+	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install,soft &&\
 	    echo "installed sliver exp_data" || {
 		confine_sliver_undeploy $SL_ID
 		err $FUNCNAME "installing sliver=$SL_ID exp_data failed!"
