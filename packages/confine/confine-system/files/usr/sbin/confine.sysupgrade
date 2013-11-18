@@ -179,6 +179,9 @@ if [ $FORCE -eq 0 -a -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     fi
 fi
 
+/usr/sbin/confine.lib confine_daemon_stop
+sync
+sleep 2
 kill_remaining TERM
 sleep 4
 kill_remaining KILL
