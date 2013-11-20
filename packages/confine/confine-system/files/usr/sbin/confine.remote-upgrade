@@ -4,39 +4,43 @@ IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
 TO_SAVE="/etc/config /etc/tinc /etc/dropbear /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
+TO_REMOVE="/etc/config/confine-defaults"
 
 error() {
-	echo "ERROR: $@"
-	exit 1
+    echo "ERROR: $@"
+    exit 1
 }
 
 check_md5() {
-	local rmd5="$(wget -q http://$SERVER/$MD5 -O- | awk NR==4)"
-	local fmd5="$(md5sum "$LIMG" | awk '{print $1}')"
-	[ "$rmd5" != "$fmd5" ] && error Checksum does not match
-	echo "Checksum match!"
+    local rmd5="$(wget -q http://$SERVER/$MD5 -O- | awk NR==4)"
+    local fmd5="$(md5sum "$LIMG" | awk '{print $1}')"
+    [ "$rmd5" != "$fmd5" ] && error Checksum does not match
+    echo "Checksum match!"
 }
 
 upgrade_overlay() {
-	echo "Detected overlay"
-	for d in $TO_SAVE; do
-		find $d -type f -exec touch {} \;
-	done
-	confine.sysupgrade $OPTS $LIMG
+    echo "Detected overlay"
+    for d in $TO_SAVE; do
+        find $d -type f -exec touch {} \;
+    done
+    for d in $TO_REMOVE; do
+        find $d -type f -exec rm -rf {} \;
+    done
+    confine.sysupgrade $OPTS $LIMG
 }
 
 upgrade_raw() {
-	echo "Detected raw filesystem"
-	confine.sysupgrade $OPTS -b $LIMG
+    echo "Detected raw filesystem"
+    confine.sysupgrade $OPTS -b $LIMG
 }
 
 rm -f "$LIMG" 2>/dev/null
 
 OK=0
 for S in $SERVERS; do
-	echo "Trying to fetch the image from $S"
-	wget --progress=dot:mega -t 2 -T 10  "http://$S/$IMG" -O "$LIMG"
-	[ $? -eq 0 ] && SERVER="$S" && break
+    echo "Trying to fetch the image from $S"
+    wget --progress=dot:mega -t 2 -T 10  "http://$S/$IMG" -O "$LIMG"
+    [ $? -eq 0 ] && SERVER="$S" && break
 done
 
 [ -z "$SERVER" ] && error Cannot download image from $IMG
@@ -47,3 +51,4 @@ OPTS="$@"
 
 (mount | grep -q overlay) && upgrade_overlay || upgrade_raw
 
+# vi: set et ts=4

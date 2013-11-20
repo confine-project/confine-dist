@@ -125,7 +125,7 @@ run_ramfs() { # <command> [...]
     grep /overlay /proc/mounts > /dev/null && {
         mount -o remount,ro /overlay
         umount -l /overlay
-	}
+    }
 
     exec /bin/busybox sh -c "$*"
 }
@@ -179,6 +179,9 @@ if [ $FORCE -eq 0 -a -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     fi
 fi
 
+/usr/sbin/confine.lib confine_daemon_stop
+sync
+sleep 2
 kill_remaining TERM
 sleep 4
 kill_remaining KILL
@@ -197,6 +200,19 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     for d in $CONFFILES; do
         find $d -type f -exec touch {} \;
     done
+
+    uci_script=/etc/uci-defaults/reloace_lxc.sh
+
+    cat > $uci_def_script <<- EOF
+    #!/bin/sh
+    rm -rf /lxc/images.old
+    rm -rf /lxc/templates.old
+    mv /lxc/images /lxc/images.old
+    mv /lxc/templates /lxc/templates.old
+    ln -s /home/lxc/images /lxc/images
+    ln -s /home/lxc/templates /lxc/templates
+    EOF
+    chmod a+rx $uci_def_script
 
     run_ramfs "set -x
 sync
@@ -248,3 +264,5 @@ sleep 5
 echo b 2>/dev/null >/proc/sysrq-trigger"
     fi
 fi
+
+# vi: set et ts=4
