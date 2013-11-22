@@ -7,8 +7,10 @@
         "image": "confine-slice-debian-template.tgz",
         "is_active": true,
         "node_archs": "i686",
-        "type": "debian6",
-        "description": "debian32-example"
+        "type": "debian",
+        "description": "debian32-example",
+		"image_uri": "http://media.confine-project.eu/vct/debian32-02.tgz",
+		"image_sha256": "a66ba6d0ad1552f23182a66a9413ffdbf18556ba5116a781bacb8cdfde1038e4"
     }
 },
 {
@@ -19,8 +21,10 @@
         "image": "confine-slice-openwrt-template.tgz",
         "is_active": true,
         "node_archs": "i686",
-        "type": "openwrt-backfire",
-        "description": "openwrt-backfire-example"
+        "type": "openwrt",
+        "description": "openwrt-backfire-example",
+		"image_uri": "http://media.confine-project.eu/vct/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz",
+		"image_sha256": "36ede67033a7e6eea5937163a2d1c544d86e7fa1f93aa786c282f3ecab41fe42"
     }
 }
 ]
