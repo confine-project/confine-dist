@@ -369,7 +369,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on",			crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
@@ -397,7 +396,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_server/cn",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/cn/app_url",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/mgmt_net",				tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",					crules.cb2_set})
@@ -421,7 +419,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_gateways/*/cn",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/description",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",				tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/addr",				crules.cb2_set})
@@ -487,7 +484,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})

@@ -105,7 +105,6 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/cn"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/cn/app_url"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
-	table.insert(tmp_rules, {["/cn/cndb_cached_on"]			= "CB_COPY"})
 
 --	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
 --	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
