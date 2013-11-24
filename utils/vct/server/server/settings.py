@@ -51,7 +51,8 @@ DATABASES = {
         'USER': 'confine',         # Not used with sqlite3.
         'PASSWORD': 'confine',     # Not used with sqlite3.
         'HOST': 'localhost',       # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '5432',                # Set to empty string for default. Not used with sqlite3.
+        'PORT': '5432',            # Set to empty string for default. Not used with sqlite3.
+        'ATOMIC_REQUESTS': True,   # Wrap each HTTP request in a transaction on this database
     }
 }
 
