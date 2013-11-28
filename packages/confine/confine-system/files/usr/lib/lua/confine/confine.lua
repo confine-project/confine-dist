@@ -99,9 +99,9 @@ function main_loop( sys_conf )
 		if sys_conf.debug  then
 			server_node = server.get_server_node(sys_conf, cache)
 		else
-			success,server_node = pcall( server.get_server_node, sys_conf, cache )
+			success,server_node = xpcall( function() return server.get_server_node( sys_conf, cache ) end, tools.handle_error )
 			if not success then
-				dbg( crules.add_error(local_node, "/", "ERR_RETRY "..server_node, nil) )
+				crules.add_error(local_node, "/", "ERR_RETRY "..server_node, nil)
 			end
 		end
 		cdata.file_put( server_node, system.server_state_file)
@@ -114,11 +114,15 @@ function main_loop( sys_conf )
 			if( sys_conf.debug ) then
 				ctree.iterate( crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
 			else
-				success,err_msg = pcall(
-				ctree.iterate, crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/" )
+				success,err_msg = xpcall(
+							function()
+								return ctree.iterate( crules.cb2, cnode.in_rules2, sys_conf, local_node, server_node, "/")
+							end,
+							tools.handle_error
+				 )
 				
 				if not success then
-					dbg( crules.add_error(local_node, "/", "ERR_SETUP "..err_msg, nil) )
+					crules.add_error(local_node, "/", "ERR_SETUP "..err_msg, nil)
 					cnode.set_node_state(sys_conf, local_node, cnode.STATE.debug)
 				end
 					
