@@ -83,6 +83,9 @@ define create_configs
 		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
 		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
 		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) )
+        @( [ "with gdb" ] && \
+                echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
+                echo "CONFIG_GDB=y"                       >> $(CONFIG) || true )
 	@( ! [ "static binaries for confine slivers" ] && \
 		echo "CONFIG_BUILD_STATIC_TOOLS=y"                                  >> $(CONFIG) && \
 		echo "CONFIG_BUSYBOX_CONFIG_STATIC=y"                               >> $(CONFIG) && \
