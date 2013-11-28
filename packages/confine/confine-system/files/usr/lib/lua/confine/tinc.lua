@@ -67,7 +67,7 @@ local function get_mgmt_nets(sys_conf, all)
 					} 
 					
 					nets[name] = {
-						addr		= is_mine and sys_conf.mgmt_ipv6_addr or subnet,
+						addr		= is_mine and sys_conf.addrs.mgmt or subnet,
 						backend		= is_mine and "tinc_client" or "tinc_server",
 						native		= cdata.null,
 						tinc_client	= is_mine and tinc or cdata.null,

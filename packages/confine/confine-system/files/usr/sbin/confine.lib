@@ -376,7 +376,7 @@ confine_node_enable() {
 	local NODE_LOCAL_IFNAME=$(         uci_get confine.node.local_ifname                    soft )
 	local NODE_PRIV_IPV4_PREFIX24=$(   uci_get confine.node.priv_ipv4_prefix24              soft )
 	local NODE_PRIV_IPV6_PREFIX48=$(   uci_get confine-defaults.confine.priv_ipv6_prefix48  soft )
-#	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
+	local NODE_DBG_IPV6_PREFIX48=$(    uci_get confine-defaults.confine.debug_ipv6_prefix48 soft )
 	local NODE_RD_PUBL_IPV4_PROTO=$(   uci_get confine.node.rd_public_ipv4_proto            soft )
 	local NODE_RD_PUBL_IPV4=$(         uci_get confine.node.rd_public_ipv4                  soft,quiet )
 	local NODE_RD_PUBL_IPV4_GW=$(      uci_get confine.node.rd_public_ipv4_gw               soft,quiet )
@@ -567,10 +567,10 @@ confine_node_enable() {
 	    uci_set network.recovery2.proto=static
 	    uci_set network.recovery2.ip6addr=$NODE_PRIV_IPV6_PREFIX48:0002:$( eui64_from_link $NODE_LOCAL_IFNAME )/64
 
-#	    uci_set network.debug=interface
-#	    uci_set network.debug.ifname=br-local
-#	    uci_set network.debug.proto=static
-#	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
+	    uci_set network.debug=interface
+	    uci_set network.debug.ifname=br-local
+	    uci_set network.debug.proto=static
+	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
 
 	    local ISO_DEV=
 	    for ISO_DEV in $NODE_RD_ISOLATED_PARENTS; do

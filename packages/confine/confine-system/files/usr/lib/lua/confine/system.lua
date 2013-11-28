@@ -159,13 +159,61 @@ function get_system_conf(sys_conf, arg)
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
 	conf.node_cert_file        = "/etc/uhttpd.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 
+	conf.local_iface           = uci.get("confine", "node", "local_ifname")
+
+	conf.local_bridge          = lutil.exec( "ip addr show dev br-local" )
+	conf.local_bridge          = type(conf.local_bridge)=="string" and conf.local_bridge or ""
+	
+	conf.internal_bridge       = lutil.exec( "ip addr show dev br-internal" )
+	conf.internal_bridge       = type(conf.internal_bridge)=="string" and conf.internal_bridge or ""
+
+
 	conf.mgmt_ipv6_prefix48    = uci.get("confine", "testbed", "mgmt_ipv6_prefix48")
 	conf.mgmt_ipv6_prefix	   = conf.mgmt_ipv6_prefix48.."::/48"
-	conf.mgmt_ipv6_addr	   = conf.mgmt_ipv6_prefix48..(":%x::2"%{conf.id})
 
-	conf.priv_ipv6_prefix      = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48")).."::/48"
-	conf.debug_ipv6_prefix     = (uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")).."::/48"
+	conf.debug_ipv6_prefix48   = uci.get("confine-defaults", "confine", "debug_ipv6_prefix48")
+	conf.debug_ipv6_prefix     = conf.debug_ipv6_prefix48.."::/48"
 
+	conf.priv_ipv6_prefix48    = (uci.get("confine-defaults", "confine", "priv_ipv6_prefix48"))
+	conf.priv_ipv6_prefix      = conf.priv_ipv6_prefix48.."::/48"
+
+	conf.priv_ipv4_prefix24    = uci.get("confine", "node", "priv_ipv4_prefix24")
+	conf.priv_ipv4_prefix      = conf.priv_ipv4_prefix24..".0/24"
+
+
+	conf.sliver_mac_prefix     = "0x" .. uci.get("confine", "node", "mac_prefix16"):gsub(":", "")
+
+	conf.addrs                 = {}
+	conf.addrs.mgmt            = (conf.mgmt_ipv6_prefix48..(":%x::2"%{conf.id}))
+	conf.addrs.mgmt_host       = null
+	conf.addrs.local_mac       = (conf.local_bridge:match("[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]")) or null
+	conf.addrs.debug           = (conf.local_bridge:match(conf.debug_ipv6_prefix48.."[^/]+")) or null
+	conf.addrs.internal_ipv4   = (conf.internal_bridge:match(conf.priv_ipv4_prefix24.."[^/]+")) or null
+	conf.addrs.internal_ipv6   = (conf.internal_bridge:match(conf.priv_ipv6_prefix48.."[^/]+")) or null
+	conf.addrs.recovery_ipv4   = (conf.local_bridge:match(conf.priv_ipv4_prefix24.."[^/]+")) or null
+	conf.addrs.recovery_ipv6   = (conf.local_bridge:match(conf.priv_ipv6_prefix48..":1:[^/]+")) or null
+	conf.addrs.recovery_unique = (conf.local_bridge:match(conf.priv_ipv6_prefix48..":2:[^/]+")) or null
+	conf.addrs.local_ipv4      = ((function()
+					local addr
+					for addr in conf.local_bridge:gmatch("inet [^\n]+ scope global") do
+						addr = addr:match("[%d]+%.[%d]+%.[%d]+%.[%d]+")
+						if addr ~= conf.addrs.recovery_ipv4 then
+							return addr
+						end
+					end
+				        return null
+				     end)())
+	conf.addrs.local_ipv6      = ((function()
+					local addr
+					for addr in conf.local_bridge:gmatch("inet6 [^\n]+ scope global") do
+						addr = addr:match("[%x]+:[^/]+")
+						if addr ~= conf.addrs.mgmt and addr ~= conf.addrs.debug and addr ~= conf.addrs.recovery_ipv6 and addr ~= conf.addrs.recovery_unique then
+							return addr
+						end
+					end
+					return null
+				     end)())
+	
 
 	conf.node_base_path        = conf.node_base_path or flags["node-base-path"] or uci.get("confine", "node", "base_path") or NODE_BASE_PATH
 	assert(conf.node_base_path:match("/api$"), "node-base-path MUST end with /api")
@@ -174,8 +222,6 @@ function get_system_conf(sys_conf, arg)
 	conf.server_base_path      = conf.server_base_path or flags["server-base-path"] or uci.get("confine", "server", "base_path") or SERVER_BASE_PATH
 	assert(conf.server_base_path:match("/api$"), "server-base-path MUST end with /api")
 	conf.server_base_uri       = lsys.getenv("SERVER_URI") or "https://["..conf.mgmt_ipv6_prefix48.."::2]"..conf.server_base_path
-	
-	conf.local_iface           = uci.get("confine", "node", "local_ifname")
 	
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
@@ -189,10 +235,6 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.ssh_node_auth_file    = "/etc/dropbear/authorized_keys"
 
-
-	
-	conf.priv_ipv4_prefix      = uci.get("confine", "node", "priv_ipv4_prefix24") .. ".0/24"
-	conf.sliver_mac_prefix     = "0x" .. uci.get("confine", "node", "mac_prefix16"):gsub(":", "")
 	
 	conf.sl_pub_ipv4_proto     = uci.get("confine", "node", "sl_public_ipv4_proto")
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")

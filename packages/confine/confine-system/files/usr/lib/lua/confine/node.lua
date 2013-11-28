@@ -140,6 +140,8 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.sliver_pub_ipv4,
 	node.sliver_pub_ipv4_range = get_lnode_sliver_pub_ipv4(sys_conf)
 	
+	node.addrs                 = sys_conf.addrs
+	
 	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
 	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
 	
@@ -482,6 +484,20 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/pubkey"})
 	table.insert(tmp_rules, {"/cert"})
 	table.insert(tmp_rules, {"/arch"})
+
+	table.insert(tmp_rules, {"/addrs"})
+	table.insert(tmp_rules, {"/addrs/mgmt"})
+	table.insert(tmp_rules, {"/addrs/mgmt_host"})
+	table.insert(tmp_rules, {"/addrs/debug"})
+	table.insert(tmp_rules, {"/addrs/local_mac"})
+	table.insert(tmp_rules, {"/addrs/local_ipv4"})
+	table.insert(tmp_rules, {"/addrs/local_ipv6"})
+	table.insert(tmp_rules, {"/addrs/internal_ipv4"})
+	table.insert(tmp_rules, {"/addrs/internal_ipv6"})
+	table.insert(tmp_rules, {"/addrs/recovery_ipv4"})
+	table.insert(tmp_rules, {"/addrs/recovery_ipv6"})
+	table.insert(tmp_rules, {"/addrs/recovery_unique"})
+
 
 	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
 	table.insert(tmp_rules, {"/disk_max_per_sliver"})
