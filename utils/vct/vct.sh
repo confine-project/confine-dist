@@ -482,18 +482,13 @@ vct_system_install_server() {
     # WARNING the following code is sensitive to indentation !!
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
 	from users.models import *
-	if not User.objects.filter(username='vct').exists():
-	    print 'Creating vct superuser'
-	    User.objects.create_superuser('vct', 'vct@localhost', 'vct')
-	
-	for username in ['admin', 'researcher', 'technician', 'member']:
-	   if not User.objects.filter(username=username).exists():
-	       print 'Creating %s user' % username
-	       User.objects.create_user(username, 'vct+%s@localhost' % username, username)
 	
 	users = {}
 	for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
-	   users[username] = User.objects.get(username=username)
+	    if not User.objects.filter(username=username).exists():
+	        print 'Creating %s user' % username
+	        User.objects.create_user(username, 'vct+%s@localhost' % username, username)
+	    users[username] = User.objects.get(username=username)
 	
 	group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
 	
