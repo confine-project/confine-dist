@@ -43,7 +43,7 @@ end
 
 
 function wrap_ipv6(addr)
-    if addr:match('%d:%d*:') then
+    if addr:match('%w:%w*:') then
         return '['..addr..']'
     end
     return addr
