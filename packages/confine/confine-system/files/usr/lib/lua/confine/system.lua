@@ -258,39 +258,11 @@ function set_system_conf( sys_conf, opt, val, section)
 		
 		return get_system_conf(sys_conf)
 		
-
-	elseif opt == "priv_ipv4_prefix" and (val==null or val=="") then
-		
-		return get_system_conf(sys_conf)
-		
-	elseif opt == "priv_ipv4_prefix" and
-		type(val)=="string" and val:gsub(".0/24",""):match("[0-255].[0-255].[0-255]") and
-		uci.set("confine", "node", "priv_ipv4_prefix24", val:gsub(".0/24","") ) then
-		
-		return get_system_conf(sys_conf)
-
-
 	elseif opt == "direct_ifaces" and type(val) == "table" then
 		
 		local ifaces = check_direct_ifaces( val, true )
 		tools.dbg( "iftable="..tools.table2string(ifaces, " ", 1).." ifstr="..tostring(table.concat(ifaces)) )
 		if ifaces and uci.set("confine", "node", "rd_if_iso_parents", tools.table2string(ifaces, " ", 1) ) then
-			return get_system_conf(sys_conf)
-		end
-		
-	elseif opt == "sliver_mac_prefix" and (val==null or val=="") then
-		
-		return get_system_conf(sys_conf)
-
-	elseif opt == "sliver_mac_prefix" and type(val) == "string" then
-		
-		local dec = tonumber(val,16) or 0
-		local msb = math.modf(dec / 256)
-		local lsb = dec - (msb*256)
-		
-		if msb > 0 and msb <= 255 and lsb >= 0 and lsb <= 255 and
-			uci.set("confine","node","mac_prefix16", "%.2x:%.2x"%{msb,lsb}) then
-			
 			return get_system_conf(sys_conf)
 		end
 		

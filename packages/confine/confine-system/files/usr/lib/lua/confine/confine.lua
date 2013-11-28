@@ -38,8 +38,6 @@ local function get_local_base( sys_conf, node )
 		}
 	base.testbed_params	= {
 		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
-		priv_ipv4_prefix_dflt 	= sys_conf.priv_ipv4_prefix,
-		sliver_mac_prefix_dflt	= sys_conf.sliver_mac_prefix
 		}
 
 	base.node_uri		= node.uri
