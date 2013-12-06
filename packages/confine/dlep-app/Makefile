@@ -1,8 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-PKG_VERSION:=2012-10-22
-PKG_REV:=d8f9b60b99e335e865bc3f8d6dedbab757a48ff2#
+PKG_VERSION:=2013-12-03
+PKG_RELEASE=$(PKG_SOURCE_VERSION)
+PKG_REV:=f049d671abd3b05ea909d3be5048879cdd2d0637
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -11,19 +12,21 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_VERSION:=$(PKG_REV)
 
-
 CMAKE_INSTALL:=1
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
-CMAKE_OPTIONS=-DOONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
-              -DOONF_LOGGING_LEVEL:String=debug \
-              -DCMAKE_BUILD_TYPE:String=MinSizeRel \
-              -DINSTALL_LIB_DIR:Path=lib/oonf \
-              -DINSTALL_INCLUDE_DIR:Path=include/oonf \
-              -DINSTALL_CMAKE_DIR:Path=lib/oonf \
-              -DOONF_LIBNL:Path=nl-tiny
+#CMAKE_SOURCE_DIR=$(CURDIR)/../../
+CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
+              -D OONF_LOGGING_LEVEL:String=debug \
+              -D CMAKE_BUILD_TYPE:String=Debug \
+              -D INSTALL_LIB_DIR:Path=lib/oonf \
+              -D INSTALL_INCLUDE_DIR:Path=include/oonf \
+              -D INSTALL_CMAKE_DIR:Path=lib/oonf \
+              -D CMAKE_PREFIX_PATH=$(STAGING_DIR)/usr
+
+PKG_BUILD_DEPENDS:=oonf-api
 
 define Package/oonf-dlep/template
 	SECTION:=net
@@ -36,34 +39,22 @@ endef
 define Package/oonf-dlep
 	$(call Package/oonf-dlep/template)
 	TITLE:=DLEP-agent (executable for client and service) 
-	DEPENDS:=+oonf-core-api +oonf-tools-api +oonf-plugin-cfgio-file +oonf-plugin-cfgparser-compact +ldconfig
+	DEPENDS:=+ldconfig +libnl-tiny +librt
 endef
 
 define Package/oonf-dlep-plugin-client
 	$(call Package/oonf-dlep/template) 
 	TITLE:=DLEP-client plugin
-	DEPENDS:=oonf-dlep +ldconfig
+	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
 define Package/oonf-dlep-plugin-service
 	$(call Package/oonf-dlep/template) 
 	TITLE:=DLEP-service plugin
-	DEPENDS:=oonf-dlep +oonf-dlep-plugin-nl80211listener +ldconfig
+	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
-define Package/oonf-dlep-plugin-nl80211listener
-	$(call Package/oonf-dlep/template) 
-	TITLE:=DLEP mac82011 netlink listener
-	DEPENDS:=oonf-dlep +ldconfig +libnl-tiny
-endef
-
-define Package/oonf-dlep-plugin-layer2viewer
-	$(call Package/oonf-dlep/template) 
-	TITLE:=DLEP linklayer data viewer plugin
-	DEPENDS:=oonf-dlep +ldconfig
-endef
-
-TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include -I${STAGING_DIR}/usr/include/libnl-tiny
+TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include
 
 define Package/oonf-dlep/install
 	$(INSTALL_DIR) $(1)/etc
@@ -98,20 +89,6 @@ define Package/oonf-dlep-plugin-service/install
 		$(1)/usr/lib/oonf
 endef
 
-define Package/oonf-dlep-plugin-nl80211listener/install
-	$(INSTALL_DIR) $(1)/usr/lib/oonf
-	$(CP) \
-		$(PKG_INSTALL_DIR)/usr/lib/oonf/libdlep_nl80211_listener*.so* \
-		$(1)/usr/lib/oonf
-endef
-
-define Package/oonf-dlep-plugin-layer2viewer/install
-	$(INSTALL_DIR) $(1)/usr/lib/oonf
-	$(CP) \
-		$(PKG_INSTALL_DIR)/usr/lib/oonf/libdlep_layer2_viewer*.so* \
-		$(1)/usr/lib/oonf
-endef
-
 define Package/oonf-dlep/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
@@ -133,24 +110,6 @@ exit 0
 endef
 
 define Package/oonf-dlep-plugin-service/postinst
-#!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-	echo "Running ldconfig ..."
-	/sbin/ldconfig 2> /dev/null
-fi
-exit 0
-endef
-
-define Package/oonf-dlep-plugin-nl80211listener/postinst
-#!/bin/sh
-if [ -z "$${IPKG_INSTROOT}" ]; then
-	echo "Running ldconfig ..."
-	/sbin/ldconfig 2> /dev/null
-fi
-exit 0
-endef
-
-define Package/oonf-dlep-plugin-layer2viewer/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	echo "Running ldconfig ..."
@@ -181,5 +140,3 @@ endef
 $(eval $(call BuildPackage,oonf-dlep))
 $(eval $(call BuildPackage,oonf-dlep-plugin-client))
 $(eval $(call BuildPackage,oonf-dlep-plugin-service))
-$(eval $(call BuildPackage,oonf-dlep-plugin-nl80211listener))
-$(eval $(call BuildPackage,oonf-dlep-plugin-layer2viewer))
