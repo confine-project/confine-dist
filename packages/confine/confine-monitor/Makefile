@@ -49,16 +49,16 @@ define Build/Compile
 endef
 
 define Package/confine-monitor/install
-	$(INSTALL_DIR) $(1)/root/confine-monitor
-	$(INSTALL_DIR) $(1)/root/confine-monitor/client
-	$(INSTALL_DIR) $(1)/root/confine-monitor/common
+	$(INSTALL_DIR) $(1)/home/confine-monitor
+	$(INSTALL_DIR) $(1)/home/confine-monitor/client
+	$(INSTALL_DIR) $(1)/home/confine-monitor/common
 
-	$(CP) ./files/client/* $(1)/root/confine-monitor/client/
-	$(CP) ./files/common/* $(1)/root/confine-monitor/common/
+	$(CP) ./files/client/* $(1)/home/confine-monitor/client/
+	$(CP) ./files/common/* $(1)/home/confine-monitor/common/
 
-	$(CP)  ./files/main.py $(1)/root/confine-monitor/
-	$(INSTALL_BIN) ./files/manage.py $(1)/root/confine-monitor/
-	$(CP)  ./files/runserver.py $(1)/root/confine-monitor/
+	$(CP)  ./files/main.py $(1)/home/confine-monitor/
+	$(INSTALL_BIN) ./files/manage.py $(1)/home/confine-monitor/
+	$(CP)  ./files/runserver.py $(1)/home/confine-monitor/
 endef
 
 $(eval $(call BuildPackage,confine-monitor))
