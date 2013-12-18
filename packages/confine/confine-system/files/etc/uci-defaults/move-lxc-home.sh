@@ -1,10 +1,10 @@
 #!/bin/sh
 
-# if /lxc is a directory and /home/lxc a link
-[ ! -h "/lxc" ] && [ -h "/home/lxc" ] && {
-	echo "Moving /lxc to /home/lxc"
-	rm -f /home/lxc
-	mv /lxc /home/
+# if /lxc is a directory 
+[ ! -h "/lxc" ] && {
+	echo "Pointing /lxc to /home/lxc"
+	mkdir -p /home/lxc 2>/dev/null
+	mv /lxc /lxc.backup
 	ln -s /home/lxc /lxc
-	}
+}
 
