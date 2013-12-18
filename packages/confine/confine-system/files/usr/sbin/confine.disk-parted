@@ -163,7 +163,7 @@ format_partitions() {
 		fi
 		if [ $pn = 4 ]; then
 			mkdir -p $mtpt/lxc/images $mtpt/lxc/templates 2>/dev/null
-			cp -a -f /home/lxc/* $mtpt/lxc
+			cp -a -f /home/lxc/* $mtpt/lxc/
 		fi
 		umount $part
 	done
