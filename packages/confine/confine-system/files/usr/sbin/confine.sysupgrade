@@ -201,21 +201,6 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
         find $d -type f -exec touch {} \;
     done
 
-    uci_script=/etc/uci-defaults/relocate_lxc.sh
-
-    cat > $uci_script <<- EOF
-    #!/bin/sh
-    /etc/init.d/confine stop
-    rm -rf /lxc/images.old
-    rm -rf /lxc/templates.old
-    mv /lxc/images /lxc/images.old
-    mv /lxc/templates /lxc/templates.old
-    ln -s /home/lxc/images /lxc/images
-    ln -s /home/lxc/templates /lxc/templates
-    reboot
-    EOF
-    chmod a+rx $uci_script
-
     run_ramfs "set -x
 sync
 sleep 2
