@@ -2,21 +2,30 @@
 
 
 START=81
-FIRSTB="/etc/firtboot"
+FIRSTB="/etc/firstboot"
+FIRSTB_BACKUP="/etc/firstboot.applied"
 ANYB="/etc/anyboot"
 
 firstboot() {
     [ ! -d "$FIRSTB" ] && return
+    [ ! -d "$FIRSTB_BACKUP" ] && mkdir -p $FIRSTB_BACKUP
+    ls $FIRSTB/* > /dev/null 2>&1
+    [ $? -ne 0 ] && return
     for f in $FIRSTB/*; do
         echo "[FirstBoot] Executing $f"
+	cp -f $f $FIRSTB_BACKUP/
+	$f
         rm -f $f
     done
 }
 
 anyboot() {
     [ ! -d "$ANYB" ] && return
+    ls $ANYB/* > /dev/null 2>&1
+    [ $? -ne 0 ] && return
     for f in $ANYB/*; do
         echo "[AnyBoot] Executing $f"
+	$f
     done
 }
 

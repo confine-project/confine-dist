@@ -144,10 +144,12 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/anyboot
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/dropbear
-	$(CP) ./files/etc/uci-defaults/* $(1)/etc/uci-defaults/
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
 
+	$(CP) ./files/etc/uci-defaults/*                   $(1)/etc/uci-defaults
+	$(CP) ./files/etc/firstboot/*                      $(1)/etc/firstboot
+	chmod +x $(1)/etc/firstboot/*
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/uci-defaults/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/uci-defaults/confine-banner.sh
 	$(CP)  ./files/home/lxc/scripts/openwrt-confine.sh      $(1)/home/lxc/scripts/
