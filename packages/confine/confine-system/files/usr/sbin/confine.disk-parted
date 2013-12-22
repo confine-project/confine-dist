@@ -134,12 +134,12 @@ write_fstab() {
 }
 
 
-set_lxc_to_home() {
-	mv /lxc/images /lxc/images.old
-	mv /lxc/templates /lxc/templates.old
-	ln -s /home/lxc/images /lxc/images
-	ln -s /home/lxc/templates /lxc/templates
-}
+#set_lxc_to_home() {
+#	mv /lxc/images /lxc/images.old
+#	mv /lxc/templates /lxc/templates.old
+#	ln -s /home/lxc/images /lxc/images
+#	ln -s /home/lxc/templates /lxc/templates
+#}
 
 format_partitions() {
 	local pn part mtpt
@@ -162,7 +162,8 @@ format_partitions() {
 			exit 2
 		fi
 		if [ $pn = 4 ]; then
-			mkdir -p $mtpt/lxc/images $mtpt/lxc/templates
+			mkdir -p $mtpt/lxc/images $mtpt/lxc/templates 2>/dev/null
+			cp -a -f /home/lxc/* $mtpt/lxc/
 		fi
 		umount $part
 	done
@@ -217,7 +218,7 @@ $(($start_cylinder+$overlay_cylinders)) $home_cylinders L
 EOF
 
 echo -e "\n==> Pointing current LXC directories to new home\n"
-set_lxc_to_home
+#set_lxc_to_home
 
 # Try to make the new partitions available and
 # check whether the machine needs to be rebooted before continuing.
