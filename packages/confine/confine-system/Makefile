@@ -140,6 +140,8 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/home/lxc
 	$(INSTALL_DIR) $(1)/home/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/firstboot
+	$(INSTALL_DIR) $(1)/etc/anyboot
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/uci-defaults

@@ -2,9 +2,27 @@
 
 
 START=81
+FIRSTB="/etc/firtboot"
+ANYB="/etc/anyboot"
 
+firstboot() {
+    [ ! -d "$FIRSTB" ] && return
+    for f in $FIRSTB/*; do
+        echo "[FirstBoot] Executing $f"
+        rm -f $f
+    done
+}
+
+anyboot() {
+    [ ! -d "$ANYB" ] && return
+    for f in $ANYB/*; do
+        echo "[AnyBoot] Executing $f"
+    done
+}
 
 start() {
+    firstboot
+    anyboot
 
     confine.lib confine_system_check
 
