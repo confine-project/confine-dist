@@ -11,12 +11,12 @@
 &rsaquo; <a href="{% url 'admin:app_list' app_label=app_label %}">{{ app_label|capfirst|escape }}</a>
 &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
 &rsaquo; <a href="{% url 'admin:nodes_node_change' node.pk %}">{{ node }}</a>
-&rsaquo; VM Management
+&rsaquo; VM management
 </div>
 {% endblock %}
 
 
-{% block content_title %}<h1>VCT Virtual Node Management (<a href={% url 'admin:nodes_node_change' node.pk %}>{{ node }}</a>)</h1>{% endblock %}
+{% block content_title %}<h1>VCT virtual node management (<a href={% url 'admin:nodes_node_change' node.pk %}>{{ node }}</a>)</h1>{% endblock %}
 
 
 {% block content %}
