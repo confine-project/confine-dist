@@ -145,7 +145,7 @@ function get_links(request, name, patterns)
         ['node_node'] = {'node/', 'node/node'},
         ['node_slivers'] = { 'slivers/', 'node/sliver-list'},
         ['node_templates'] = {'templates/', 'node/template-list'},
-        ['node_pull'] = {'node/ctl/pull', 'node/do-pull'},
+        ['node_refresh'] = {'node/ctl/refresh', 'node/do-refresh'},
     }
     local server_links = {
         ['server_base'] = {'', 'server/base'},
@@ -188,7 +188,7 @@ function get_links(request, name, patterns)
                     'server_node_source', 'server_base', 'server_server', 'server_nodes',
                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
                     'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'node_pull', 'server_nodes', 'server_node_source',
+        ['node'] = {'node_base',  'node_refresh', 'server_nodes', 'server_node_source',
                     'server_reboot'},
         ['slivers'] = {'node_base', 'server_slivers'},
         ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
@@ -349,7 +349,7 @@ end
 
 
 function pullrequest_view(request, name, patterns)
-    -- Wakes up confine daemon in order to make it pull the server
+    -- Wakes up confine daemon in order to make it poll the server
     -- TODO use POST instead of GET
     local headers = {}
     
@@ -369,7 +369,7 @@ function pullrequest_view(request, name, patterns)
             pid_file:close()
             os.execute('kill -s CONT ' .. pid)
             os.execute('touch ' .. PULL_REQUEST_LOCK_FILE)
-            content = '{\n    "detail": "Node instructed to pull the server"\n}'
+            content = '{\n    "detail": "Node instructed to refresh itself"\n}'
         else
             headers['Status'] = "HTTP/1.0 500 Internal Server Error"
             content = '{\n    "detail": "Confine daemon is not running"\n}'
@@ -417,7 +417,7 @@ function api_path_dispatch(request, api_path)
     -- Mapping between API paths and functions (views/handlers)
     local map = {
         ['^/$'] = {file_view, 'base'},
-        ['^/node/ctl/pull/$'] = {pullrequest_view, 'ctl'},
+        ['^/node/ctl/refresh/$'] = {pullrequest_view, 'ctl'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
         ['^/slivers/$'] = {listdir_view, 'slivers'},
