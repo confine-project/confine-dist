@@ -375,7 +375,7 @@ function pullrequest_view(request, name, patterns)
             content = '{\n    "detail": "Confine daemon is not running"\n}'
         end
     else
-        headers['Status'] = "HTTP/1.0 403 Forbidden"
+        headers['Status'] = "HTTP/1.0 429 Too Many Requests"
         content = '{\n    "detail": "Too many requests"\n}'
     end
     local response = {
