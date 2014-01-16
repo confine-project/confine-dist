@@ -1,9 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-PKG_VERSION:=2013-12-03
+PKG_VERSION:=2014-01-15
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
-PKG_REV:=f049d671abd3b05ea909d3be5048879cdd2d0637
+PKG_REV:=e3d19699142444907759d1bf69800399a7332d04
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -21,6 +21,7 @@ include $(INCLUDE_DIR)/cmake.mk
 CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D OONF_LOGGING_LEVEL:String=debug \
               -D CMAKE_BUILD_TYPE:String=Debug \
+              -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer" \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
