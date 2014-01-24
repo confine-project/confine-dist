@@ -1,9 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-PKG_VERSION:=2014-01-15
+PKG_VERSION:=2014-01-24
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
-PKG_REV:=e3d19699142444907759d1bf69800399a7332d04
+PKG_REV:=f08ff95885b072944351018cc4adc8efd3f58418
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -21,7 +21,7 @@ include $(INCLUDE_DIR)/cmake.mk
 CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D OONF_LOGGING_LEVEL:String=debug \
               -D CMAKE_BUILD_TYPE:String=Debug \
-              -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer" \
+              -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer remotecontrol layer2_generator" \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
@@ -52,6 +52,12 @@ endef
 define Package/oonf-dlep-plugin-service
 	$(call Package/oonf-dlep/template) 
 	TITLE:=DLEP-service plugin
+	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
+endef
+
+define Package/oonf-dlep-plugin-l2gen
+	$(call Package/oonf-dlep/template) 
+	TITLE:=DLEP-layer2-generator plugin
 	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
@@ -119,6 +125,15 @@ fi
 exit 0
 endef
 
+define Package/oonf-dlep-plugin-l2gen/postinst
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	echo "Running ldconfig ..."
+	/sbin/ldconfig 2> /dev/null
+fi
+exit 0
+endef
+
 define Package/oonf-dlep/prerm
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
@@ -141,3 +156,4 @@ endef
 $(eval $(call BuildPackage,oonf-dlep))
 $(eval $(call BuildPackage,oonf-dlep-plugin-client))
 $(eval $(call BuildPackage,oonf-dlep-plugin-service))
+$(eval $(call BuildPackage,oonf-dlep-plugin-l2gen))
