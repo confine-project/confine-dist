@@ -452,7 +452,7 @@ vct_system_install_server() {
     
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
         vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
-        vct_sudo rm /etc/apache/sites-enabled/*
+        vct_sudo rm -f /etc/apache/sites-enabled/*
     fi
     
     # Setup tincd
@@ -1578,7 +1578,7 @@ vct_build_node_base_image() {
     echo "The new image is available via the controller portal at:" &&\
     echo "administration->firmware->configuration->Image as:" &&\
     echo "$IMAGE_NAME" || {
-	rm $VCT_DL_DIR/$IMAGE_NAME
+	rm -f $VCT_DL_DIR/$IMAGE_NAME
 	echo
 	echo "Building new image failed!"
 	return 1
@@ -1597,7 +1597,7 @@ vct_build_sliver_exp_data() {
     echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
     echo "slices->[select slice]->exp_data as:" &&\
     echo "$EXP_NAME" || {
-	rm $VCT_DL_DIR/$EXP_NAME
+	rm -f $VCT_DL_DIR/$EXP_NAME
 	echo
 	echo "Building new slice/sliver exp-data failed!"
 	return 1
