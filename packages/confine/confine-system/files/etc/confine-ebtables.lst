@@ -3,11 +3,10 @@
  -p IPv6    -j ACCEPT
 
  -p IPv4 --ip-proto icmp -j ACCEPT
+ -p IPv4 --ip-proto udp -j ACCEPT
 
- -p IPv4 --ip-proto udp --ip-sport 49152:65535  -j ACCEPT # ephemeral udp ports
  -p IPv4 --ip-proto tcp --ip-sport 49152:65535  -j ACCEPT # ephemeral tcp ports
 
- -p IPv4 --ip-proto udp --ip-sport 1024:49151  -j ACCEPT # registered udp ports
  -p IPv4 --ip-proto tcp --ip-sport 1024:49151  -j ACCEPT # registered tcp ports
 
  -p IPv4 --ip-proto tcp --ip-sport 22          -j ACCEPT # ssh
