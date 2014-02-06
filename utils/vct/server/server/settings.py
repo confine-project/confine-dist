@@ -153,7 +153,7 @@ RABBITMQ = ('rabbitmq', '.*rabbit', 2, 2)
 KVM = ('kvm', '.*kvm.*', None, None)
 
 MONITOR_MONITORS = (
-    ('monitor.monitors.NumPocessesMonitor', {
+    ('monitor.monitors.NumProcessesMonitor', {
             'processes': (TINC, CELERY_W1, CELERY_W2, CELERYEV, CELERYBEAT,
                           APACHE2, WSGI, POSTGRESQL, RABBITMQ)
         }),
@@ -173,6 +173,7 @@ MONITOR_MONITORS = (
     ('monitor.monitors.ProcessesMemoryMonitor', {
             'processes': (CELERY_W1, CELERY_W2, POSTGRESQL, KVM),
         }),
+    ('monitor.monitors.DiskFreeMonitor',),
 )
 
 # Custom settings
