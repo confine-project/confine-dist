@@ -1763,7 +1763,7 @@ vct_help() {
 
     vct_build_node_base_image                   : Build node image from scratch 
     vct_build_sliver_exp_data <EXP_DIR>         : Build sliver exp_data from dir
-
+    vct_build_sliver_template <OS_TYPE>         : Build sliver template image
 
     Argument Definitions
     --------------------
