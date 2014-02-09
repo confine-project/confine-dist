@@ -1572,16 +1572,17 @@ vct_node_unmount() {
 
 
 vct_build_node_base_image() {
-    local CPUS="$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')"
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
     
     cd $BUILD_PATH &&\
     make confclean &&\
-    make J=$CPUS &&\
+    make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\
     ln -fs $BUILD_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
     echo &&\
-    echo "The new image is available via the controller portal at:" &&\
+    echo "The new image is available at:" &&\
+    echo "$BUILD_PATH/images/CONFINE-owrt-current.img.gz" &&\
+    echo "And via the controller portal at:" &&\
     echo "administration->firmware->configuration->Image as:" &&\
     echo "$IMAGE_NAME" || {
 	rm -f $VCT_DL_DIR/$IMAGE_NAME
