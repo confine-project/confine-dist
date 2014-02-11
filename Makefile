@@ -16,9 +16,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-TIMESTAMP = $(shell date -u +%Y%m%d-%H%M)
-GIT_BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
-GIT_HASH = $(shell git rev-parse HEAD)
+TIMESTAMP := $(shell date -u +%Y%m%d-%H%M)
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_HASH := $(shell git rev-parse HEAD)
 
 BUILD_DIR = openwrt
 FILES_DIR = files
