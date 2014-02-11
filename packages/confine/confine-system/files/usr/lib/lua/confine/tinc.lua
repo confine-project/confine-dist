@@ -225,8 +225,8 @@ local function del_mgmt_net(sys_conf, name)
 	end
 end
 
-
-function cb2_mgmt_backend_name( rules, sys_conf, otree, ntree, path, begin, changed )
+-- unused:
+local function cb2_mgmt_backend_name( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_mgmt_backend_name" end
 	
 	local old = ctree.get_path_val(otree,path)
