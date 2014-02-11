@@ -965,7 +965,6 @@ CONFINE_SLIVER_DISK_MB=150
     
     local LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
     local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
-    local LXC_SCRIPTS_PATH=$( uci_get lxc.general.lxc_scripts_path )
     
 #    cat $SRC > $SRC_DIR/$SRC_CFG
 #    cat $SRC_DIR/$SRC_CFG >&2

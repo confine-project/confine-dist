@@ -138,8 +138,9 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/home/lxc
-	$(INSTALL_DIR) $(1)/home/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/lxc
+	$(INSTALL_DIR) $(1)/etc/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc/firstboot
 	$(INSTALL_DIR) $(1)/etc/anyboot
 	$(INSTALL_DIR) $(1)/etc/init.d
@@ -151,8 +152,8 @@ define Package/confine-system/install
 	chmod +x $(1)/etc/firstboot/*
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/firstboot/confine-banner.sh
 	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/firstboot/confine-banner.sh
-	$(CP)  ./files/home/lxc/scripts/openwrt-confine.sh      $(1)/home/lxc/scripts/
-	$(CP)  ./files/home/lxc/scripts/debian-confine.sh       $(1)/home/lxc/scripts/
+	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
+	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/

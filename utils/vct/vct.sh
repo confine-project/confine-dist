@@ -1502,13 +1502,15 @@ vct_node_scp_cns() {
 #    done
 
 #  This is manual but faster:
-    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua   $CNS_FILES_DIR/usr/lib/lua/confine/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*          $CNS_FILES_DIR/usr/sbin/
-    vct_node_scp $VCRD_ID remote:/home/lxc/scripts/*-confine.sh    $CNS_FILES_DIR/home/lxc/scripts/
-    vct_node_scp $VCRD_ID remote:/etc/config/confine-defaults $CNS_FILES_DIR/etc/config/
-    vct_node_scp $VCRD_ID remote:/etc/init.d/confine          $CNS_FILES_DIR/etc/init.d/
-    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst    $CNS_FILES_DIR/etc/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*              $LXC_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua    $CNS_FILES_DIR/usr/lib/lua/confine/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*           $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*-confine.sh $CNS_FILES_DIR/etc/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/config/confine-default s $CNS_FILES_DIR/etc/config/
+    vct_node_scp $VCRD_ID remote:/etc/init.d/confine           $CNS_FILES_DIR/etc/init.d/
+    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst     $CNS_FILES_DIR/etc/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*               $LXC_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/debian.sh    $LXC_FILES_DIR/etc/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/openwrt.sh   $LXC_FILES_DIR/etc/lxc/scripts/
 }
 
 vct_node_mount() {
