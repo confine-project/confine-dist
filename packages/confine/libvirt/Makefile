@@ -28,7 +28,7 @@ define Package/libvirt
   URL:=http://libvirt.org
   DEPENDS:= +gnutls-utils +libgnutls +libgnutls-extra +libgnutls-openssl +certtool \
             +libdevmapper +libnl +libgcrypt +librpc +libxml2 +dmidecode \
-            +gzip +tar
+            +gzip +tar +libcurl
 
 #TO DO: Check and remove unneeded dependencies
 
