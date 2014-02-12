@@ -53,6 +53,7 @@ CONFIG_PACKAGE_broadcastflood=y
 CONFIG_PACKAGE_bwm=y
 CONFIG_PACKAGE_bzip2=y
 CONFIG_PACKAGE_certtool=y
+CONFIG_PACKAGE_confine-monitor=y
 CONFIG_PACKAGE_confine-recommended=y
 CONFIG_PACKAGE_confine-system=y
 CONFIG_PACKAGE_coreutils=y

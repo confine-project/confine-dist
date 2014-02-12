@@ -1,0 +1,170 @@
+{
+    "1": {
+        "cpu": {
+            "cores": [
+                "2",
+                "2",
+                "2",
+                "2"
+            ],
+            "processor": 4,
+            "speed": [
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz"
+            ]
+        },
+        "disk": {
+            "/dev/sda": {
+                "blocks": 488386584,
+                "major": 8,
+                "minor": 0,
+                "readonly": true,
+                "size(gb)": 500.107862016
+            }
+        },
+        "load_avg": {
+            "LoadAvg-15min": "1.05",
+            "LoadAvg-1min": "0.82",
+            "LoadAvg-5min": "0.92",
+            "Tasks scheduled to Run": "2",
+            "Total number of tasks": "1065"
+        },
+        "memory": {
+            "Active": 6536432,
+            "Inactive": 216752,
+            "MemFree": 304744,
+            "MemTotal": 8038176
+        },
+        "uptime": {
+            "uptime": 1059816.77
+        }
+    },
+    "2": {
+        "cpu": {
+            "cores": [
+                "2",
+                "2",
+                "2",
+                "2"
+            ],
+            "processor": 4,
+            "speed": [
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz"
+            ]
+        },
+        "disk": {
+            "/dev/sda": {
+                "blocks": 488386584,
+                "major": 8,
+                "minor": 0,
+                "readonly": true,
+                "size(gb)": 500.107862016
+            }
+        },
+        "load_avg": {
+            "LoadAvg-15min": "1.04",
+            "LoadAvg-1min": "0.76",
+            "LoadAvg-5min": "0.91",
+            "Tasks scheduled to Run": "5",
+            "Total number of tasks": "1065"
+        },
+        "memory": {
+            "Active": 6543452,
+            "Inactive": 220836,
+            "MemFree": 294024,
+            "MemTotal": 8038176
+        },
+        "uptime": {
+            "uptime": 1059821.9
+        }
+    },
+    "3": {
+        "cpu": {
+            "cores": [
+                "2",
+                "2",
+                "2",
+                "2"
+            ],
+            "processor": 4,
+            "speed": [
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz"
+            ]
+        },
+        "disk": {
+            "/dev/sda": {
+                "blocks": 488386584,
+                "major": 8,
+                "minor": 0,
+                "readonly": true,
+                "size(gb)": 500.107862016
+            }
+        },
+        "load_avg": {
+            "LoadAvg-15min": "1.04",
+            "LoadAvg-1min": "0.78",
+            "LoadAvg-5min": "0.91",
+            "Tasks scheduled to Run": "1",
+            "Total number of tasks": "1065"
+        },
+        "memory": {
+            "Active": 6540796,
+            "Inactive": 241980,
+            "MemFree": 228352,
+            "MemTotal": 8038176
+        },
+        "uptime": {
+            "uptime": 1059827.09
+        }
+    },
+    "4": {
+        "cpu": {
+            "cores": [
+                "2",
+                "2",
+                "2",
+                "2"
+            ],
+            "processor": 4,
+            "speed": [
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz",
+                "3.20GHz"
+            ]
+        },
+        "disk": {
+            "/dev/sda": {
+                "blocks": 488386584,
+                "major": 8,
+                "minor": 0,
+                "readonly": true,
+                "size(gb)": 500.107862016
+            }
+        },
+        "load_avg": {
+            "LoadAvg-15min": "1.03",
+            "LoadAvg-1min": "0.71",
+            "LoadAvg-5min": "0.89",
+            "Tasks scheduled to Run": "1",
+            "Total number of tasks": "1065"
+        },
+        "memory": {
+            "Active": 6549840,
+            "Inactive": 224244,
+            "MemFree": 241372,
+            "MemTotal": 8038176
+        },
+        "uptime": {
+            "uptime": 1059832.11
+        }
+    }
+}

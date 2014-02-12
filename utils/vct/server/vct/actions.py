@@ -79,8 +79,8 @@ def vm_management(modeladmin, request, queryset):
     
     return TemplateResponse(request, 'admin/vct/command.html', context,
             current_app=modeladmin.admin_site.name)
-vm_management.short_description = 'VCT Node Management'
-vm_management.verbose_name = 'VM Management'
+vm_management.short_description = 'VCT node management'
+vm_management.verbose_name = 'VM management'
 vm_management.css_class = 'viewsitelink'
-vm_management.description = 'Manage VCT virtual machines'
+vm_management.description = 'Manage VCT virtual machines.'
 vm_management.url_name = 'vct'

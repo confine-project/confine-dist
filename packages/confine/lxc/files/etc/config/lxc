@@ -3,9 +3,8 @@ config 'general' 'general'
 
        option lxc_mac_prefix32   '52:c0:00:00' 
        option lxc_if_keys        '00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F'
-       option lxc_images_path    '/lxc/images'
-       option lxc_templates_path '/lxc/templates'
-       option lxc_scripts_path   '/lxc/scripts'
+       option lxc_images_path    '/home/lxc/images'
+       option lxc_templates_path '/home/lxc/templates'
 
 
 config 'container' 'default'

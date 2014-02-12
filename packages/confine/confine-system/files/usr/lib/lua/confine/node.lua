@@ -135,13 +135,12 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
-	node.local_iface           = sys_conf.local_iface
 	
-	node.priv_ipv4_prefix      = sys_conf.priv_ipv4_prefix
-	node.sliver_mac_prefix     = sys_conf.sliver_mac_prefix
 	node.sliver_pub_ipv6       = "none"
 	node.sliver_pub_ipv4,
 	node.sliver_pub_ipv4_range = get_lnode_sliver_pub_ipv4(sys_conf)
+	
+	node.addrs                 = sys_conf.addrs
 	
 	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
 	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
@@ -369,16 +368,11 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on",			crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
 	table.insert(tmp_rules, {"/cert", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"})
 	table.insert(tmp_rules, {"/arch",				cb2_set_setup, "differs from predefined RD hardware!"})
-	table.insert(tmp_rules, {"/local_iface",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with physical connectivity to CD!"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv6",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4",			cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with protocols supported by CD!"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_range",		cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images) and in coordination with IPs reserved in CD!"})
 
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/addr",			crules.cb2_nop})
@@ -397,7 +391,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_server/cn",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/cn/app_url",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_server/mgmt_net",				tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",					crules.cb2_set})
@@ -421,7 +414,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_gateways/*/cn",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_cached_on",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/description",	crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",				tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/addr",				crules.cb2_set})
@@ -440,10 +432,8 @@ tmp_rules = in_rules2
 	
 
 
---FIXME	table.insert(tmp_rules, {"/priv_ipv4_prefix",			cb2_set_sys_key_and_reboot_prepared})
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_direct_ifaces})
 	table.insert(tmp_rules, {"/direct_ifaces/*",			crules.cb2_nop})  --handled by direct_ifaces
---FIXME	table.insert(tmp_rules, {"/sliver_mac_prefix",			cb2_set_sys_and_remove_slivers})	
 	
 	table.insert(tmp_rules, {"/local_group",						crules.cb2_set}) --must exist
 	table.insert(tmp_rules, {"/local_group/uri",						crules.cb2_set})
@@ -487,7 +477,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
-	table.insert(tmp_rules, {"/cn/cndb_cached_on"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})
@@ -495,10 +484,20 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/pubkey"})
 	table.insert(tmp_rules, {"/cert"})
 	table.insert(tmp_rules, {"/arch"})
-	table.insert(tmp_rules, {"/local_iface"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv6"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4"})
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_range"})
+
+	table.insert(tmp_rules, {"/addrs"})
+	table.insert(tmp_rules, {"/addrs/mgmt"})
+	table.insert(tmp_rules, {"/addrs/mgmt_host"})
+	table.insert(tmp_rules, {"/addrs/debug"})
+	table.insert(tmp_rules, {"/addrs/local_mac"})
+	table.insert(tmp_rules, {"/addrs/local_ipv4"})
+	table.insert(tmp_rules, {"/addrs/local_ipv6"})
+	table.insert(tmp_rules, {"/addrs/internal_ipv4"})
+	table.insert(tmp_rules, {"/addrs/internal_ipv6"})
+	table.insert(tmp_rules, {"/addrs/recovery_ipv4"})
+	table.insert(tmp_rules, {"/addrs/recovery_ipv6"})
+	table.insert(tmp_rules, {"/addrs/recovery_unique"})
+
 
 	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
 	table.insert(tmp_rules, {"/disk_max_per_sliver"})
@@ -514,10 +513,8 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri"})
 
-	table.insert(tmp_rules, {"/priv_ipv4_prefix"})
 	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})
-	table.insert(tmp_rules, {"/sliver_mac_prefix"})	
 	
 	table.insert(tmp_rules, {"/group"})
 	table.insert(tmp_rules, {"/group/uri"})

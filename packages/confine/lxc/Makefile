@@ -85,10 +85,10 @@ CONFIGURE_ARGS += --with-linuxdir=$(LINUX_DIR) --disable-apparmor
 
 define Package/lxc/install
 
-	$(INSTALL_DIR) $(1)/lxc
-	$(INSTALL_DIR) $(1)/lxc/images
-	$(INSTALL_DIR) $(1)/lxc/templates
-	$(INSTALL_DIR) $(1)/lxc/scripts
+	$(INSTALL_DIR) $(1)/home
+	$(INSTALL_DIR) $(1)/home/lxc
+	$(INSTALL_DIR) $(1)/home/lxc/images
+	$(INSTALL_DIR) $(1)/home/lxc/templates
 	$(INSTALL_DIR) $(1)/cgroup
 
 	$(INSTALL_DIR) $(1)/usr/bin
@@ -97,14 +97,16 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
 	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/lxc
+	$(INSTALL_DIR) $(1)/etc/lxc/scripts
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/config
 
 	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
 	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
 	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
-	$(CP) ./files/lxc/scripts/openwrt.sh   $(1)/lxc/scripts/
-	$(CP) ./files/lxc/scripts/debian.sh    $(1)/lxc/scripts/
+	$(CP) ./files/etc/lxc/scripts/openwrt.sh   $(1)/etc/lxc/scripts/
+	$(CP) ./files/etc/lxc/scripts/debian.sh    $(1)/etc/lxc/scripts/
 	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
 	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
 	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/

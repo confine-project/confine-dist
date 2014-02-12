@@ -51,7 +51,8 @@ DATABASES = {
         'USER': 'confine',         # Not used with sqlite3.
         'PASSWORD': 'confine',     # Not used with sqlite3.
         'HOST': 'localhost',       # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '5432',                # Set to empty string for default. Not used with sqlite3.
+        'PORT': '5432',            # Set to empty string for default. Not used with sqlite3.
+        'ATOMIC_REQUESTS': True,   # Wrap each HTTP request in a transaction on this database
     }
 }
 
@@ -152,7 +153,7 @@ RABBITMQ = ('rabbitmq', '.*rabbit', 2, 2)
 KVM = ('kvm', '.*kvm.*', None, None)
 
 MONITOR_MONITORS = (
-    ('monitor.monitors.NumPocessesMonitor', {
+    ('monitor.monitors.NumProcessesMonitor', {
             'processes': (TINC, CELERY_W1, CELERY_W2, CELERYEV, CELERYBEAT,
                           APACHE2, WSGI, POSTGRESQL, RABBITMQ)
         }),
@@ -172,6 +173,7 @@ MONITOR_MONITORS = (
     ('monitor.monitors.ProcessesMemoryMonitor', {
             'processes': (CELERY_W1, CELERY_W2, POSTGRESQL, KVM),
         }),
+    ('monitor.monitors.DiskFreeMonitor',),
 )
 
 # Custom settings

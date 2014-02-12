@@ -13,3 +13,4 @@ vct.nodes.local
 *.pyc
 *~
 local_settings.py
+/files/etc/confine.version

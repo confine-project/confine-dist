@@ -4,7 +4,7 @@ IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
 TO_SAVE="/etc/config /etc/tinc /etc/dropbear /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
-TO_REMOVE="/etc/config/confine-defaults"
+TO_REMOVE="/overlay/etc/config/confine-defaults"
 
 error() {
     echo "ERROR: $@"
@@ -21,10 +21,10 @@ check_md5() {
 upgrade_overlay() {
     echo "Detected overlay"
     for d in $TO_SAVE; do
-        find $d -type f -exec touch {} \;
+        find $d -exec touch {} \;
     done
     for d in $TO_REMOVE; do
-        find $d -type f -exec rm -rf {} \;
+        find $d -exec rm -rf {} \;
     done
     confine.sysupgrade $OPTS $LIMG
 }

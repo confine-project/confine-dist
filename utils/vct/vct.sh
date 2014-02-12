@@ -452,7 +452,7 @@ vct_system_install_server() {
     
     if [ -d /etc/apache/sites-enabled ] && ! [ -d /etc/apache/sites-enabled.orig ]; then
         vct_sudo cp -ar /etc/apache/sites-enabled /etc/apache/sites-enabled.orig
-        vct_sudo rm /etc/apache/sites-enabled/*
+        vct_sudo rm -f /etc/apache/sites-enabled/*
     fi
     
     # Setup tincd
@@ -482,18 +482,19 @@ vct_system_install_server() {
     # WARNING the following code is sensitive to indentation !!
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
 	from users.models import *
+
+	users = {}
+
 	if not User.objects.filter(username='vct').exists():
 	    print 'Creating vct superuser'
-	    User.objects.create_superuser('vct', 'vct@localhost', 'vct')
-	
+	    User.objects.create_superuser('vct', 'vct@localhost', 'vct', name='vct')
+	    users['vct'] = User.objects.get(username='vct')
+
 	for username in ['admin', 'researcher', 'technician', 'member']:
-	   if not User.objects.filter(username=username).exists():
-	       print 'Creating %s user' % username
-	       User.objects.create_user(username, 'vct+%s@localhost' % username, username)
-	
-	users = {}
-	for username in ['vct', 'admin', 'researcher', 'technician', 'member']:
-	   users[username] = User.objects.get(username=username)
+	    if not User.objects.filter(username=username).exists():
+	        print 'Creating %s user' % username
+	        User.objects.create_user(username, 'vct+%s@localhost' % username, username, name=username)
+	    users[username] = User.objects.get(username=username)
 	
 	group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
 	
@@ -1501,13 +1502,15 @@ vct_node_scp_cns() {
 #    done
 
 #  This is manual but faster:
-    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua   $CNS_FILES_DIR/usr/lib/lua/confine/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*          $CNS_FILES_DIR/usr/sbin/
-    vct_node_scp $VCRD_ID remote:/lxc/scripts/*-confine.sh    $CNS_FILES_DIR/lxc/scripts/
-    vct_node_scp $VCRD_ID remote:/etc/config/confine-defaults $CNS_FILES_DIR/etc/config/
-    vct_node_scp $VCRD_ID remote:/etc/init.d/confine          $CNS_FILES_DIR/etc/init.d/
-    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst    $CNS_FILES_DIR/etc/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*              $LXC_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua    $CNS_FILES_DIR/usr/lib/lua/confine/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*           $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*-confine.sh $CNS_FILES_DIR/etc/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/config/confine-default s $CNS_FILES_DIR/etc/config/
+    vct_node_scp $VCRD_ID remote:/etc/init.d/confine           $CNS_FILES_DIR/etc/init.d/
+    vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst     $CNS_FILES_DIR/etc/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*               $LXC_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/debian.sh    $LXC_FILES_DIR/etc/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/openwrt.sh   $LXC_FILES_DIR/etc/lxc/scripts/
 }
 
 vct_node_mount() {
@@ -1571,19 +1574,20 @@ vct_node_unmount() {
 
 
 vct_build_node_base_image() {
-    local CPUS="$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')"
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
     
     cd $BUILD_PATH &&\
     make confclean &&\
-    make J=$CPUS &&\
+    make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\
     ln -fs $BUILD_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
     echo &&\
-    echo "The new image is available via the controller portal at:" &&\
+    echo "The new image is available at:" &&\
+    echo "$BUILD_PATH/images/CONFINE-owrt-current.img.gz" &&\
+    echo "And via the controller portal at:" &&\
     echo "administration->firmware->configuration->Image as:" &&\
     echo "$IMAGE_NAME" || {
-	rm $VCT_DL_DIR/$IMAGE_NAME
+	rm -f $VCT_DL_DIR/$IMAGE_NAME
 	echo
 	echo "Building new image failed!"
 	return 1
@@ -1602,7 +1606,7 @@ vct_build_sliver_exp_data() {
     echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
     echo "slices->[select slice]->exp_data as:" &&\
     echo "$EXP_NAME" || {
-	rm $VCT_DL_DIR/$EXP_NAME
+	rm -f $VCT_DL_DIR/$EXP_NAME
 	echo
 	echo "Building new slice/sliver exp-data failed!"
 	return 1
@@ -1762,7 +1766,7 @@ vct_help() {
 
     vct_build_node_base_image                   : Build node image from scratch 
     vct_build_sliver_exp_data <EXP_DIR>         : Build sliver exp_data from dir
-
+    vct_build_sliver_template <OS_TYPE>         : Build sliver template image
 
     Argument Definitions
     --------------------

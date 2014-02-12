@@ -8,6 +8,7 @@ set -u
 
 
 LXC_IMAGES_LINK='/var/lib/lxc'
+LXC_SCRIPTS_PATH='/etc/lxc/scripts'
 
 LXC_SL_ID_MIN=1
 LXC_SL_ID_MAX=253
@@ -28,12 +29,11 @@ lxc_check() {
 
     LXC_IMAGES_PATH=$( uci_get lxc.general.lxc_images_path )
     LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
-    LXC_SCRIPTS_PATH=$( uci_get lxc.general.lxc_scripts_path )
 
-    [ -d $LXC_IMAGES_PATH ]    || err $FUNCNAME ""
-    [ -d $LXC_TEMPLATES_PATH ] || err $FUNCNAME ""
-    [ -d $LXC_SCRIPTS_PATH ]   || err $FUNCNAME ""
-    [ -d /usr/lib/lxc/rootfs ] || err $FUNCNAME ""  # lxc-bug workarount: required for lxc to start container
+    [ -d $LXC_IMAGES_PATH ]    || err $FUNCNAME "Missing uci defined directory lxc.general.lxc_images_path=$LXC_IMAGES_PATH"
+    [ -d $LXC_TEMPLATES_PATH ] || err $FUNCNAME "Missing uci defined directory lxc.general.lxc_templates_path=$LXC_TEMPLATES_PATH"
+    [ -d $LXC_SCRIPTS_PATH ]   || err $FUNCNAME "Missing uci defined directory LXC_SCRIPTS_PATH=$LXC_SCRIPTS_PATH"
+    [ -d /usr/lib/lxc/rootfs ] || err $FUNCNAME "Missing /usr/lib/lxc/rootfs"  # lxc-bug workarount: required for lxc to start container
 
     if ! [ -d $LXC_IMAGES_LINK ]; then
 	mkdir -p $LXC_IMAGES_LINK; rmdir $LXC_IMAGES_LINK # make sure the mother dir does exist

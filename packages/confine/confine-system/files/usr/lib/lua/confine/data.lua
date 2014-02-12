@@ -173,24 +173,24 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 				end
 			end
 			
+			return result, index_key
 			
 		elseif header:match("HTTP/1.1 304 NOT MODIFIED") then
 			
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "UNCHANGED", url, tostring(base_key), tostring(index_key))
 			
 			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache")
-			result = cached.data
 			cached.sqn = cache.sqn
 			
+			return cached.data, index_key
+			
 		else
-			dbg("%6s url=%-60s base_key=%s index_key=%s", "ERROR!!", url, tostring(base_key), tostring(index_key))
-			dbg("curl data saved to: "..data_file.." response from "..url..": "..tostring(header))
-		end
-		
-		
-		return result, index_key
+			assert( false, "ERROR url=%-60s base_key=%s index_key=%s header=%s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
+		end		
 		
 	end
+	
+	assert( false, "IMPOSSIBLE")
 end
 
 function http_post(path, base_uri, data)

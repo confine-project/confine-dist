@@ -158,7 +158,7 @@ kill_remaining() { # [ <signal> ]
 add_conffiles() {
     ( find $(sed -ne '/^[[:space:]]*$/d; /^#/d; p' \
         /etc/sysupgrade.conf /lib/upgrade/keep.d/* 2>/dev/null) \
-        -type f 2>/dev/null;
+        2>/dev/null;
       opkg list-changed-conffiles ) | sort -u > "$1"
     return 0
 }
@@ -198,21 +198,8 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     # Read files to save and touch them to place them in the overlay
     add_conffiles "$CONFFILES"
     for d in $CONFFILES; do
-        find $d -type f -exec touch {} \;
+        find $d -exec touch {} \;
     done
-
-    uci_script=/etc/uci-defaults/reloace_lxc.sh
-
-    cat > $uci_def_script <<- EOF
-    #!/bin/sh
-    rm -rf /lxc/images.old
-    rm -rf /lxc/templates.old
-    mv /lxc/images /lxc/images.old
-    mv /lxc/templates /lxc/templates.old
-    ln -s /home/lxc/images /lxc/images
-    ln -s /home/lxc/templates /lxc/templates
-    EOF
-    chmod a+rx $uci_def_script
 
     run_ramfs "set -x
 sync

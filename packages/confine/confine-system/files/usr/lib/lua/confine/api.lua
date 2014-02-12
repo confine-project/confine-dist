@@ -43,7 +43,7 @@ end
 
 
 function wrap_ipv6(addr)
-    if addr:match('%d:%d*:') then
+    if addr:match('%w:%w*:') then
         return '['..addr..']'
     end
     return addr
@@ -145,7 +145,7 @@ function get_links(request, name, patterns)
         ['node_node'] = {'node/', 'node/node'},
         ['node_slivers'] = { 'slivers/', 'node/sliver-list'},
         ['node_templates'] = {'templates/', 'node/template-list'},
-        ['node_pull'] = {'node/ctl/pull', 'node/do-pull'},
+        ['node_refresh'] = {'node/ctl/refresh', 'node/do-refresh'},
     }
     local server_links = {
         ['server_base'] = {'', 'server/base'},
@@ -160,13 +160,13 @@ function get_links(request, name, patterns)
         ['server_templates'] = {'templates/', 'server/template-list'},
         ['server_islands'] = {'islands/', 'server/island-list'},
         ['server_reboot'] = {'nodes/${node_id}/ctl/reboot', 'server/do-reboot'},
-        ['server_cache_cndb'] = {'nodes/${node_id}/ctl/reboot', 'server/do-cache-cndb'},
-        ['server_req_api_cert'] = {'nodes/${node_id}/ctl/request-api-cert', 'server/do-request-api-cert'},
+        ['server_req_api_cert'] = {'nodes/${node_id}/ctl/request-api-cert', 'controller/do-request-api-cert'},
         ['server_node_source'] = {'nodes/${node_id}', 'node/source'},
         ['server_update'] = {'slivers/${object_id}/ctl/update', 'server/do-update'},
-        ['server_upload_exp_data'] = {'slivers/${object_id}/ctl/upload-exp-data', 'server/do-upload-exp-data'},
+        ['server_upload_exp_data'] = {'slivers/${object_id}/ctl/upload-exp-data', 'controller/do-upload-exp-data'},
+        ['server_upload_overlay'] = {'slivers/${object_id}/ctl/upload-overlay', 'controller/do-upload-overlay'},
         ['server_sliver_source'] = {'slivers/${object_id}', 'node/source'},
-        ['server_upload_image'] = {'templates/${object_id}/ctl/upload-image', 'server/do-upload-image'},
+        ['server_upload_image'] = {'templates/${object_id}/ctl/upload-image', 'controller/do-upload-image'},
         ['server_template_source'] = {'templates/${object_id}', 'node/source'},
     }
     local links, url, rel = {}
@@ -188,11 +188,11 @@ function get_links(request, name, patterns)
                     'server_node_source', 'server_base', 'server_server', 'server_nodes',
                     'server_users', 'server_groups', 'server_gateways', 'server_slivers',
                     'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'node_pull', 'server_nodes', 'server_node_source',
-                    'server_reboot', 'server_cache_cndb'},
+        ['node'] = {'node_base',  'node_refresh', 'server_nodes', 'server_node_source',
+                    'server_reboot'},
         ['slivers'] = {'node_base', 'server_slivers'},
         ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
-                      'server_update', 'server_upload_exp_data'},
+                      'server_update', 'server_upload_exp_data', 'server_upload_overlay'},
         ['templates'] = {'node_base', 'server_templates'},
         ['template'] = {'node_base', 'node_templates', 'server_templates',
                         'server_template_source', 'server_upload_image'},
@@ -349,7 +349,7 @@ end
 
 
 function pullrequest_view(request, name, patterns)
-    -- Wakes up confine daemon in order to make it pull the server
+    -- Wakes up confine daemon in order to make it poll the server
     -- TODO use POST instead of GET
     local headers = {}
     
@@ -369,13 +369,13 @@ function pullrequest_view(request, name, patterns)
             pid_file:close()
             os.execute('kill -s CONT ' .. pid)
             os.execute('touch ' .. PULL_REQUEST_LOCK_FILE)
-            content = '{\n    "detail": "Node instructed to pull the server"\n}'
+            content = '{\n    "detail": "Node instructed to refresh itself"\n}'
         else
             headers['Status'] = "HTTP/1.0 500 Internal Server Error"
             content = '{\n    "detail": "Confine daemon is not running"\n}'
         end
     else
-        headers['Status'] = "HTTP/1.0 403 Forbidden"
+        headers['Status'] = "HTTP/1.0 429 Too Many Requests"
         content = '{\n    "detail": "Too many requests"\n}'
     end
     local response = {
@@ -417,7 +417,7 @@ function api_path_dispatch(request, api_path)
     -- Mapping between API paths and functions (views/handlers)
     local map = {
         ['^/$'] = {file_view, 'base'},
-        ['^/node/ctl/pull/$'] = {pullrequest_view, 'ctl'},
+        ['^/node/ctl/refresh/$'] = {pullrequest_view, 'ctl'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
         ['^/slivers/$'] = {listdir_view, 'slivers'},

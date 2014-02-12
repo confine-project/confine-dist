@@ -18,9 +18,14 @@ logsize = 1000
 
 function dbg_(nl, err, func, fmt, ...)
 	local t = nixio.times()
-	local l = "[%s.%d] %-7s %s%s" %{os.date("%Y%m%d-%H%M%S"), (t.utime + t.stime + t.cutime + t.cstime), func, string.format(fmt,...), nl and "\n" or "" }
+	local l = "%s[%s.%d] %-7s %s%s" %{(err and "ERROR:\n" or ""),
+					  os.date("%Y%m%d-%H%M%S"),
+					  (t.utime + t.stime + t.cutime + t.cstime),
+					  func,
+					  string.format(fmt,...),
+					  (nl and "\n" or "") }
 	if err then
-		io.stderr:write("ERROR "..l)
+		io.stderr:write(l)
 	else
 		io.stdout:write(l)
 	end
@@ -52,7 +57,18 @@ function err(fmt, ...)
 	dbg_(true, true, debug.getinfo(2).name or "???", fmt, ...)
 end
 
-
+function handle_error(e)
+	local trace = string.format(
+		"%s\n" ..
+		"----------\n" ..
+		"%s\n" ..
+		"----------\n",
+		e or "(?)",
+		debug.traceback(2)
+	)
+	err("%s",trace)
+	return trace
+end
 
 function execute(cmd)
 	dbg(cmd)
