@@ -250,7 +250,7 @@ if [ $needs_reboot = no ]; then
 fi
 
 if [ $needs_reboot = yes ]; then
-	uci_def_script=/etc/uci-defaults/format_partitions.sh
+	uci_def_script=/etc/uci-defaults/00.-confine-disk-parted-post.sh
 
 	cat >&2 <<- EOF
 	Warning: it is not possible to use the new partitions!
@@ -267,7 +267,7 @@ if [ $needs_reboot = yes ]; then
 	# reboot if everything went fine.
 	cat > $uci_def_script <<- EOF
 	#!/bin/sh
-	if $0 post >> '/root/$(echo $0 | tr / _).log' 2>&1; then
+	if (date; $0 post) >> '/root/$(basename $0).log' 2>&1; then
 		reboot
 	fi
 	EOF
