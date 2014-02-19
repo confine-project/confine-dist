@@ -1,0 +1,9 @@
+#!/bin/sh
+
+run_confine_init() {
+    preinit_echo "- confine init -"
+
+	# TODO: Implement
+}
+
+boot_hook_add preinit_main run_confine_init
