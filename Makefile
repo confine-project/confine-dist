@@ -35,7 +35,7 @@ SUBTARGET ?= generic
 PROFILE ?=
 PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
-PACKAGES ?= confine-system confine-recommended
+PACKAGES ?= confine-system confine-recommended confine-parted
 
 CONFIG = $(BUILD_DIR)/.config
 KCONF = target/linux/$(TARGET)/config-3.3
