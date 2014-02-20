@@ -1,9 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-PKG_VERSION:=2014-01-24
+PKG_VERSION:=2014-02-20
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
-PKG_REV:=f08ff95885b072944351018cc4adc8efd3f58418
+PKG_REV:=a094d8a9530515eae3ca7a7cf3687d5013b2325b
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -25,6 +25,7 @@ CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
+              -D OONF_APP_GIT=$(PKG_REV) \
               -D CMAKE_PREFIX_PATH=$(STAGING_DIR)/usr
 
 PKG_BUILD_DEPENDS:=oonf-api

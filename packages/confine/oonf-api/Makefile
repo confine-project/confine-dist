@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-api
-PKG_VERSION:=2014-01-24
-PKG_REV:=b7f3da05a2858a7dbaa49926d530d9cda1741321
+PKG_VERSION:=2014-02-19
+PKG_REV:=f20d574f01a11848ec34a863c5a093e95526c570
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -10,9 +10,6 @@ PKG_SOURCE_URL:=http://olsr.org/git/oonf_api.git
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_VERSION:=$(PKG_REV)
-
-
-
 
 CMAKE_INSTALL:=1
 
@@ -27,6 +24,7 @@ CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
+              -D OONF_LIB_GIT=$(PKG_REV) \
               -D CMAKE_PREFIX_PATH=$(STAGING_DIR)/usr
 
 define Package/oonf-api/template
