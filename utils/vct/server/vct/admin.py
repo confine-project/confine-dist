@@ -12,8 +12,9 @@ try:
 except ImportError:
     from controller.utils import is_installed
 from nodes.models import Node
-from slices.admin import TemplateAdmin, SliceAdmin, SliceSliversAdmin
-from slices.models import Template, Sliver, Slice
+from slices.admin import (SliceSliversAdmin, SliverDefaultsInline, SliverAdmin,
+    TemplateAdmin)
+from slices.models import Sliver, SliverDefaults, Template
 from slices import settings as slices_settings
 
 from . import settings 
@@ -87,9 +88,15 @@ if is_installed('firmware'):
 
 
 # Slices customization
+# TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with SLICES_SLIVER_DATA_EXTENSIONS
 if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
-    SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
-            base_class=SliceAdmin.form)
-    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('exp_data', 'overlay'))
+    SliverDefaultsInline.form = local_files_form_factory(SliverDefaults, ('data', 'overlay'),
+            base_class=SliverDefaultsInline.form,
+            extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+            extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
+    SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+            base_class=SliverAdmin.form,
+            extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
