@@ -3,16 +3,12 @@
     "pk": 1,
     "model": "slices.slice",
     "fields": {
-        "exp_data_uri": "",
         "group": 1,
         "name": "openwrt-slice-example",
         "instance_sn": 0,
-        "new_sliver_instance_sn": 0,
-        "exp_data": "confine-slice-openwrt-exp-data.tgz",
-        "exp_data_sha256": "21ae296006185c7110b80632f3d8e69961b56dc6a859223ea6afe6c5e73c1def",
         "set_state": "register",
-        "template": 2,
-        "vlan_nr": -1,
+        "allow_isolated": false,
+        "isolated_vlan_tag": null,
         "expires_on": "2015-12-31",
         "description": "openwrt-slice-example"
     }
@@ -21,18 +17,40 @@
     "pk": 2,
     "model": "slices.slice",
     "fields": {
-        "exp_data_uri": "",
         "group": 1,
         "name": "debian-slice-example",
         "instance_sn": 0,
-        "new_sliver_instance_sn": 0,
-        "exp_data": "confine-slice-debian-exp-data.tgz",
-        "exp_data_sha256": "3c254719c4cb8e7aa13f690e638cd39f38d71ada2fb467b76ca776e6f2d73f15",
         "set_state": "register",
-        "template": 1,
-        "vlan_nr": -1,
+        "allow_isolated": false,
+        "isolated_vlan_tag": null,
         "expires_on": "2015-12-31",
         "description": "debian-slice-example"
+    }
+},
+{
+    "pk": 1,
+    "model": "slices.sliverdefaults",
+    "fields": {
+        "slice": 1,
+        "instance_sn": 0,
+        "data": "confine-slice-openwrt-exp-data.tgz",
+        "data_sha256": "21ae296006185c7110b80632f3d8e69961b56dc6a859223ea6afe6c5e73c1def",
+        "data_uri": "",
+        "set_state": "start",
+        "template": 2
+    }
+},
+{
+    "pk": 2,
+    "model": "slices.sliverdefaults",
+    "fields": {
+        "slice": 2,
+        "instance_sn": 0,
+        "data": "confine-slice-debian-exp-data.tgz",
+        "data_sha256": "3c254719c4cb8e7aa13f690e638cd39f38d71ada2fb467b76ca776e6f2d73f15",
+        "data_uri": "",
+        "set_state": "start",
+        "template": 1
     }
 }
 ]
