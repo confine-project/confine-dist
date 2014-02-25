@@ -815,14 +815,14 @@ confine_sliver_allocate() {
 	if echo $FS_URL | grep -i debian >/dev/null || echo $FS_TYPE | grep -i debian >/dev/null ; then
 		
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
-	    uci_del lxc.$CT_NR.rootfs_url
+	    uci_del lxc.$CT_NR.rootfs_url soft,quiet
 	    
 	    uci_set lxc.$CT_NR.customize=debian-confine.sh
 	    
 	elif echo $FS_URL | grep -i openwrt >/dev/null || echo $FS_TYPE | grep -i openwrt >/dev/null ; then
 
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
-	    uci_del lxc.$CT_NR.rootfs_url
+	    uci_del lxc.$CT_NR.rootfs_url soft,quiet
 	    
 	    uci_set lxc.$CT_NR.customize=openwrt-confine.sh
 	    
