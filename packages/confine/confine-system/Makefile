@@ -48,6 +48,7 @@ define Package/confine-system
 	+procps \
 	+losetup \
 	+coreutils-readlink \
+	+fallocate-e2fsprogs \
 	+mount-utils \
 	+px5g \
 	+time \
