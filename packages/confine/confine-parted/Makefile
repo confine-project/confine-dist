@@ -27,7 +27,7 @@ PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/confine-system
+define Package/confine-parted
   SECTION:=net
   CATEGORY:=Base system
   TITLE:=Parted utilities for confine nodes
@@ -38,7 +38,7 @@ define Package/confine-system
 
 endef
 
-define Package/confine-system/description
+define Package/confine-parted/description
 	minimal Partition management utilities for Confine nodes
 endef
 
@@ -52,7 +52,7 @@ endef
 define Build/Compile
 endef
 
-define Package/confine-system/install
+define Package/confine-parted/install
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/etc

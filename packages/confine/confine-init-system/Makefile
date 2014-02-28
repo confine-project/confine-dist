@@ -27,7 +27,7 @@ PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/confine-system
+define Package/confine-init-system
   SECTION:=net
   CATEGORY:=Base system
   TITLE:=Init system for Confine
@@ -36,7 +36,7 @@ define Package/confine-system
 
 endef
 
-define Package/confine-system/description
+define Package/confine-init-system/description
 	Init system for Confine nodes, separate from the actual confine system
 endef
 
@@ -50,7 +50,7 @@ endef
 define Build/Compile
 endef
 
-define Package/confine-system/install
+define Package/confine-init-system/install
 	$(INSTALL_DIR) $(1)/lib
 	$(INSTALL_DIR) $(1)/lib/preinit
 endef
