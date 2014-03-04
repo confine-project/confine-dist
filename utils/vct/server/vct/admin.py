@@ -12,9 +12,16 @@ try:
 except ImportError:
     from controller.utils import is_installed
 from nodes.models import Node
-from slices.admin import (SliceSliversAdmin, SliverDefaultsInline, SliverAdmin,
-    TemplateAdmin)
-from slices.models import Sliver, SliverDefaults, Template
+from slices.admin import SliceSliversAdmin, SliceAdmin, TemplateAdmin
+from slices.models import Slice, Sliver, Template
+try:
+    from slices.admin import SliverAdmin, SliverDefaultsInline
+    from slices.models import SliverDefaults
+except ImportError:
+    # enable backwards compatibility
+    EXISTS_SLIVER_DEFAULTS = False
+else:
+    EXISTS_SLIVER_DEFAULTS = True
 from slices import settings as slices_settings
 
 from . import settings 
@@ -88,15 +95,24 @@ if is_installed('firmware'):
 
 
 # Slices customization
-# TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with SLICES_SLIVER_DATA_EXTENSIONS
 if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
-    SliverDefaultsInline.form = local_files_form_factory(SliverDefaults, ('data', 'overlay'),
-            base_class=SliverDefaultsInline.form,
-            extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
-    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
-            extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
-    SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
-            base_class=SliverAdmin.form,
-            extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+    if EXISTS_SLIVER_DEFAULTS:
+        # TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with 
+        # SLICES_SLIVER_DATA_EXTENSIONS
+        SliverDefaultsInline.form = local_files_form_factory(SliverDefaults,
+                ('data', 'overlay'), base_class=SliverDefaultsInline.form,
+                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+                extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
+        SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+                base_class=SliverAdmin.form,
+                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+    else: # backwards compatibility
+        SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
+                base_class=SliceAdmin.form,
+                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver,
+                ('exp_data', 'overlay'),
+                extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
