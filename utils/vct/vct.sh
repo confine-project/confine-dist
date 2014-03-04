@@ -1577,6 +1577,9 @@ vct_build_node_base_image() {
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
     
+    cd $BUILD_PATH/openwrt &&\
+    ./scripts/feeds update -a &&\
+    ./scripts/feeds install -a &&\
     cd $BUILD_PATH &&\
     make confclean &&\
     make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\
