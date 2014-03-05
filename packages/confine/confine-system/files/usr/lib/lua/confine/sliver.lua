@@ -25,7 +25,7 @@ local null   = cdata.null
 
 NODE = {
 	["registered"] 	 = "registered",
-	["fail_alloc"]   = "fail_alloc",
+	["fail_allocate"]= "fail_allocate",
 	["allocated"]	 = "allocated",
 	["fail_deploy"]  = "fail_deploy",
 	["deployed"]	 = "deployed",
@@ -938,7 +938,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 			return true
 		end
 		
-	elseif next_state==NODE.fail_alloc and uci_state==nil then
+	elseif next_state==NODE.fail_allocate and uci_state==nil then
 		api_slv.state = next_state
 		return true
 	
@@ -1116,7 +1116,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 			assert( (ntree.local_slivers[key] or otree.local_slivers[key]) and nslv==ntree.local_slivers[key] and oslv==otree.local_slivers[key] )
 			assert( i <= imax )
 
-			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1) or not NODE[oslv.state]) then
+			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_allocate and i==1) or not NODE[oslv.state]) then
 				
 				oslv = ctree.set_path_val(otree, "/local_slivers/"..key, {state=NODE.registered })
 				
@@ -1126,10 +1126,10 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				
 				if not oslv.errors and (nslv_set_state==SERVER.deploy or nslv_set_state==SERVER.start) then
 					
-					if not slv_iterate( iargs, alloc_rules, NODE.registered, NODE.allocated, NODE.fail_alloc) then break end
+					if not slv_iterate( iargs, alloc_rules, NODE.registered, NODE.allocated, NODE.fail_allocate) then break end
 					
 					if oslv.errors then
-						if not slv_iterate( iargs, dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc) then break end
+						if not slv_iterate( iargs, dealloc_rules, NODE.fail_allocate, NODE.fail_allocate, NODE.fail_allocate) then break end
 					end
 					
 				elseif not nslv then
