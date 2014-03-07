@@ -32,7 +32,7 @@ define Package/confine-init-system
   CATEGORY:=Base system
   TITLE:=Init system for Confine
   URL:=http://confine-project.eu
-  DEPENDS:= +bash +mount-utils +block-mount +sfdisk +partx-utils
+  DEPENDS:= +bash +mount-utils +block-mount +sfdisk +partx-utils +kexec-tools
 
 endef
 
