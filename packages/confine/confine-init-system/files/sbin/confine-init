@@ -1,0 +1,152 @@
+#!/bin/ash
+
+set -e
+
+error() {
+	echo "ERROR: $@"
+	exit 1
+}
+
+[ $(id -u) -ne 0 ] && error "You are not root!"
+
+MNTDIR=/mnt
+SYSDIR=$MNTDIR/sys/confine/image-v1
+#SYSDIR=/tmp #DEBUG
+CMDLINE=$(cat /proc/cmdline)
+
+# Get the kernel arguments, one per line in the format "key value"
+get_cmdline() {
+	local cmdline="$@" keyword key val
+	for keyword in $cmdline; do
+		key=${keyword%%=*}
+		if [ ${#key} -eq ${#keyword} ]; then
+			val=
+		else
+			val=${keyword#*=}
+		fi
+		echo $key $val
+	done
+}
+
+# Returns a cmdline argument corresponding to the given key
+get_cmdline_arg() {
+	local mykey=$1 key val
+	get_cmdline "$CMDLINE" | while read key val; do
+		if [ $key == $mykey ]; then
+			echo -n $val
+			return
+		fi
+	done
+}
+
+# Returns a cmdline with the given kernel args in place (avoids duplicates)
+get_new_cmdline() {
+	local oldkey oldval newargs="$@" newkey newval
+	echo -n "$newargs"
+	get_cmdline "$CMDLINE" | while read oldkey oldval; do
+		get_cmdline "$newargs" | while read newkey newval; do
+			if [ $newkey == $oldkey ]; then
+				break
+			fi
+			if [ -n "$oldval" ]; then
+				echo -n " $oldkey=$oldval"
+			else
+				echo -n " $oldkey"
+			fi
+		done
+	done
+}
+
+#maintenance_shell() {
+	#local timeout=60
+	#echo "Press any key to be droped to the maintenance shell."
+	#echo -n "If you don't, the machine will automatically reboot in $timeout seconds."
+	#if read -s -n 1 -t $timeout; then
+		#echo
+		#echo "Booting to the maintenance shell..."
+		#exit 0
+	#else
+		#echo "Rebooting..."
+		#reboot
+	#fi
+#}
+
+maintenance_shell() {
+	local delay=5
+	echo "Booting to the maintenance shell in $delay seconds..."
+	sleep $delay
+	exit 0
+}
+
+# Mounts the partition identified under the given label
+sys_mount() {
+	local label=confine-sys target=$MNTDIR/sys
+	grep " $target " /proc/mounts > /dev/null && return 0
+	mkdir -p $target
+	mount LABEL=$label $target -o ro
+}
+
+sys_remount() {
+	local opts=$1 target=$MNTDIR/sys
+	grep " $target " /proc/mounts > /dev/null || return 1
+	mount $target -o remount,$opts
+}
+
+sys_umount() {
+	local target=$MNTDIR/sys
+	grep " $target " /proc/mounts > /dev/null || return 1
+	umount $target
+}
+
+confine_image=$(get_cmdline_arg confine_image)
+#confine_image=$1 #DEBUG
+[ -z $confine_image ] && confine_image=next
+
+#sys_mount || error "Filesystem with label 'confine-sys' not found!"
+
+case $confine_image in
+	next|default)
+
+		link=$SYSDIR/$confine_image
+		[ -L $link ] || error "$link is not a symlink!"
+
+		sys_remount rw
+		(cd $SYSDIR && rm -f next && ln -s default next)
+		sys_remount ro
+
+		destdir=$(readlink -f $link)
+		dest=${destdir##*/}
+		[ -d $destdir ] || error "$destdir is not a directory!"
+
+		kernel_img=$destdir/kernel
+		[ -f $kernel ] || error "$kernel was not found!"
+		
+		new_cmdline=$(get_new_cmdline confine_image=$dest)
+		if kexec --load $kernel_img --command-line="$new_cmdline"; then
+			kexec -e
+		else
+			echo "Failed to execute kexec!"
+			maintenance_shell
+		fi
+		;;
+
+	none)
+		maintenance_shell
+		;;
+
+	*)
+		root_img=$SYSDIR/$confine_image/root
+		root_target=$MNTDIR/root
+		root_dev=/dev/loop0
+
+		losetup $root_dev $root_img
+		mkdir -p $root_target
+		mount $root_dev $root_target -o ro
+		cd $root_target
+		pivot_root . old-root
+		umount /old-root
+		exec chroot . /sbin/init <dev/console >dev/console 2>&1
+
+		# TODO: overlay
+		;;
+esac
