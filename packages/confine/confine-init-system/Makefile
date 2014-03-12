@@ -32,7 +32,14 @@ define Package/confine-init-system
   CATEGORY:=Base system
   TITLE:=Init system for Confine
   URL:=http://confine-project.eu
-  DEPENDS:= +bash +mount-utils +block-mount +sfdisk +partx-utils +kexec-tools
+  DEPENDS:= \
+	+bash \
+	+mount-utils \
+	+block-mount \
+	+sfdisk \
+	+partx-utils \
+	+kexec-tools
+	+losetup
 
 endef
 
@@ -53,6 +60,9 @@ endef
 define Package/confine-init-system/install
 	$(INSTALL_DIR) $(1)/lib
 	$(INSTALL_DIR) $(1)/lib/preinit
+	$(INSTALL_DIR) $(1)/sbin
+
+	$(INSTALL_BIN) ./files/sbin/confine-init $(1)/sbin/confine-init
 endef
 
 $(eval $(call BuildPackage,confine-init-system))
