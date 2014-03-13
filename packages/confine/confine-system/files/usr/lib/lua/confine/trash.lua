@@ -105,6 +105,8 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/cn"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/cn/app_url"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/island"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/island/uri"]			= "CB_COPY"})
 
 --	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
 --	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
@@ -120,8 +122,6 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/tinc"] 				= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/name"] 			= "CB_SETUP"})
 	table.insert(tmp_rules, {["/tinc/pubkey"]			= "CB_SETUP"})
-	table.insert(tmp_rules, {["/tinc/island"]			= "CB_COPY"})
-	table.insert(tmp_rules, {["/tinc/island/uri"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/tinc/connect_to"]			= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_SET_TINC"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})

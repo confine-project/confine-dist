@@ -368,6 +368,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/island",				crules.cb2_set})
+	table.insert(tmp_rules, {"/island/uri",				crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
@@ -382,8 +384,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey",	crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island",	crules.cb2_set})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri",	crules.cb2_set})
 
 
 	table.insert(tmp_rules, {"/local_server",			crules.cb2_set})
@@ -477,6 +477,8 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
+	table.insert(tmp_rules, {"/island"})
+	table.insert(tmp_rules, {"/island/uri"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})
@@ -510,8 +512,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri"})
 
 	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})
