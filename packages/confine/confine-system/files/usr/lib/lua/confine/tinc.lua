@@ -90,9 +90,6 @@ function get_node_mgmt_net( sys_conf, cached_net )
 	
 	if type(net)=="table" and type(cached_net)=="table" then
 		net.native = cached_net.native
-		if type(net.tinc_client)=="table" and type(cached_net.tinc_client)=="table" then
-			net.tinc_client.island = cached_net.tinc_client.island
-		end
 	end
 	
 	return net
