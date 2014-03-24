@@ -57,11 +57,12 @@ EOF
 ::shutdown:/etc/init.d/rcS K stop
 console::askfirst:/bin/ash --login
 #tts/0::askfirst:/bin/ash --login
-#ttyS0::askfirst:/bin/ash --login
+ttyS0::askfirst:/bin/ash --login
 tty1::askfirst:/bin/ash --login
 tty2::askfirst:/bin/ash --login
 tty3::askfirst:/bin/ash --login
 tty4::askfirst:/bin/ash --login
+ttyUSB0::askfirst:/bin/ash –login
 
 EOF
 

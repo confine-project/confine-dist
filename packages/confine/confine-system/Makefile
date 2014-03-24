@@ -91,6 +91,7 @@ define Package/confine-system
 	+uhttpd-mod-tls \
 	+uhttpd-mod-tls_cyassl \
 	\
+	+kmod-usb-serial +kmod-usb-serial-ftdi +kmod-usb-serial-pl2303 \
 	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
 	\
 	+kmod-dummy \
