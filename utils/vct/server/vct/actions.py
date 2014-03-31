@@ -1,3 +1,4 @@
+from django.http import Http404
 from django.template.response import TemplateResponse
 
 from firmware.actions import get_firmware
@@ -14,6 +15,9 @@ def vm_management(modeladmin, request, queryset):
     STOP = ('stop', 'Stop VM', 'Stop node virtual machine')
     REMOVE = ('remove', 'Remove VM', 'Remove node virtual machine')
     DELETE = ('delete', 'Delete FW', 'Delete node firmware')
+
+    if not queryset.exists():
+        raise Http404("node object does not exist.")
 
     name = request.GET.get('cmd', 'info')
     if name == 'build':
