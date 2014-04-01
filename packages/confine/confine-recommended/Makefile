@@ -35,8 +35,7 @@ define Package/confine-recommended
   DEPENDS:= \
 	+confine-system \
 	\
-	+oonf-dlep +oonf-plugin-nl80211-listener \
-	+oonf-plugin-layer2-viewer +oonf-dlep-plugin-service \
+	+oonf-dlep \
 	\
 	+openvswitch \
 	+kmod-openvswitch \
