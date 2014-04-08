@@ -1493,6 +1493,7 @@ vct_node_scp_cns() {
     
     local CNS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-system/files"
     local LXC_FILES_DIR="$VCT_DIR/../../packages/confine/lxc/files"
+    local SFS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-parted/files"
 
 #  This is automatic but slow:
 #    for f in $(cd $CNS_FILES_DIR && find | grep -v "/etc/config"); do
@@ -1503,7 +1504,14 @@ vct_node_scp_cns() {
 
 #  This is manual but faster:
     vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua    $CNS_FILES_DIR/usr/lib/lua/confine/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*           $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.lib         $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.functions   $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.udhcpc.test $CNS_FILES_DIR/usr/sbin/
+
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.remote-upgrade $SFS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.disk-parted $SFS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.sysupgrade  $SFS_FILES_DIR/usr/sbin/
+
     vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*-confine.sh $CNS_FILES_DIR/etc/lxc/scripts/
     vct_node_scp $VCRD_ID remote:/etc/config/confine-default s $CNS_FILES_DIR/etc/config/
     vct_node_scp $VCRD_ID remote:/etc/init.d/confine           $CNS_FILES_DIR/etc/init.d/
