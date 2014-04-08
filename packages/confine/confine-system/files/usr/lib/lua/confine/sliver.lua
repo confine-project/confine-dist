@@ -309,7 +309,11 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 			failure = true
 			add_lslv_err( otree, path.."parent_name/", "Invalid", nval.parent_name )
 		end
-		
+
+		ctree.set_path_val(otree, path.."ipv4_addr/", nval.ipv4_addr or null)
+		ctree.set_path_val(otree, path.."ipv6_addr/", nval.ipv6_addr or null)
+		ctree.set_path_val(otree, path.."mac_addr/", nval.mac_addr or null)
+
 		if failure then
 			ctree.set_path_val( otree, path, nil )
 		end		
