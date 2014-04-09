@@ -2,6 +2,7 @@
  -p arp     -j ACCEPT
  -p IPv6    -j ACCEPT
 
+ -p IPv4 --ip-proto gre -j ACCEPT
  -p IPv4 --ip-proto icmp -j ACCEPT
  -p IPv4 --ip-proto udp -j ACCEPT
 
