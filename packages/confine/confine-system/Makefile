@@ -93,6 +93,8 @@ define Package/confine-system
 	\
 	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
 	\
+	+kmod-e1000e \
+	\
 	+kmod-dummy \
 	+kmod-gre \
 	+kmod-fs-ext4 \
