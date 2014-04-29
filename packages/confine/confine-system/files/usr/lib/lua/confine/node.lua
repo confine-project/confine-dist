@@ -439,8 +439,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_group/uri",						crules.cb2_set})
 	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_set}) --must exist
 	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			cb2_lnode_lgroup_role})
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_set}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_admin",				crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_node_admin",			crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_group_admin",			crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_set}) --handled by set_local_group_role

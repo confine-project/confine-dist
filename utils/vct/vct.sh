@@ -499,10 +499,10 @@ vct_system_install_server() {
 	group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
 	
 	print '\nCreating roles ...'
-	Roles.objects.get_or_create(user=users['vct'], group=group, is_admin=True)
-	Roles.objects.get_or_create(user=users['admin'], group=group, is_admin=True)
-	Roles.objects.get_or_create(user=users['researcher'], group=group, is_researcher=True)
-	Roles.objects.get_or_create(user=users['technician'], group=group, is_technician=True)
+	Roles.objects.get_or_create(user=users['vct'], group=group, is_group_admin=True)
+	Roles.objects.get_or_create(user=users['admin'], group=group, is_group_admin=True)
+	Roles.objects.get_or_create(user=users['researcher'], group=group, is_slice_admin=True)
+	Roles.objects.get_or_create(user=users['technician'], group=group, is_node_admin=True)
 	Roles.objects.get_or_create(user=users['member'], group=group)
 	
 	token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
