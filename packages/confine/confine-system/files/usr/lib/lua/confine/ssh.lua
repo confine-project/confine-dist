@@ -119,7 +119,7 @@ end
 
 
 
-function sys_get__lgroup(auth_file, tech_not_researcher)
+function sys_get__lgroup(auth_file, node_not_slice_admin)
 	
 	local group = { user_roles = {} }
 
@@ -138,10 +138,10 @@ function sys_get__lgroup(auth_file, tech_not_researcher)
 					group.user_roles[id] = group.user_roles[id] or { local_user = { auth_tokens = {} } }				
 					local role = group.user_roles[id]
 					
-					if tech_not_researcher then
-						role.is_technician = true
+					if node_not_slice_admin then
+						role.is_node_admin = true
 					else
-						role.is_researcher = true
+						role.is_slice_admin = true
 					end
 					
 					role.local_user.is_active = true
@@ -164,7 +164,7 @@ end
 
 
 
-function sys_set__lgroup_role( auth_file, tech_not_researcher, otree, ntree, path, begin, changed )
+function sys_set__lgroup_role( auth_file, node_not_slice_admin, otree, ntree, path, begin, changed )
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -185,7 +185,7 @@ function sys_set__lgroup_role( auth_file, tech_not_researcher, otree, ntree, pat
 		dbg("updating auth_tokens for path=%s", path)
 		del_ssh_keys(auth_file, user_id)
 		
-		if (old.is_admin or (tech_not_researcher and old.is_technician or old.is_researcher)) and old.local_user and old.local_user.is_active then
+		if (old.is_group_admin or (node_not_slice_admin and old.is_node_admin or old.is_slice_admin)) and old.local_user and old.local_user.is_active then
 			
 			add_ssh_keys(auth_file, user_id, auth_token_to_rsa( old.local_user.auth_tokens ))
 		end
