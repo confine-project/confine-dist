@@ -4,7 +4,10 @@ echo "Configuring network for CONFINE..."
 
 
 uci del network.lan
+uci commit network
+
 uci del network.wan
+uci commit network
 
 uci set network.local=interface
 uci set network.local.type=bridge
