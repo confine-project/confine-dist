@@ -258,7 +258,8 @@ function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 		local failure = false
 		failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."addr", "string", {"[%x]+:.*:[%x]+"} ) or failure
-		failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc_server$", "^tinc_client$"} ) or failure
+		-- Keep new and old backends for temporary backwards compatibility (#157).
+		failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."backend", "string", {"^tinc$", "^tinc_server$", "^tinc_client$"} ) or failure
 
 		if new.backend=="tinc_server" then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."tinc_client", type(cdata.null), {cdata.null} ) or failure
