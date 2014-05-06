@@ -170,22 +170,13 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	return node
 end
 
-function cb2_get_sys_key( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_get_sys_key" end
-	
-	local key = ctree.get_path_leaf(path)
-	
-	ctree.set_path_val( otree, path, sys_conf[key] )
-end
-
-
 
 function cb2_get_disk_avail( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_get_disk_avail" end
 
 	sliver.purge_templates( sys_conf, otree )
 	
-	return cb2_get_sys_key( rules, sys_conf, otree, ntree, path )	
+	ctree.set_path_val( otree, path, sys_conf.disk_avail )
 end
 
 function set_sys_key_and_more( sys_conf, otree, ntree, path, sys_state, reboot )
@@ -259,6 +250,66 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 	elseif not is_table and old ~= new then
 		
 		assert(false, "ERR_SETUP...")
+	end
+	
+end
+
+function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
+	if not rules then return "cb2_set_resources" end
+
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+
+	if begin then
+		
+		local resources = {
+			disk = {name="disk", unit="MiB", max_sliver=sys_conf.disk_max_per_sliver, dflt_sliver=sys_conf.disk_dflt_per_sliver, avail=0},
+			pub_ipv6 = {name="pub_ipv6", unit="addrs", max_sliver=0, dflt_sliver=0, avail=0},
+			pub_ipv4 = {name="pub_ipv4", unit="addrs", max_sliver=(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0), dflt_sliver=0, avail=0}
+		}
+		
+		ctree.set_path_val(otree, path, resources)
+		
+	elseif not begin then
+		
+		local failure = false
+		
+		if new then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path, "table") or failure
+		end
+		
+		if new and new.disk then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."disk", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/name", "string", {"^disk$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/unit", "string", {"^MiB$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_sliver", "number", {10000}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_sliver", "number", {otree.resources.disk.max_sliver}) or failure
+		end
+		
+		if new and new.pub_ipv4 then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv4", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/name", "string", {"^pub_ipv4$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/unit", "string", {"^addrs$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_sliver", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_sliver", "number", {0}) or failure
+		end
+
+		if new and new.pub_ipv6 then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv6", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/name", "string", {"^pub_ipv6$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/unit", "string", {"^addrs$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_sliver", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_sliver", "number", {0}) or failure
+		end
+		
+		if not failure then
+			if otree.resources.disk.max_sliver ~= sys_conf.disk_max_per_sliver then
+				system.set_system_conf(sys_conf, "disk_max_per_sliver", otree.resources.disk.max_sliver)
+			end
+			if otree.resources.disk.dflt_sliver ~= sys_conf.disk_dflt_per_sliver then
+				system.set_system_conf(sys_conf, "disk_dflt_per_sliver", otree.resources.disk.dflt_sliver)
+			end
+		end
 	end
 	
 end
@@ -456,14 +507,22 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
 	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})
 	table.insert(tmp_rules, {"/state",				cb2_set_state})
+	
+	table.insert(tmp_rules, {"/resources",				cb2_set_resources})
+	
 --
 	table.insert(tmp_rules, {"/local_slivers",			crules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_set_lsliver})
 	
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-	table.insert(tmp_rules, {"/disk_avail",				cb2_get_disk_avail})
+--	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
+--	table.insert(tmp_rules, {"/disk_avail",				cb2_get_disk_avail})
+--	table.insert(tmp_rules, {"/resources",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/pub_ipv4",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/pub_ipv4/avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
+	table.insert(tmp_rules, {"/resources/disk",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/disk/avail",		cb2_get_disk_avail})
 	
 
 
@@ -500,11 +559,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/addrs/recovery_ipv6"})
 	table.insert(tmp_rules, {"/addrs/recovery_unique"})
 
-
-	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
-	table.insert(tmp_rules, {"/disk_max_per_sliver"})
-	table.insert(tmp_rules, {"/disk_avail"})
-
 	table.insert(tmp_rules, {"/mgmt_net"})
 	table.insert(tmp_rules, {"/mgmt_net/addr"})
 	table.insert(tmp_rules, {"/mgmt_net/backend"})
@@ -529,6 +583,20 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/slivers/*/uri"})
 
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
+
+	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
+	table.insert(tmp_rules, {"/disk_max_per_sliver"})
+	table.insert(tmp_rules, {"/disk_avail"})
+
+	table.insert(tmp_rules, {"/resources"})
+	table.insert(tmp_rules, {"/resources/disk", "iterate"})
+	table.insert(tmp_rules, {"/resources/pub_ipv4", "iterate"})
+	table.insert(tmp_rules, {"/resources/pub_ipv6", "iterate"})
+	table.insert(tmp_rules, {"/resources/*/name"})
+	table.insert(tmp_rules, {"/resources/*/unit"})
+	table.insert(tmp_rules, {"/resources/*/dflt_sliver"})
+	table.insert(tmp_rules, {"/resources/*/max_sliver"})
+	table.insert(tmp_rules, {"/resources/*/avail"})
 
 	table.insert(tmp_rules, {"/message"})
 	table.insert(tmp_rules, {"/errors"})

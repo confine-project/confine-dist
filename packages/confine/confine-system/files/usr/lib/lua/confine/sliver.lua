@@ -208,7 +208,7 @@ end
 
 
 
-function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
+function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree, ntree, path)
 	if not rules then return "cb2_lnode_sliver_pub_ipv4_avail" end
 
 	local sliver_pub_ipv4_avail = sys_conf.sl_pub_ipv4_total
@@ -227,7 +227,10 @@ function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
 		end
 	end
 
-	otree.sliver_pub_ipv4_avail = sliver_pub_ipv4_avail
+	if path then
+		ctree.set_path_val( otree, path, sliver_pub_ipv4_avail)
+	end
+
 	return sliver_pub_ipv4_avail
 end
 
