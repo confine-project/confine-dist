@@ -27,7 +27,7 @@ local require_node_cert   = false
 
 
 
-local function get_local_base( sys_conf, node )
+local function get_local_base( sys_conf, node, server )
 	local base = {}
 
 	base.uri		= sys_conf.node_base_uri.."/"
@@ -40,17 +40,19 @@ local function get_local_base( sys_conf, node )
 		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
 		}
 
-	base.node_uri		= node.uri
-	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
-	base.templates_uri	= sys_conf.node_base_uri.."/templates"
+	base.testbed_resources	= server.local_base.testbed_resources or {}
+		
+--	base.node_uri		= node.uri
+--	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
+--	base.templates_uri	= sys_conf.node_base_uri.."/templates"
 
 	return base	
 end
 
 
-local function upd_node_rest_conf( sys_conf, node )
+local function upd_node_rest_conf( sys_conf, node, server )
 
-	local base = get_local_base( sys_conf, node )
+	local base = get_local_base( sys_conf, node, server )
 	cdata.file_put(base, "index.html", system.rest_base_dir)
 
 	pcall(nixio.fs.remover, system.rest_templates_dir)
@@ -145,7 +147,7 @@ function main_loop( sys_conf )
 		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
 		    os.difftime(end_times.os, start_times.os) )
 		
-		upd_node_rest_conf( sys_conf, local_node )
+		upd_node_rest_conf( sys_conf, local_node, server_node )
 
 		
 		end_times = {nx=nixio.times(), os=os.time()}
