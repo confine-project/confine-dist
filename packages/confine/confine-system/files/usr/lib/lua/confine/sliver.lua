@@ -1244,7 +1244,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/node/uri"})
 	table.insert(tmp_rules, {"/*/description"})
 	table.insert(tmp_rules, {"/*/properties"})
-	table.insert(tmp_rules, {"/*/properties/*", "iterate"})
+	table.insert(tmp_rules, {"/*/properties/*"})
 	table.insert(tmp_rules, {"/*/properties/*/*"})
 	table.insert(tmp_rules, {"/*/instance_sn"})
 	table.insert(tmp_rules, {"/*/disk"})

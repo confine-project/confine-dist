@@ -472,7 +472,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/description"})
 	table.insert(tmp_rules, {"/name"})
 	table.insert(tmp_rules, {"/properties"})
-	table.insert(tmp_rules, {"/properties/*", "iterate"})
+	table.insert(tmp_rules, {"/properties/*"})
 	table.insert(tmp_rules, {"/properties/*/*"})
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
