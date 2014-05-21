@@ -142,7 +142,7 @@ eui64_from_mac() {
 
     if echo "$MAC" | grep -e "[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]:[0-9,a-f][0-9,a-f]" >/dev/null ; then
 	local MAC0O=${MAC:0:2}
-	local MAC0M=$( printf "%x\n" $((0x$MAC0O + $(  ((((0x$MAC0O)&2)==2)) && echo "-2" || echo "+2" ) )) )
+	local MAC0M=$( printf %x $((0x$MAC0O ^ 2)) )
 	echo ${MAC0M}${MAC:3:2}:${MAC:6:2}ff:fe${MAC:9:2}:${MAC:12:2}${MAC:15:2}
     else
 	err $FUNCNAME "Failure" $CMD_SOFT,$CMD_QUIET
