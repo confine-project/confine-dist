@@ -263,9 +263,9 @@ function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed,
 	if begin then
 		
 		local resources = {
-			disk = {name="disk", unit="MiB", max_sliver=sys_conf.disk_max_per_sliver, dflt_sliver=sys_conf.disk_dflt_per_sliver, avail=0},
-			pub_ipv6 = {name="pub_ipv6", unit="addrs", max_sliver=0, dflt_sliver=0, avail=0},
-			pub_ipv4 = {name="pub_ipv4", unit="addrs", max_sliver=(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0), dflt_sliver=0, avail=0}
+			disk = {name="disk", unit="MiB", max_req=sys_conf.disk_max_per_sliver, dflt_req=sys_conf.disk_dflt_per_sliver, avail=0},
+			pub_ipv6 = {name="pub_ipv6", unit="addrs", max_req=0, dflt_req=0, avail=0},
+			pub_ipv4 = {name="pub_ipv4", unit="addrs", max_req=(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0), dflt_req=0, avail=0}
 		}
 		
 		ctree.set_path_val(otree, path, resources)
@@ -282,32 +282,32 @@ function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed,
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."disk", "table") or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/name", "string", {"^disk$"} ) or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/unit", "string", {"^MiB$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_sliver", "number", {10000}) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_sliver", "number", {otree.resources.disk.max_sliver}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_req", "number", {10000}, false, "Must be integer <= 10000 !") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_req", "number", {otree.resources.disk.max_req}, false, "Must be integer <= "..otree.resources.disk.max_req.." !") or failure
 		end
 		
 		if new and new.pub_ipv4 then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv4", "table") or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/name", "string", {"^pub_ipv4$"} ) or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/unit", "string", {"^addrs$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_sliver", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_sliver", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_req", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_req", "number", {0}) or failure
 		end
 
 		if new and new.pub_ipv6 then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv6", "table") or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/name", "string", {"^pub_ipv6$"} ) or failure
 			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/unit", "string", {"^addrs$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_sliver", "number", {0}) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_sliver", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_req", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_req", "number", {0}) or failure
 		end
 		
 		if not failure then
-			if otree.resources.disk.max_sliver ~= sys_conf.disk_max_per_sliver then
-				system.set_system_conf(sys_conf, "disk_max_per_sliver", otree.resources.disk.max_sliver)
+			if otree.resources.disk.max_req ~= sys_conf.disk_max_per_sliver then
+				system.set_system_conf(sys_conf, "disk_max_per_sliver", otree.resources.disk.max_req)
 			end
-			if otree.resources.disk.dflt_sliver ~= sys_conf.disk_dflt_per_sliver then
-				system.set_system_conf(sys_conf, "disk_dflt_per_sliver", otree.resources.disk.dflt_sliver)
+			if otree.resources.disk.dflt_req ~= sys_conf.disk_dflt_per_sliver then
+				system.set_system_conf(sys_conf, "disk_dflt_per_sliver", otree.resources.disk.dflt_req)
 			end
 		end
 	end
@@ -594,8 +594,8 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/resources/pub_ipv6", "iterate"})
 	table.insert(tmp_rules, {"/resources/*/name"})
 	table.insert(tmp_rules, {"/resources/*/unit"})
-	table.insert(tmp_rules, {"/resources/*/dflt_sliver"})
-	table.insert(tmp_rules, {"/resources/*/max_sliver"})
+	table.insert(tmp_rules, {"/resources/*/dflt_req"})
+	table.insert(tmp_rules, {"/resources/*/max_req"})
 	table.insert(tmp_rules, {"/resources/*/avail"})
 
 	table.insert(tmp_rules, {"/message"})
