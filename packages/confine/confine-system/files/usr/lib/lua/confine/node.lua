@@ -142,8 +142,8 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	node.addrs                 = sys_conf.addrs
 	
-	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
-	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
+--	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
+--	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
 	
 	node.boot_sn               = sys_conf.boot_sn
 	node.set_state             = cached_node.set_state
