@@ -499,9 +499,6 @@ tmp_rules = in_rules2
 --	
 	table.insert(tmp_rules, {"/group",				crules.cb2_set})
 	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
-
-	table.insert(tmp_rules, {"/disk_dflt_per_sliver",		cb2_set_sys_key})
-	table.insert(tmp_rules, {"/disk_max_per_sliver",		cb2_set_sys_key})
 	
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
@@ -516,8 +513,6 @@ tmp_rules = in_rules2
 	
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
---	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
---	table.insert(tmp_rules, {"/disk_avail",				cb2_get_disk_avail})
 --	table.insert(tmp_rules, {"/resources",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/resources/pub_ipv4",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/resources/pub_ipv4/avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
@@ -581,12 +576,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/slivers"})
 	table.insert(tmp_rules, {"/slivers/*", "iterate"})
 	table.insert(tmp_rules, {"/slivers/*/uri"})
-
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
-
-	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
-	table.insert(tmp_rules, {"/disk_max_per_sliver"})
-	table.insert(tmp_rules, {"/disk_avail"})
 
 	table.insert(tmp_rules, {"/resources"})
 	table.insert(tmp_rules, {"/resources/disk", "iterate"})
