@@ -91,7 +91,5 @@ if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
     SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
-            base_class=SliceAdmin.form,
-            extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
-    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('exp_data', 'overlay'),
-            extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
+            base_class=SliceAdmin.form)
+    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('exp_data', 'overlay'))
