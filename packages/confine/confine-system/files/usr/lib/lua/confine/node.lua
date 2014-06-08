@@ -512,7 +512,7 @@ tmp_rules = in_rules2
 	
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
---	table.insert(tmp_rules, {"/resources",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/resources/pub_ipv4",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/resources/pub_ipv4/avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
 	table.insert(tmp_rules, {"/resources/disk",			crules.cb2_nop})
