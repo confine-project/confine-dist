@@ -106,7 +106,7 @@ function cb2_set_empty_table( rules, sys_conf, otree, ntree, path, begin, change
 end
 
 function cb2_set_table( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_set_empty_table" end
+	if not rules then return "cb2_set_table" end
 	
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
