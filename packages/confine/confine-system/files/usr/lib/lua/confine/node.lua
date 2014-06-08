@@ -257,7 +257,6 @@ end
 function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
 	if not rules then return "cb2_set_resources" end
 
-	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
 
 	if begin then
