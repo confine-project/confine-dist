@@ -36,8 +36,8 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set, de
 		local i,v
 		for i,v in pairs(patterns) do
 			if ( (val==v) or
-				(valtype=="string" and type(val)=="string" and type(v)=="string" and val:match(v)) or
-				(valtype=="number" and type(val)=="number" and type(v)=="number" and val <= v)
+				((valtype==nil or valtype=="string") and type(val)=="string" and type(v)=="string" and val:match(v)) or
+				((valtype==nil or valtype=="number") and type(val)=="number" and type(v)=="number" and val <= v)
 				) then
 				success=true
 				break
