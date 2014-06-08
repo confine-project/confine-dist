@@ -578,25 +578,15 @@ tmp_rules = register_rules
 
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 
-	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/description",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs/*",	crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
 	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
-
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
-
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
+
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
+	table.insert(tmp_rules, {"/local_slivers/*/local_data",				cb2_sha_data})
 	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
@@ -621,7 +611,7 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_data",				cb2_sha_data})
 	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 tmp_rules = dealloc_rules
@@ -641,6 +631,12 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 
 tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -652,6 +648,12 @@ tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -672,6 +674,12 @@ tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
@@ -756,7 +764,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 
-			slv.local_exp_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
+			slv.local_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
 						{uri=sv.api_exp_data_uri, sha256=sv.api_exp_data_sha256} or
 						{uri=null, sha256=null}
 			
@@ -785,7 +793,6 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.node = { uri = sys_conf.node_base_uri.."/node" }
 			slv.slice = { uri = sv.api_slice_uri }
 			slv.state = sv.state
-			slv.template = { uri = slv.local_template.uri}
 			
 			otree.local_slivers[id] = slv
 		else
@@ -907,8 +914,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{api_slv.resources.disk.alloc}
 		
-		if type(api_slv.local_exp_data.sha256)=="string" then
-			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_exp_data.sha256..".tgz"}
+		if type(api_slv.local_data.sha256)=="string" then
+			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_data.sha256..".tgz"}
 		end
 		
 		if type(api_slv.local_overlay.sha256)=="string" then
@@ -954,8 +961,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
-				api_exp_data_uri = type(api_slv.local_exp_data.uri)=="string" and api_slv.local_exp_data.uri or nil,
-				api_exp_data_sha256 = type(api_slv.local_exp_data.sha256)=="string" and api_slv.local_exp_data.sha256 or nil,
+				api_exp_data_uri = type(api_slv.local_data.uri)=="string" and api_slv.local_data.uri or nil,
+				api_exp_data_sha256 = type(api_slv.local_data.sha256)=="string" and api_slv.local_data.sha256 or nil,
 				api_overlay_uri = type(api_slv.local_overlay.uri)=="string" and api_slv.local_overlay.uri or nil,
 				api_overlay_sha256 = type(api_slv.local_overlay.sha256)=="string" and api_slv.local_overlay.sha256 or nil
 			}
@@ -1285,8 +1292,8 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/instance_sn"})
 	table.insert(tmp_rules, {"/*/template"})
 	table.insert(tmp_rules, {"/*/template/uri"})
-	table.insert(tmp_rules, {"/*/exp_data_uri"})
-	table.insert(tmp_rules, {"/*/exp_data_sha256"})
+	table.insert(tmp_rules, {"/*/data_uri"})
+	table.insert(tmp_rules, {"/*/data_sha256"})
 	table.insert(tmp_rules, {"/*/overlay_uri"})
 	table.insert(tmp_rules, {"/*/overlay_sha256"})
 	table.insert(tmp_rules, {"/*/interfaces"})

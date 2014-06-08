@@ -113,18 +113,18 @@ function get_server_node(sys_conf, cache)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
-		if type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 and
-			type(sliver_obj.exp_data_sha256)=="string" and sliver_obj.exp_data_sha256:len() then
+		if type(sliver_obj.data_uri)=="string" and sliver_obj.data_uri:len() > 0 and
+			type(sliver_obj.data_sha256)=="string" and sliver_obj.data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {uri=sliver_obj.exp_data_uri, sha256=sliver_obj.exp_data_sha256}
+			sliver_obj.local_data = {uri=sliver_obj.data_uri, sha256=sliver_obj.data_sha256}
 			
 		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.data_uri)=="string" and slice_obj.sliver_defaults.data_uri:len() > 0 and
 			type(slice_obj.sliver_defaults.data_sha256)=="string" and slice_obj.sliver_defaults.data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {uri=slice_obj.sliver_defaults.data_uri, sha256=slice_obj.sliver_defaults.data_sha256}
+			sliver_obj.local_data = {uri=slice_obj.sliver_defaults.data_uri, sha256=slice_obj.sliver_defaults.data_sha256}
 			
 		else
-			sliver_obj.local_exp_data = {uri=data.null, sha256=data.null}
+			sliver_obj.local_data = {uri=data.null, sha256=data.null}
 		end
 		
 		
