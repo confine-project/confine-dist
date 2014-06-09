@@ -133,6 +133,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.uuid                  = sys_conf.uuid
 --	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
+	node.cert                  = type(node.cert)=="string" and node.cert:gsub("\r","") or null
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	
