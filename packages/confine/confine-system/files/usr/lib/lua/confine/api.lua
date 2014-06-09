@@ -447,9 +447,36 @@ function api_path_dispatch(request, api_path)
 end
 
 
--- "MAIN" FUNCTION
+function internal_server_error(request, err_msg)
 
-function handle_request(request)
+    local headers = {
+        ['Status'] = "HTTP/1.0 500 Internal Server Error"
+    }
+    local content = '{\n    "detail": "Internal Server Error"\n}'
+--  alternatively, include a traceback! But howto wrap this correctly :-( ?:    
+--  local content = '\ntraceback:\n'..tostring(err_msg)..'\n'
+    local response = {
+        ['headers'] = headers,
+        ['content'] = content
+    }
+    return handle_response(request, response)
+end
+
+
+function handle_xpcall_error(e)
+	local trace = string.format(
+		"%s\n" ..
+		"----------\n" ..
+		"%s\n" ..
+		"----------\n",
+		e or "(?)",
+		debug.traceback(2)
+	)
+	err("%s",trace)
+	return trace
+end
+
+function main(request)
     -- configuration is loaded on each request since it may not be available during uhttpd start
     set_configuration()
     
@@ -468,5 +495,19 @@ function handle_request(request)
             response = redirect(request, REQUEST_URI .. '/')
         end
     end
+    
+    return response
+end
+
+-- "MAIN" FUNCTION
+
+function handle_request(request)
+    
+    local success, response = xpcall(function() return main(request) end, handle_xpcall_error)
+    
+    if not success then
+	response = internal_server_error(request, response)	
+    end
+    
     uhttpd.send(response)
 end
