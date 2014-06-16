@@ -35,6 +35,8 @@ define Package/confine-system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	+confine-parted \
+	\
 	+grub2 \
 	+bash \
 	+lxc \

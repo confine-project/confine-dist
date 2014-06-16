@@ -33,26 +33,9 @@ TARGET ?= x86
 SUBTARGET ?= generic
 # Some targets (not x86) need a profile.
 PROFILE ?=
-
-# regular for the stable kind, init and node for the new boot system types
-SYSTEM ?= regular
-
-ifeq (${SYSTEM}, regular)
 PARTSIZE ?= 256
-PACKAGES ?= confine-system confine-recommended confine-parted
-endif
-
-ifeq (${SYSTEM}, init)
-PARTSIZE ?= 128
-PACKAGES ?= confine-init-system
-endif
-
-ifeq (${SYSTEM}, node)
-PARTSIZE ?= 256
-PACKAGES ?= confine-system confine-recommended
-endif
-
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
+PACKAGES ?= confine-system confine-recommended
 
 CONFIG := $(BUILD_DIR)/.config
 KCONF := target/linux/$(TARGET)/config-3.3
