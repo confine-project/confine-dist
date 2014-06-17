@@ -2,11 +2,24 @@
 -- TODO class based server-related URLs ? (i.e. private ipv4/mgmt ipv6/public ipv4)
  
 
-local data = require 'confine.data'
+local json   = require "luci.json"
+local ltn12  = require "luci.ltn12"
+
+
+function file_get( file )
+    local fd = io.open(file, "r")
+    if not fd then
+        return
+    end
+    local src = ltn12.source.file(fd)
+    local jsd = json.Decoder(true)
+    ltn12.pump.all(src, jsd:sink())
+    return jsd:get()
+end
 
 
 function set_configuration()
-    local sys_conf = data.file_get("/var/run/confine/system_state")    
+    local sys_conf = file_get("/var/run/confine/system_state")
     
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
     API_PATH_PREFIX = sys_conf.node_base_path
