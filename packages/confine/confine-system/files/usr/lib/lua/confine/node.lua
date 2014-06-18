@@ -133,6 +133,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.uuid                  = sys_conf.uuid
 --	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
+	node.cert                  = type(node.cert)=="string" and node.cert:gsub("\r","") or null
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	
@@ -368,6 +369,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/island",				crules.cb2_set})
+	table.insert(tmp_rules, {"/island/uri",				crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
@@ -382,8 +385,6 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name",		crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey",	crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island",	crules.cb2_set})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri",	crules.cb2_set})
 
 
 	table.insert(tmp_rules, {"/local_server",			crules.cb2_set})
@@ -439,8 +440,8 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_group/uri",						crules.cb2_set})
 	table.insert(tmp_rules, {"/local_group/user_roles",					crules.cb2_set}) --must exist
 	table.insert(tmp_rules, {"/local_group/user_roles/*",		 			cb2_lnode_lgroup_role})
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_technician",			crules.cb2_set}) --handled by set_local_group_role
-	table.insert(tmp_rules, {"/local_group/user_roles/*/is_admin",				crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_node_admin",			crules.cb2_set}) --handled by set_local_group_role
+	table.insert(tmp_rules, {"/local_group/user_roles/*/is_group_admin",			crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user", 	   		crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/is_active",		crules.cb2_set}) --handled by set_local_group_role
 	table.insert(tmp_rules, {"/local_group/user_roles/*/local_user/auth_tokens",		crules.cb2_set}) --handled by set_local_group_role
@@ -472,11 +473,13 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/description"})
 	table.insert(tmp_rules, {"/name"})
 	table.insert(tmp_rules, {"/properties"})
-	table.insert(tmp_rules, {"/properties/*", "iterate"})
+	table.insert(tmp_rules, {"/properties/*"})
 	table.insert(tmp_rules, {"/properties/*/*"})
 	table.insert(tmp_rules, {"/cn"})
 	table.insert(tmp_rules, {"/cn/app_url"})
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
+	table.insert(tmp_rules, {"/island"})
+	table.insert(tmp_rules, {"/island/uri"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})
@@ -510,8 +513,6 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name"})
 	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/island/uri"})
 
 	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})

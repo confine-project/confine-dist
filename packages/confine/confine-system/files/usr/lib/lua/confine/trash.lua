@@ -46,7 +46,7 @@ tmp_rules = {}
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group"]						= "CB_GET_SLIVER_GROUP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles"]					= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+"]		 		= "CB_SET_SLIVER_GROUP_ROLE"})
-	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/is_researcher"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/is_slice_admin"]		= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user"] 	   		= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user/is_active"]		= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_slivers/[^/]+/local_slice/local_group/user_roles/[^/]+/local_user/auth_tokens"]	= "CB_NOP"})
@@ -105,6 +105,8 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/cn"]				= "CB_NOP"})
 	table.insert(tmp_rules, {["/cn/app_url"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/cn/cndb_uri"]			= "CB_COPY"})
+	table.insert(tmp_rules, {["/island"]				= "CB_COPY"})
+	table.insert(tmp_rules, {["/island/uri"]			= "CB_COPY"})
 
 --	table.insert(tmp_rules, {["/uri"]				= "CB_NOP"})
 --	table.insert(tmp_rules, {["/id"] 				= "CB_SETUP"})
@@ -120,8 +122,6 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/tinc"] 				= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/name"] 			= "CB_SETUP"})
 	table.insert(tmp_rules, {["/tinc/pubkey"]			= "CB_SETUP"})
-	table.insert(tmp_rules, {["/tinc/island"]			= "CB_COPY"})
-	table.insert(tmp_rules, {["/tinc/island/uri"]			= "CB_COPY"})
 	table.insert(tmp_rules, {["/tinc/connect_to"]			= "CB_NOP"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+"]		= "CB_SET_TINC"})
 	table.insert(tmp_rules, {["/tinc/connect_to/[^/]+/ip_addr"] 	= "CB_NOP"})
@@ -142,7 +142,7 @@ tmp_rules = in_rules
 	table.insert(tmp_rules, {["/local_group"]						= "CB_GET_LOCAL_GROUP"})
 	table.insert(tmp_rules, {["/local_group/user_roles"]					= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+"]		 		= "CB_SET_LOCAL_GROUP_ROLE"})
-	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/is_technician"]		= "CB_NOP"})
+	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/is_node_admin"]		= "CB_NOP"})
 --	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/user"]		  		= "CB_NOP"})
 --	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/user/uri"]			= "CB_NOP"})
 	table.insert(tmp_rules, {["/local_group/user_roles/[^/]+/local_user"] 	   		= "CB_NOP"})
@@ -607,7 +607,7 @@ function cb_set_local_group_role( sys_conf, action, out_node, path, user_id, old
 		
 	elseif action == "ADD" or action == "CHG" then		
 		
-		if newval.is_technician and newval.local_user and newval.local_user.is_active then
+		if newval.is_node_admin and newval.local_user and newval.local_user.is_active then
 			
 			local new_tokens = auth_token_to_rsa( newval.local_user.auth_tokens )
 			local old_tokens = oldval and oldval.local_user.auth_tokens

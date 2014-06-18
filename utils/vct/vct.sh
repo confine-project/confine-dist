@@ -499,10 +499,10 @@ vct_system_install_server() {
 	group, created = Group.objects.get_or_create(name='vct', allow_slices=True, allow_nodes=True)
 	
 	print '\nCreating roles ...'
-	Roles.objects.get_or_create(user=users['vct'], group=group, is_admin=True)
-	Roles.objects.get_or_create(user=users['admin'], group=group, is_admin=True)
-	Roles.objects.get_or_create(user=users['researcher'], group=group, is_researcher=True)
-	Roles.objects.get_or_create(user=users['technician'], group=group, is_technician=True)
+	Roles.objects.get_or_create(user=users['vct'], group=group, is_group_admin=True)
+	Roles.objects.get_or_create(user=users['admin'], group=group, is_group_admin=True)
+	Roles.objects.get_or_create(user=users['researcher'], group=group, is_slice_admin=True)
+	Roles.objects.get_or_create(user=users['technician'], group=group, is_node_admin=True)
 	Roles.objects.get_or_create(user=users['member'], group=group)
 	
 	token_data = open('${VCT_KEYS_DIR}/id_rsa.pub', 'ro').read().strip()
@@ -1493,6 +1493,7 @@ vct_node_scp_cns() {
     
     local CNS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-system/files"
     local LXC_FILES_DIR="$VCT_DIR/../../packages/confine/lxc/files"
+    local SFS_FILES_DIR="$VCT_DIR/../../packages/confine/confine-parted/files"
 
 #  This is automatic but slow:
 #    for f in $(cd $CNS_FILES_DIR && find | grep -v "/etc/config"); do
@@ -1503,7 +1504,14 @@ vct_node_scp_cns() {
 
 #  This is manual but faster:
     vct_node_scp $VCRD_ID remote:/usr/lib/lua/confine/*.lua    $CNS_FILES_DIR/usr/lib/lua/confine/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.*           $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.lib         $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.functions   $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.udhcpc.test $CNS_FILES_DIR/usr/sbin/
+
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.remote-upgrade $SFS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.disk-parted $SFS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/confine.sysupgrade  $SFS_FILES_DIR/usr/sbin/
+
     vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*-confine.sh $CNS_FILES_DIR/etc/lxc/scripts/
     vct_node_scp $VCRD_ID remote:/etc/config/confine-default s $CNS_FILES_DIR/etc/config/
     vct_node_scp $VCRD_ID remote:/etc/init.d/confine           $CNS_FILES_DIR/etc/init.d/
@@ -1577,6 +1585,9 @@ vct_build_node_base_image() {
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
     
+    cd $BUILD_PATH/openwrt &&\
+    ./scripts/feeds update -a &&\
+    ./scripts/feeds install -a &&\
     cd $BUILD_PATH &&\
     make confclean &&\
     make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\

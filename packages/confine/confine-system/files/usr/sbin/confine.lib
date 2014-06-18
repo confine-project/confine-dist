@@ -815,14 +815,14 @@ confine_sliver_allocate() {
 	if echo $FS_URL | grep -i debian >/dev/null || echo $FS_TYPE | grep -i debian >/dev/null ; then
 		
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.debian
-	    uci_del lxc.$CT_NR.rootfs_url
+	    uci_del lxc.$CT_NR.rootfs_url soft,quiet
 	    
 	    uci_set lxc.$CT_NR.customize=debian-confine.sh
 	    
 	elif echo $FS_URL | grep -i openwrt >/dev/null || echo $FS_TYPE | grep -i openwrt >/dev/null ; then
 
 	    lxc.lib lxc_create_uci $CT_NR confine-defaults.openwrt
-	    uci_del lxc.$CT_NR.rootfs_url
+	    uci_del lxc.$CT_NR.rootfs_url soft,quiet
 	    
 	    uci_set lxc.$CT_NR.customize=openwrt-confine.sh
 	    
@@ -1014,7 +1014,9 @@ CONFINE_SLIVER_DISK_MB=150
 	local FS_SIZE_MB=$( uci_get confine-slivers.$SL_ID.disk_mb soft,quiet || echo $CONFINE_SLIVER_DISK_MB )
 	
 	[ "$(df -P $LXC_IMAGES_PATH/$CT_NR/ | tail -1 | awk '{print $4}')" -gt "$(( ( $FS_SIZE_MB ) / 1024 ))" ] &&\
-		dd if=/dev/zero of=$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 bs=1M count=$FS_SIZE_MB &&\
+		rm -f $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
+		touch $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
+		fallocate-e2fsprogs -l ${FS_SIZE_MB}M $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ &&\
 		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 \
 		&&\

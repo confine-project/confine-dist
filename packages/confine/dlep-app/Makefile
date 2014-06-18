@@ -1,9 +1,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=oonf-dlep
-PKG_VERSION:=2014-01-24
+PKG_VERSION:=2014-04-01
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
-PKG_REV:=f08ff95885b072944351018cc4adc8efd3f58418
+PKG_REV:=22ab1c7f86bfed0e186dde4cdfb9098cda9021b0
 PKG_RELEASE:=$(PKG_REV)
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
@@ -14,20 +14,20 @@ PKG_SOURCE_VERSION:=$(PKG_REV)
 
 CMAKE_INSTALL:=1
 
+PKG_BUILD_DEPENDS:=oonf-api
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
 #CMAKE_SOURCE_DIR=$(CURDIR)/../../
 CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D OONF_LOGGING_LEVEL:String=debug \
-              -D CMAKE_BUILD_TYPE:String=Debug \
               -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer remotecontrol layer2_generator" \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
-              -D CMAKE_PREFIX_PATH=$(STAGING_DIR)/usr
-
-PKG_BUILD_DEPENDS:=oonf-api
+              -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer remotecontrol layer2_generator" \
+              -D OONF_APP_GIT=$(PKG_REV)
 
 define Package/oonf-dlep/template
 	SECTION:=net
@@ -39,26 +39,26 @@ endef
 
 define Package/oonf-dlep
 	$(call Package/oonf-dlep/template)
-	TITLE:=DLEP-agent (executable for client and service) 
-	DEPENDS:=+ldconfig +libnl-tiny +librt
+	TITLE:=DLEP-agent (executable for client and service)
+	DEPENDS:=+ldconfig +librt +libnl-tiny
 endef
 
 define Package/oonf-dlep-plugin-client
-	$(call Package/oonf-dlep/template) 
+	$(call Package/oonf-dlep/template)
 	TITLE:=DLEP-client plugin
-	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
+	DEPENDS:=+oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
 define Package/oonf-dlep-plugin-service
 	$(call Package/oonf-dlep/template) 
 	TITLE:=DLEP-service plugin
-	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
+	DEPENDS:=+oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
 define Package/oonf-dlep-plugin-l2gen
-	$(call Package/oonf-dlep/template) 
-	TITLE:=DLEP-layer2-generator plugin
-	DEPENDS:=oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
+       $(call Package/oonf-dlep/template) 
+       TITLE:=DLEP-layer2-generator plugin
+       DEPENDS:=+oonf-dlep +oonf-api-core +oonf-api-subsystems +ldconfig
 endef
 
 TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include
@@ -128,8 +128,8 @@ endef
 define Package/oonf-dlep-plugin-l2gen/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
-	echo "Running ldconfig ..."
-	/sbin/ldconfig 2> /dev/null
+       echo "Running ldconfig ..."
+       /sbin/ldconfig 2> /dev/null
 fi
 exit 0
 endef

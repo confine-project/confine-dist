@@ -25,7 +25,7 @@ local null   = cdata.null
 
 NODE = {
 	["registered"] 	 = "registered",
-	["fail_alloc"]   = "fail_alloc",
+	["fail_allocate"]= "fail_allocate",
 	["allocated"]	 = "allocated",
 	["fail_deploy"]  = "fail_deploy",
 	["deployed"]	 = "deployed",
@@ -309,7 +309,11 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 			failure = true
 			add_lslv_err( otree, path.."parent_name/", "Invalid", nval.parent_name )
 		end
-		
+
+		ctree.set_path_val(otree, path.."ipv4_addr/", nval.ipv4_addr or null)
+		ctree.set_path_val(otree, path.."ipv6_addr/", nval.ipv6_addr or null)
+		ctree.set_path_val(otree, path.."mac_addr/", nval.mac_addr or null)
+
 		if failure then
 			ctree.set_path_val( otree, path, nil )
 		end		
@@ -642,8 +646,8 @@ tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*",				cb2_lsliver_lgroup_role})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_researcher",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_admin",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_slice_admin",		crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/is_group_admin",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user", 	   		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/is_active",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles/*/local_user/auth_tokens",	crules.cb2_set})
@@ -938,7 +942,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 			return true
 		end
 		
-	elseif next_state==NODE.fail_alloc and uci_state==nil then
+	elseif next_state==NODE.fail_allocate and uci_state==nil then
 		api_slv.state = next_state
 		return true
 	
@@ -1116,7 +1120,7 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 			assert( (ntree.local_slivers[key] or otree.local_slivers[key]) and nslv==ntree.local_slivers[key] and oslv==otree.local_slivers[key] )
 			assert( i <= imax )
 
-			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_alloc and i==1) or not NODE[oslv.state]) then
+			if (oslv.state==NODE.registered or (oslv.state==NODE.fail_allocate and i==1) or not NODE[oslv.state]) then
 				
 				oslv = ctree.set_path_val(otree, "/local_slivers/"..key, {state=NODE.registered })
 				
@@ -1126,10 +1130,10 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 				
 				if not oslv.errors and (nslv_set_state==SERVER.deploy or nslv_set_state==SERVER.start) then
 					
-					if not slv_iterate( iargs, alloc_rules, NODE.registered, NODE.allocated, NODE.fail_alloc) then break end
+					if not slv_iterate( iargs, alloc_rules, NODE.registered, NODE.allocated, NODE.fail_allocate) then break end
 					
 					if oslv.errors then
-						if not slv_iterate( iargs, dealloc_rules, NODE.fail_alloc, NODE.fail_alloc, NODE.fail_alloc) then break end
+						if not slv_iterate( iargs, dealloc_rules, NODE.fail_allocate, NODE.fail_allocate, NODE.fail_allocate) then break end
 					end
 					
 				elseif not nslv then
@@ -1240,7 +1244,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/node/uri"})
 	table.insert(tmp_rules, {"/*/description"})
 	table.insert(tmp_rules, {"/*/properties"})
-	table.insert(tmp_rules, {"/*/properties/*", "iterate"})
+	table.insert(tmp_rules, {"/*/properties/*"})
 	table.insert(tmp_rules, {"/*/properties/*/*"})
 	table.insert(tmp_rules, {"/*/instance_sn"})
 	table.insert(tmp_rules, {"/*/disk"})

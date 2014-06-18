@@ -35,6 +35,8 @@ define Package/confine-system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	+confine-parted \
+	\
 	+grub2 \
 	+bash \
 	+lxc \
@@ -48,6 +50,7 @@ define Package/confine-system
 	+procps \
 	+losetup \
 	+coreutils-readlink \
+	+fallocate-e2fsprogs \
 	+mount-utils \
 	+px5g \
 	+time \
@@ -92,7 +95,10 @@ define Package/confine-system
 	\
 	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
 	\
+	+kmod-e1000e \
+	\
 	+kmod-dummy \
+	+kmod-gre \
 	+kmod-fs-ext4 \
 	\
 	+kmod-cfg80211 +kmod-mac80211 \
@@ -162,9 +168,6 @@ define Package/confine-system/install
 	$(CP)  ./files/usr/sbin/confine.lib                $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.udhcpc.test        $(1)/usr/sbin/
 	$(CP)  ./files/usr/sbin/confine.functions          $(1)/usr/sbin/
-	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
-	$(INSTALL_BIN) ./files/usr/sbin/confine.sysupgrade $(1)/usr/sbin/
-	$(INSTALL_BIN) ./files/usr/sbin/confine.remote-upgrade $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/usr/lib/
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine

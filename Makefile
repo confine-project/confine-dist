@@ -20,13 +20,13 @@ TIMESTAMP := $(shell date -u +%Y%m%d-%H%M)
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 GIT_HASH := $(shell git rev-parse HEAD)
 
-BUILD_DIR = openwrt
-FILES_DIR = files
-PACKAGE_DIR = packages
-OWRT_PKG_DIR = $(PACKAGE_DIR)/openwrt
-OWRT_FEEDS = feeds.conf.in
-MY_CONFIGS = my_configs
-DOWNLOAD_DIR = dl
+BUILD_DIR := openwrt
+FILES_DIR := files
+PACKAGE_DIR := packages
+OWRT_PKG_DIR := $(PACKAGE_DIR)/openwrt
+OWRT_FEEDS := feeds.conf.in
+MY_CONFIGS := my_configs
+DOWNLOAD_DIR := dl
 
 #TARGET values: x86, ar71xx, realview
 TARGET ?= x86
@@ -37,9 +37,9 @@ PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
 
-CONFIG = $(BUILD_DIR)/.config
-KCONF = target/linux/$(TARGET)/config-3.3
-KCONFIG = $(BUILD_DIR)/$(KCONF)
+CONFIG := $(BUILD_DIR)/.config
+KCONF := target/linux/$(TARGET)/config-3.3
+KCONFIG := $(BUILD_DIR)/$(KCONF)
 
 IMAGES = images
 # This is a build sequence number automatically set by Jenkins.
@@ -153,6 +153,9 @@ define post_build
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
 	cp -f files/etc/confine.version "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
+
+	cat "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"|md5sum|sed -e "s/\ \ -//" >> "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
+
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).version" "$(IMAGES)/CONFINE-owrt-current.version"
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).img.gz" "$(IMAGES)/CONFINE-owrt-current.img.gz"
 	@echo

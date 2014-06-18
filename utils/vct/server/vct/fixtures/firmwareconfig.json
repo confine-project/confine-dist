@@ -5,7 +5,7 @@
     "fields": {
         "version": "0.1",
         "description": "Confine Firmware",
-        "image_name": "confine-firmware-%(node_id)d-%(arch)s.img.gz"
+        "image_name": "confine-firmware-%(node_id)d.img.gz"
     }
 },
 {
@@ -27,7 +27,7 @@
         "content": "'#!/bin/sh\\nif confine.disk-parted > /root/confine.disk-parted.log 2>&1; then reboot; fi\\n'",
         "mode": "a+rx",
         "is_optional": false,
-        "path": "/etc/uci-defaults/00.-create-partitions.sh",
+        "path": "/etc/uci-defaults/00.-confine-disk-parted.sh",
         "config": 1
     }
 }
