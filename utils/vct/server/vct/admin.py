@@ -102,17 +102,12 @@ if settings.VCT_LOCAL_FILES:
         # TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with 
         # SLICES_SLIVER_DATA_EXTENSIONS
         SliverDefaultsInline.form = local_files_form_factory(SliverDefaults,
-                ('data', 'overlay'), base_class=SliverDefaultsInline.form,
-                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
-        SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
-                extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
+                ('data', 'overlay'), base_class=SliverDefaultsInline.form)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'))
         SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
-                base_class=SliverAdmin.form,
-                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+                base_class=SliverAdmin.form)
     else: # backwards compatibility
         SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
-                base_class=SliceAdmin.form,
-                extensions=slices_settings.SLICES_SLICE_EXP_DATA_EXTENSIONS)
+                base_class=SliceAdmin.form)
         SliceSliversAdmin.form = local_files_form_factory(Sliver,
-                ('exp_data', 'overlay'),
-                extensions=slices_settings.SLICES_SLIVER_EXP_DATA_EXTENSIONS)
+                ('exp_data', 'overlay'))
