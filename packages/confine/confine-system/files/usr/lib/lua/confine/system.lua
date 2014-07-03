@@ -241,10 +241,7 @@ function get_system_conf(sys_conf, arg)
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))	
 
-	conf.direct_ifaces = check_direct_ifaces(
-				ctree.copy_recursive_rebase_keys(
-				    tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+"),
-				    "direct_ifaces") )
+	conf.direct_ifaces = check_direct_ifaces( tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+") )
 
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
