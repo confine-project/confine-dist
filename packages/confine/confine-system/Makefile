@@ -154,6 +154,8 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/dropbear
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 
+	$(CP) ./files/etc/uci-defaults/*                   $(1)/etc/uci-defaults
+	chmod +x $(1)/etc/uci-defaults/*
 	$(CP) ./files/etc/firstboot/*                      $(1)/etc/firstboot
 	chmod +x $(1)/etc/firstboot/*
 	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/firstboot/confine-banner.sh

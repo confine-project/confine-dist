@@ -140,6 +140,10 @@ function main_loop( sys_conf )
 
 		upd_node_rest_conf( sys_conf, local_node )
 
+		-- deferred webserver startup (disabled via /etc/uci-defaults/confine-defer-uhttpd.sh)
+		-- to work-around buggy http-errors during system boot
+		tools.execute("/etc/init.d/uhttpd start")
+		
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
 			if tools.stop then break end
