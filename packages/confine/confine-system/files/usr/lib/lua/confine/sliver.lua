@@ -163,31 +163,6 @@ function cb2_instance_sn( rules, sys_conf, otree, ntree, path, begin, changed )
 end
 
 
---function cb2_template_uri( rules, sys_conf, otree, ntree, path, begin, changed )
---	if not rules then return "cb2_template_uri" end
---
---	if begin then
---		dbg( "begin")
---		return
---	end
---	
---	dbg ("end start")
---	
---	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
---
---	if oslv.state==NODE.registered and rules==register_rules then
---		if oslv.local_template and oslv.local_template.uri then
---			ctree.set_path_val( otree, path, { uri = oslv.local_template.uri } )
---		else
---			dbg( add_lslv_err( otree, path, "Invalid server template", nil))
---			ctree.set_path_val( otree, path, null )
---		end
---	end
---	
---	dbg ("end end")
---
---end
-
 
 
 function cb2_vlan_nr ( rules, sys_conf, otree, ntree, path, begin, changed )
@@ -557,15 +532,6 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/uri",			crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/name",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/description",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/type",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/node_archs/*",	crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/is_active",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_uri",		crules.cb2_log}) --handled by cb2_template
---	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
 	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/template/id",			crules.cb2_set})

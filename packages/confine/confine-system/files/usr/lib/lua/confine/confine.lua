@@ -138,22 +138,7 @@ function main_loop( sys_conf )
 
 		cdata.file_put( local_node, system.node_state_file )
 
-		end_times = {nx=nixio.times(), os=os.time()}
-		dbg("times        %10s %10s %10s %10s %10s", "utime", "stime", "cutime", "cstime", "os.time")
-		dbg("start times: %10d %10d %10d %10d %10s", start_times.nx.utime, start_times.nx.stime, start_times.nx.cutime, start_times.nx.cstime, start_times.os)
-		dbg("  end times: %10d %10d %10d %10d %10s", end_times.nx.utime, end_times.nx.stime, end_times.nx.cutime, end_times.nx.cstime, end_times.os)
-		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
-		    os.difftime(end_times.os, start_times.os) )
-		
 		upd_node_rest_conf( sys_conf, local_node )
-
-		
-		end_times = {nx=nixio.times(), os=os.time()}
-		dbg("times        %10s %10s %10s %10s %10s", "utime", "stime", "cutime", "cstime", "os.time")
-		dbg("start times: %10d %10d %10d %10d %10s", start_times.nx.utime, start_times.nx.stime, start_times.nx.cutime, start_times.nx.cstime, start_times.os)
-		dbg("  end times: %10d %10d %10d %10d %10s", end_times.nx.utime, end_times.nx.stime, end_times.nx.cutime, end_times.nx.cstime, end_times.os)
-		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
-		    os.difftime(end_times.os, start_times.os) )
 
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
