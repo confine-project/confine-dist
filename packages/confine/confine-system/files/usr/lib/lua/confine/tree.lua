@@ -73,10 +73,6 @@ local function get_key(obj, def, parent)
 		
 		if obj.id then
 			
-			if def and obj.id ~= def then
-				dbg("get_key(): WARNING - obj_id=%s def=%s should have been assigned already!!?", obj.id, def)
-			end
-		
 			return tostring(obj.id)
 		
 		elseif obj.uri then

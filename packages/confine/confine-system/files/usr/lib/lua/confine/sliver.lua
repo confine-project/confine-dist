@@ -535,10 +535,12 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
 	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/id",					crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/instance_sn",			cb2_instance_sn})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
 	table.insert(tmp_rules, {"/local_slivers/*/node",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/node/uri",				cb2_node_uri})
+	table.insert(tmp_rules, {"/local_slivers/*/node/id",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/description",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
@@ -566,6 +568,7 @@ tmp_rules = register_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/local_template/image_sha256",	crules.cb2_log}) --handled by cb2_template
 	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/id",			crules.cb2_set})
 
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			crules.cb2_set})
@@ -577,6 +580,8 @@ tmp_rules = register_rules
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/slice/uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/slice/id",				crules.cb2_set})
+	
 
 
 tmp_rules = alloc_rules
@@ -697,6 +702,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			local id = tostring(tonumber(sk, 16))
 			local slv = otree.local_slivers[id] or {}
 			
+			slv.id = id.."@"..sys_conf.id
 			slv.nr = tonumber(sv.sliver_nr, 16)
 			slv.instance_sn = tonumber(sv.api_instance_sn)
 			slv.disk = tonumber(sv.disk_mb) or sys_conf.disk_dflt_per_sliver
@@ -711,7 +717,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			
 			-- sys_get_lsliver_ltemplate()
 			slv.local_template = slv.local_template or {}
-			slv.local_template.id = sv.api_tmpl_id
+			slv.local_template.id = sv.api_tmpl_id and tonumber(sv.api_tmpl_id) or null
 			slv.local_template.image_sha256 = sv.api_tmpl_image_sha256
 			slv.local_template.image_uri = sv.api_tmpl_image_uri
 			slv.local_template.is_active = true
@@ -746,10 +752,10 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			end		
 			
 			
-			slv.node = { uri = sys_conf.node_base_uri.."/node" }
-			slv.slice = { uri = sv.api_slice_uri }
+			slv.node = { uri = sys_conf.node_base_uri.."/node", id = sys_conf.id }
+			slv.slice = { uri = sv.api_slice_uri , id = tonumber(id) }
 			slv.state = sv.state
-			slv.template = { uri = slv.local_template.uri}
+			slv.template = { uri = slv.local_template.uri, id = slv.local_template.id }
 			
 			otree.local_slivers[id] = slv
 		else
@@ -1238,10 +1244,13 @@ out_filter = {}
 tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*"})
 	table.insert(tmp_rules, {"/*/uri"})
+	table.insert(tmp_rules, {"/*/id"})
 	table.insert(tmp_rules, {"/*/slice"})
 	table.insert(tmp_rules, {"/*/slice/uri"})	
+	table.insert(tmp_rules, {"/*/slice/id"})
 	table.insert(tmp_rules, {"/*/node"})
 	table.insert(tmp_rules, {"/*/node/uri"})
+	table.insert(tmp_rules, {"/*/node/id"})
 	table.insert(tmp_rules, {"/*/description"})
 	table.insert(tmp_rules, {"/*/properties"})
 	table.insert(tmp_rules, {"/*/properties/*"})
@@ -1250,6 +1259,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/disk"})
 	table.insert(tmp_rules, {"/*/template"})
 	table.insert(tmp_rules, {"/*/template/uri"})
+	table.insert(tmp_rules, {"/*/template/id"})
 	table.insert(tmp_rules, {"/*/exp_data_uri"})
 	table.insert(tmp_rules, {"/*/exp_data_sha256"})
 	table.insert(tmp_rules, {"/*/overlay_uri"})

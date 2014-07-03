@@ -371,6 +371,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/island",				crules.cb2_set})
 	table.insert(tmp_rules, {"/island/uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/island/id",				crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
@@ -449,6 +450,7 @@ tmp_rules = in_rules2
 --	
 	table.insert(tmp_rules, {"/group",				crules.cb2_set})
 	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/group/id",				crules.cb2_set})
 
 	table.insert(tmp_rules, {"/disk_dflt_per_sliver",		cb2_set_sys_key})
 	table.insert(tmp_rules, {"/disk_max_per_sliver",		cb2_set_sys_key})
@@ -480,6 +482,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
 	table.insert(tmp_rules, {"/island"})
 	table.insert(tmp_rules, {"/island/uri"})
+	table.insert(tmp_rules, {"/island/id"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})
@@ -519,6 +522,7 @@ tmp_rules = out_filter
 	
 	table.insert(tmp_rules, {"/group"})
 	table.insert(tmp_rules, {"/group/uri"})
+	table.insert(tmp_rules, {"/group/id"})
 	
 	table.insert(tmp_rules, {"/boot_sn"})
 	table.insert(tmp_rules, {"/set_state"})
@@ -528,6 +532,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/slivers"})
 	table.insert(tmp_rules, {"/slivers/*", "iterate"})
 	table.insert(tmp_rules, {"/slivers/*/uri"})
+	table.insert(tmp_rules, {"/slivers/*/id"})
 
 	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
 
