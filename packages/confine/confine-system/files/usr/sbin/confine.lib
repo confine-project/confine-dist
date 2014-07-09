@@ -798,7 +798,7 @@ confine_sliver_allocate() {
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$(ip link show dev $IF_PARENT | grep "ether" | awk '{print $2}') path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
 		    
 		else
