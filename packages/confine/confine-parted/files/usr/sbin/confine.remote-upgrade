@@ -4,7 +4,7 @@ IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
 TO_SAVE="/etc/config /etc/tinc /etc/dropbear /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
-TO_REMOVE="/overlay/etc/config/confine-defaults"
+TO_REMOVE="/overlay/etc/config/confine-defaults /overlay/usr/lib/opkg"
 
 error() {
     echo "ERROR: $@"
