@@ -12,8 +12,16 @@ try:
 except ImportError:
     from controller.utils import is_installed
 from nodes.models import Node
-from slices.admin import TemplateAdmin, SliceAdmin, SliceSliversAdmin
-from slices.models import Template, Sliver, Slice
+from slices.admin import SliceSliversAdmin, SliceAdmin, TemplateAdmin
+from slices.models import Slice, Sliver, Template
+try:
+    from slices.admin import SliverAdmin, SliverDefaultsInline
+    from slices.models import SliverDefaults
+except ImportError:
+    # enable backwards compatibility
+    EXISTS_SLIVER_DEFAULTS = False
+else:
+    EXISTS_SLIVER_DEFAULTS = True
 from slices import settings as slices_settings
 
 from . import settings 
@@ -90,6 +98,16 @@ if is_installed('firmware'):
 if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
-    SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
-            base_class=SliceAdmin.form)
-    SliceSliversAdmin.form = local_files_form_factory(Sliver, ('exp_data', 'overlay'))
+    if EXISTS_SLIVER_DEFAULTS:
+        # TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with 
+        # SLICES_SLIVER_DATA_EXTENSIONS
+        SliverDefaultsInline.form = local_files_form_factory(SliverDefaults,
+                ('data', 'overlay'), base_class=SliverDefaultsInline.form)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'))
+        SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+                base_class=SliverAdmin.form)
+    else: # backwards compatibility
+        SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
+                base_class=SliceAdmin.form)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver,
+                ('exp_data', 'overlay'))
