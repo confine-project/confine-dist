@@ -26,12 +26,12 @@ upgrade_overlay() {
     for d in $TO_REMOVE; do
         find $d -exec rm -rf {} \;
     done
-    confine.sysupgrade $OPTS $LIMG
+    confine.sysupgrade "$OPTS" $LIMG
 }
 
 upgrade_raw() {
     echo "Detected raw filesystem"
-    confine.sysupgrade $OPTS -b $LIMG
+    confine.sysupgrade "$OPTS" -b $LIMG
 }
 
 rm -f "$LIMG" 2>/dev/null
