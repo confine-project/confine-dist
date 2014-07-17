@@ -36,11 +36,9 @@ upgrade_raw() {
 
 rm -f "$LIMG" 2>/dev/null
 
-OK=0
 for S in $SERVERS; do
     echo "Trying to fetch the image from $S"
-    wget --progress=dot:mega -t 2 -T 10  "http://$S/$IMG" -O "$LIMG"
-    [ $? -eq 0 ] && SERVER="$S" && break
+    wget --progress=dot:mega -t 2 -T 10 "http://$S/$IMG" -O "$LIMG" && SERVER="$S" && break
 done
 
 [ -z "$SERVER" ] && error Cannot download image from $IMG
