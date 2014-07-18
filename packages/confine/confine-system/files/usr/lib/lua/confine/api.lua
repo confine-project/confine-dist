@@ -247,7 +247,7 @@ end
 function encoding_negotiation(request, response)
     -- Encodes response based on Accept-Encoding request header
     local encoding = request['headers']["Accept-Encoding"] 
-    if encoding and string.find(encoding, "gzip") then
+    if encoding and string.find(encoding, "gzip") and string.len(response['content']) > 0 then
         response['headers']['Content-Encoding'] = "gzip"
         response['content'] = gzip(response['content'])
     else
@@ -274,6 +274,24 @@ end
 -- VIEWS
 
 function redirect(request, url)
+    -- 303 redirection to url   
+    local content =''
+    local headers = {
+        ['Status'] = "HTTP/1.1 303 See Other",
+        ['Location'] = url,
+        ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
+--        ['ETag'] = get_etag(content),
+--        ['Allow'] = 'GET HEAD',
+--        ['Content-Type'] = "text/plain",
+--        ['Content-Encoding'] = "chunked",
+--        ['Content-Length'] = string.len(content)
+    }
+    
+    return cgi_response( {['headers'] = headers, ['content'] = content} )
+end
+
+
+function _redirect(request, url)
     -- 303 redirection to url
     local headers = {
         ['Status'] = "HTTP/1.1 303 See Other",
@@ -449,30 +467,31 @@ end
 
 function internal_server_error(request, err_msg)
 
+--    err_msg = '{\n    "detail": "Internal Server Error"\n}'
+
     local headers = {
-        ['Status'] = "HTTP/1.0 500 Internal Server Error"
+        ['Status'] = "HTTP/1.0 500 Internal Server Error",
+        ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
+        ['ETag'] = get_etag(err_msg),
+        ['Allow'] = 'GET HEAD',
+        ['Content-Type'] = "text/plain",
+        ['Content-Encoding'] = "chunked",
+        ['Content-Length'] = string.len(err_msg)
     }
-    local content = '{\n    "detail": "Internal Server Error"\n}'
---  alternatively, include a traceback! But howto wrap this correctly :-( ?:    
---  local content = '\ntraceback:\n'..tostring(err_msg)..'\n'
-    local response = {
-        ['headers'] = headers,
-        ['content'] = content
-    }
-    return handle_response(request, response)
+    
+    return cgi_response( {['headers'] = headers, ['content'] = err_msg} )
 end
 
 
 function handle_xpcall_error(e)
 	local trace = string.format(
-		"%s\n" ..
+		"\n%s\n" ..
 		"----------\n" ..
 		"%s\n" ..
 		"----------\n",
-		e or "(?)",
-		debug.traceback(2)
+		tostring(e) or "(?)",
+		tostring(debug.traceback(2))
 	)
-	err("%s",trace)
 	return trace
 end
 
