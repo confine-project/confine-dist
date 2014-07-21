@@ -33,7 +33,7 @@ define Package/confine-parted
   TITLE:=Parted utilities for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
-	+bash wget +mount-utils \
+	+bash +wget +mount-utils \
 	+block-mount +sfdisk +partx-utils
 
 endef

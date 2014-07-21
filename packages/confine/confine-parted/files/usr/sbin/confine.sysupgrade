@@ -181,9 +181,9 @@ fi
 
 /usr/sbin/confine.lib confine_daemon_stop
 sync
-sleep 2
+sleep 60
 kill_remaining TERM
-sleep 4
+sleep 60
 kill_remaining KILL
 
 grep /cgroup /proc/mounts > /dev/null && umount /cgroup

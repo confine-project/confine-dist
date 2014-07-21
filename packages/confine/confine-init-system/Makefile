@@ -38,7 +38,7 @@ define Package/confine-init-system
 	+block-mount \
 	+sfdisk \
 	+partx-utils \
-	+kexec-tools
+	+kexec-tools \
 	+losetup
 
 endef
