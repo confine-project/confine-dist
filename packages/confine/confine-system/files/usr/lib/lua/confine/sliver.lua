@@ -331,15 +331,37 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 	
 	local pslv = path:match("^/local_slivers/[^/]+/")
 	local oslv = ctree.get_path_val(otree, pslv)
+	local nslv = ctree.get_path_val(ntree, pslv)
 
 	oslv.resources = oslv.resources or {}
+	
+	if nslv and nslv.interfaces then
+		local req, alloc, k,v = 0, 0
+		for k,v in pairs(nslv.interfaces) do
+			if v.type == "public4" then req = (req + 1) end
+		end
+		for k,v in pairs(oslv.interfaces) do
+			if v.type == "public4" and type(v.ipv4_addr) == "string" then alloc = (alloc + 1) end
+		end
+	
+		oslv.resources.pub_ipv4 = req > 0 and {
+			name = "pub_ipv4",
+			unit = "addrs",
+			req = req,
+			alloc = alloc > 0 and alloc or null
+		} or nil
+	else
+		oslv.resources.pub_ipv4 = nil
+	end
+	
 	oslv.resources.disk = {
 		name = "disk",
 		unit = "MiB",
 		req = ctree.get_path_val(ntree, pslv.."resources/disk/req/") or null,
-		alloc = (rules~=register_rules and rules~=dealloc_rules and rules~=undeploy_rules and oslv.resources and oslv.resources.disk and oslv.resources.disk.alloc) or null
+		alloc = (rules~=register_rules and rules~=dealloc_rules and rules~=undeploy_rules and
+			 oslv.resources.disk and oslv.resources.disk.alloc) or null
 		}
-		
+	
 	if (rules==alloc_rules or rules==deploy_rules) then
 		
 		local req_mb = sys_conf.disk_dflt_per_sliver
@@ -1296,7 +1318,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
 	table.insert(tmp_rules, {"/*/resources"})
-	table.insert(tmp_rules, {"/*/resources/*"})
+	table.insert(tmp_rules, {"/*/resources/*", "iterate"})
 	table.insert(tmp_rules, {"/*/resources/*/*"})
 	table.insert(tmp_rules, {"/*/nr"})
 	table.insert(tmp_rules, {"/*/state"})
