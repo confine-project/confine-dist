@@ -23,6 +23,7 @@ CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
+              -D CMAKE_PREFIX_PATH:Path=$(STAGING_DIR)/usr \
               -D OONF_LIB_GIT=$(PKG_REV)
 
 define Package/oonf-api/template

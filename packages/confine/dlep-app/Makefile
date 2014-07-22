@@ -22,11 +22,11 @@ include $(INCLUDE_DIR)/cmake.mk
 #CMAKE_SOURCE_DIR=$(CURDIR)/../../
 CMAKE_OPTIONS=-D OONF_DO_NOT_REGISTER_PACKAGE:Bool=true \
               -D OONF_LOGGING_LEVEL:String=debug \
-              -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer remotecontrol layer2_generator" \
               -D INSTALL_LIB_DIR:Path=lib/oonf \
               -D INSTALL_INCLUDE_DIR:Path=include/oonf \
               -D INSTALL_CMAKE_DIR:Path=lib/oonf \
               -D OONF_CUSTOM_STATIC_PLUGINS="cfgparser_compact cfgio_file nl80211_listener dlep_service layer2_viewer remotecontrol layer2_generator" \
+              -D CMAKE_PREFIX_PATH=$(STAGING_DIR)/usr \
               -D OONF_APP_GIT=$(PKG_REV)
 
 define Package/oonf-dlep/template
