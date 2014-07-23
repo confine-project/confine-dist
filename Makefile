@@ -113,6 +113,35 @@ define create_configs
 		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
 
 	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
+		grep -v "CONFIG_NOHIGHMEM"  				$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		grep -v "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE"	$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_MATOM=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_ACPI=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_SMT=y" 				>> $(KCONFIG) && \
+		echo "CONFIG_SMP=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y"   		>> $(KCONFIG) && \
+		echo "CONFIG_BRIDGE_NF_EBTABLES=y"			>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y"		>> $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM4G=y"				>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_RANDOM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_CPU_IDLE_GOV_MENU=y"			>> $(KCONFIG) && \
+		echo "CONFIG_NO_HZ=y"					>> $(KCONFIG) && \
+		echo "CONFIG_NR_CPUS=2"					>> $(KCONFIG) && \
+		echo "CONFIG_PROCESSOR_SELECT=y"			>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_MC=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_BM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_FSM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_KMP=y"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_ACPI_CPUFREQ=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_P4_CLOCKMOD=m"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_PCC_CPUFREQ=m"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_REBOOTFIXUPS=y"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_ICH=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_LIB=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_SMI=m"			>> $(KCONFIG) && \
+		true || true )
+
+	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
 		echo "CONFIG_X86_USE_GRUB2=y" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_KERNEL_PARTSIZE=32" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
