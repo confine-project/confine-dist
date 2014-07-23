@@ -306,7 +306,7 @@ function set_system_conf( sys_conf, opt, val, section)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "disk_max_per_sliver" or opt == "disk_dflt_per_sliver" and
+	elseif (opt == "disk_max_per_sliver" or opt == "disk_dflt_per_sliver") and
 		type(val)=="number" and val <= 10000 and
 		uci.set("confine", "node", opt, val) then
 		

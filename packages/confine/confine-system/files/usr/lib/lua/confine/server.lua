@@ -57,7 +57,10 @@ function get_server_node(sys_conf, cache)
 	
 	local node = data.http_get_keys_as_table("/nodes/%d" % sys_conf.id, sys_conf.server_base_uri ,cert_file, cache)
 	
+	node.local_base     = data.http_get_keys_as_table("/", sys_conf.server_base_uri ,cert_file, cache)
+
 	node.local_server   = data.http_get_keys_as_table("/server/", sys_conf.server_base_uri ,cert_file, cache)
+	
 	
 	node.local_gateways = {}
 	local gateways = data.http_get_keys_as_table("/gateways/", sys_conf.server_base_uri ,cert_file, nil)
@@ -82,6 +85,15 @@ function get_server_node(sys_conf, cache)
 
 		local slice_obj,slice_id = data.http_get_keys_as_table(sliver_obj.slice.uri, sys_conf.server_base_uri, cert_file, cache)
 		assert(slice_id, "Unable to retrieve referenced slice_url=%s slice_id=%s" %{sliver_obj.slice.uri, tostring(slice_id)} )
+		
+		--FIXME, REMOVEME once #234 got closed:
+		slice_obj.exp_data_uri=nil
+		slice_obj.exp_data_sha256=nil
+		slice_obj.overlay_uri=nil
+		slice_obj.overlay_sha256=nil
+		slice_obj.template=nil
+		slice_obj.vlan_nr=nil
+		
 		sliver_obj.local_slice = slice_obj
 		
 		sliver_obj.uri_id = sliver_uri_id
@@ -92,8 +104,8 @@ function get_server_node(sys_conf, cache)
 		if type(sliver_obj.template)=="table" and sliver_obj.template.uri then
 			local template_obj = data.http_get_keys_as_table(sliver_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			sliver_obj.local_template = template_obj
-		elseif type(slice_obj.template)=="table" and slice_obj.template.uri then
-			local template_obj = data.http_get_keys_as_table(slice_obj.template.uri, sys_conf.server_base_uri, cert_file, cache)
+		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.template)=="table" and slice_obj.sliver_defaults.template.uri then
+			local template_obj = data.http_get_keys_as_table(slice_obj.sliver_defaults.template.uri, sys_conf.server_base_uri, cert_file, cache)
 			sliver_obj.local_template = template_obj
 		end
 		
@@ -101,18 +113,18 @@ function get_server_node(sys_conf, cache)
 		
 		get_local_group(sys_conf, slice_obj, cert_file, cache)
 		
-		if type(sliver_obj.exp_data_uri)=="string" and sliver_obj.exp_data_uri:len() > 0 and
-			type(sliver_obj.exp_data_sha256)=="string" and sliver_obj.exp_data_sha256:len() then
+		if type(sliver_obj.data_uri)=="string" and sliver_obj.data_uri:len() > 0 and
+			type(sliver_obj.data_sha256)=="string" and sliver_obj.data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {uri=sliver_obj.exp_data_uri, sha256=sliver_obj.exp_data_sha256}
+			sliver_obj.local_data = {uri=sliver_obj.data_uri, sha256=sliver_obj.data_sha256}
 			
-		elseif type(slice_obj.exp_data_uri)=="string" and slice_obj.exp_data_uri:len() > 0 and
-			type(slice_obj.exp_data_sha256)=="string" and slice_obj.exp_data_sha256:len() then
+		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.data_uri)=="string" and slice_obj.sliver_defaults.data_uri:len() > 0 and
+			type(slice_obj.sliver_defaults.data_sha256)=="string" and slice_obj.sliver_defaults.data_sha256:len() then
 			
-			sliver_obj.local_exp_data = {uri=slice_obj.exp_data_uri, sha256=slice_obj.exp_data_sha256}
+			sliver_obj.local_data = {uri=slice_obj.sliver_defaults.data_uri, sha256=slice_obj.sliver_defaults.data_sha256}
 			
 		else
-			sliver_obj.local_exp_data = {uri=data.null, sha256=data.null}
+			sliver_obj.local_data = {uri=data.null, sha256=data.null}
 		end
 		
 		
@@ -121,10 +133,10 @@ function get_server_node(sys_conf, cache)
 			
 			sliver_obj.local_overlay = {uri=sliver_obj.overlay_uri, sha256=sliver_obj.overlay_sha256}
 			
-		elseif type(slice_obj.overlay_uri)=="string" and slice_obj.overlay_uri:len() > 0 and
-			type(slice_obj.overlay_sha256)=="string" and slice_obj.overlay_sha256:len() then
+		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.overlay_uri)=="string" and slice_obj.sliver_defaults.overlay_uri:len() > 0 and
+			type(slice_obj.sliver_defaults.overlay_sha256)=="string" and slice_obj.sliver_defaults.overlay_sha256:len() then
 			
-			sliver_obj.local_overlay = {uri=slice_obj.overlay_uri, sha256=slice_obj.overlay_sha256}
+			sliver_obj.local_overlay = {uri=slice_obj.sliver_defaults.overlay_uri, sha256=slice_obj.sliver_defaults.overlay_sha256}
 			
 		else
 			sliver_obj.local_overlay = {uri=data.null, sha256=data.null}

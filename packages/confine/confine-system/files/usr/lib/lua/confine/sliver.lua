@@ -183,7 +183,7 @@ end
 
 
 
-function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
+function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree, ntree, path)
 	if not rules then return "cb2_lnode_sliver_pub_ipv4_avail" end
 
 	local sliver_pub_ipv4_avail = sys_conf.sl_pub_ipv4_total
@@ -202,7 +202,10 @@ function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree)
 		end
 	end
 
-	otree.sliver_pub_ipv4_avail = sliver_pub_ipv4_avail
+	if path then
+		ctree.set_path_val( otree, path, sliver_pub_ipv4_avail)
+	end
+
 	return sliver_pub_ipv4_avail
 end
 
@@ -272,9 +275,9 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 				add_lslv_err( otree, path.."parent_name/", "Already used for other isolated interface", nval.parent_name)
 			end
 			
-			if type(oslv.local_slice.vlan_nr)~="number" and rules==alloc_rules then
+			if type(oslv.local_slice.isolated_vlan_tag)~="number" and rules==alloc_rules then
 				failure = true
-				add_lslv_err( otree, path.."type/", "No vlan_nr defined", nval.type)
+				add_lslv_err( otree, path.."type/", "No isolated_vlan_tag defined", nval.type)
 			end
 			
 			if not failure then
@@ -322,33 +325,76 @@ function purge_templates( sys_conf, otree )
 end
 
 
-function cb2_disk_mb ( rules, sys_conf, otree, ntree, path, begin, changed )
-	if not rules then return "cb2_disk_mb" end
+local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_sliver_resources" end
+	if not begin then return end
 	
-	local nval = ctree.get_path_val(ntree,path)
-	local oval = ctree.get_path_val(otree,path)
-	
-	if nval==nil or nval==null then
-		nval = ctree.get_path_val(ntree, (path:match("^/local_slivers/[^/]+/").."local_slice/disk") )
-	end
+	local pslv = path:match("^/local_slivers/[^/]+/")
+	local oslv = ctree.get_path_val(otree, pslv)
+	local nslv = ctree.get_path_val(ntree, pslv)
 
-	if nval==nil or nval==null then
-		nval = sys_conf.disk_dflt_per_sliver
+	oslv.resources = oslv.resources or {}
+	
+	if nslv and nslv.interfaces then
+		local req, alloc, k,v = 0, 0
+		for k,v in pairs(nslv.interfaces) do
+			if v.type == "public4" then req = (req + 1) end
+		end
+		for k,v in pairs(oslv.interfaces) do
+			if v.type == "public4" and type(v.ipv4_addr) == "string" then alloc = (alloc + 1) end
+		end
+	
+		oslv.resources.pub_ipv4 = req > 0 and {
+			name = "pub_ipv4",
+			unit = "addrs",
+			req = req,
+			alloc = alloc > 0 and alloc or null
+		} or nil
+	else
+		oslv.resources.pub_ipv4 = nil
 	end
 	
-	if type(nval)~="number" or nval < 1 or nval > sys_conf.disk_max_per_sliver  then
-		
-		dbg( add_lslv_err( otree, path, "Invalid", nval) )
-		nval = sys_conf.disk_dflt_per_sliver
-		
-	elseif (rules==alloc_rules or rules==deploy_rules) and nval >= sys_conf.disk_avail then
-		
-		dbg( add_lslv_err( otree, path, "Exceeded available disk space for slivers", nval) )
-	end
+	oslv.resources.disk = {
+		name = "disk",
+		unit = "MiB",
+		req = ctree.get_path_val(ntree, pslv.."resources/disk/req/") or null,
+		alloc = (rules~=register_rules and rules~=dealloc_rules and rules~=undeploy_rules and
+			 oslv.resources.disk and oslv.resources.disk.alloc) or null
+		}
 	
-	if nval~=oval then
-		ctree.set_path_val( otree, path, nval )
-	end	
+	if (rules==alloc_rules or rules==deploy_rules) then
+		
+		local req_mb = sys_conf.disk_dflt_per_sliver
+		local nslvReq = ctree.get_path_val(ntree, pslv.."resources/disk/req")
+		local nslcReq = ctree.get_path_val(ntree, pslv.."local_slice/sliver_defaults/resources/disk/req")
+
+		if nslvReq then
+			
+			if type(nslvReq) == "number" and nslvReq >= 10 and nslvReq <= sys_conf.disk_max_per_sliver then
+				req_mb = nslvReq
+			else
+				dbg( add_lslv_err( otree, pslv.."resources/disk/req", "Invalid (max_req="..sys_conf.disk_max_per_sliver..")", nslvReq) )
+			end
+			
+		elseif nslcReq then
+			
+			if type(nslcReq) == "number" and nslcReq >= 10 and nslcReq <= sys_conf.disk_max_per_sliver then
+				req_mb = nslcReq
+			else
+				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources/disk/req", "Invalid (max_req="..sys_conf.disk_max_per_sliver..")", nslcReq) )
+			end
+		end
+		
+
+
+		if  req_mb >= sys_conf.disk_avail then
+
+			dbg( add_lslv_err( otree, pslv.."resources/disk/alloc", "Exceeded available="..sys_conf.disk_avail.." disk space for slivers", req_mb) )
+			oslv.resources.disk.alloc = null
+		elseif not oslv.errors then
+			oslv.resources.disk.alloc = req_mb
+		end
+	end
 end
 
 
@@ -526,8 +572,6 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/name",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/description",		crules.cb2_set})
 	
-	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
-	
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
 	
@@ -536,12 +580,17 @@ tmp_rules = register_rules
 	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/template/id",			crules.cb2_set})
 
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/exp_data_sha256",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
+
+	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
+	table.insert(tmp_rules, {"/local_slivers/*/local_data",				cb2_sha_data})
 	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 	table.insert(tmp_rules, {"/local_slivers/*/slice",				crules.cb2_set})
@@ -561,12 +610,14 @@ tmp_rules = alloc_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
-	table.insert(tmp_rules, {"/local_slivers/*/local_slice/vlan_nr",		cb2_vlan_nr})
-	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/allow_isolated",		crules.cb2_set})	
+	table.insert(tmp_rules, {"/local_slivers/*/local_slice/isolated_vlan_tag",	cb2_vlan_nr})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/interfaces/*",			cb2_interface})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	
 	table.insert(tmp_rules, {"/local_slivers/*/local_template",			cb2_template})
-	table.insert(tmp_rules, {"/local_slivers/*/local_exp_data",			cb2_sha_data})
+	table.insert(tmp_rules, {"/local_slivers/*/local_data",				cb2_sha_data})
 	table.insert(tmp_rules, {"/local_slivers/*/local_overlay",			cb2_sha_data})
 
 tmp_rules = dealloc_rules
@@ -574,6 +625,7 @@ tmp_rules = dealloc_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_set_null})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 
 tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -584,7 +636,13 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/disk",				cb2_disk_mb})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 
 tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -595,6 +653,13 @@ tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -603,6 +668,7 @@ tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/instance_sn",		cb2_instance_sn})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 
 tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -613,6 +679,13 @@ tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/properties",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/properties/*/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
+	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_uri",			crules.cb2_set})
+	table.insert(tmp_rules, {"/local_slivers/*/overlay_sha256",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
@@ -631,6 +704,7 @@ tmp_rules = stop_rules
 --	table.insert(tmp_rules, {"/local_slivers/*/uri_id",				crules.cb2_set})
 --	table.insert(tmp_rules, {"/local_slivers/*/uri",				cb2_sliver_uri})
 	table.insert(tmp_rules, {"/local_slivers/*/nr",					crules.cb2_nop})
+	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",	crules.cb2_set_empty_table})	
@@ -650,6 +724,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 		if
 			sv.exp_name and
 			sv.state and
+			sv.disk_mb and
 			sv.fs_template_url and
 			sv.fs_template_type and
 			sv.sliver_nr and
@@ -671,12 +746,16 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.id = id.."@"..sys_conf.id
 			slv.nr = tonumber(sv.sliver_nr, 16)
 			slv.instance_sn = tonumber(sv.api_instance_sn)
-			slv.disk = tonumber(sv.disk_mb) or sys_conf.disk_dflt_per_sliver
+
+			slv.resources = slv.resources or {}
+			slv.resources.disk = slv.resources.disk or {}
+			slv.resources.disk.alloc = tonumber(sv.disk_mb)
 			
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name
 			slv.local_slice.instance_sn = tonumber(sv.api_slice_instance_sn)
-			slv.local_slice.vlan_nr = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or null
+			slv.local_slice.sliver_defaults = slv.local_slice.sliver_defaults or {}
+			slv.local_slice.sliver_defaults.isolated_vlan_tag = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or null
 
 			-- sys_get_lsliver_lslice_lgroup()
 			-- slv.local_slice.local_group  = ssh.sys_get__lgroup( sys_conf.sliver_system_dir..sv.sliver_nr..SLIVER_AUTH_FILES[sv.fs_template_type], false)
@@ -692,7 +771,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
 
-			slv.local_exp_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
+			slv.local_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
 						{uri=sv.api_exp_data_uri, sha256=sv.api_exp_data_sha256} or
 						{uri=null, sha256=null}
 			
@@ -841,18 +920,18 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		sliver_desc = sliver_desc.."	option fs_template_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_template.image_sha256..".tgz"}
 		sliver_desc = sliver_desc.."	option fs_template_type '%s'\n" %{api_slv.local_template.type}
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
-		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{tools.min(api_slv.disk or api_slv.local_slice.disk or sys_conf.disk_dflt_per_sliver, sys_conf.disk_max_per_sliver)}
+		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{api_slv.resources.disk.alloc}
 		
-		if type(api_slv.local_exp_data.sha256)=="string" then
-			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_exp_data.sha256..".tgz"}
+		if type(api_slv.local_data.sha256)=="string" then
+			sliver_desc = sliver_desc.."	option exp_data_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_data.sha256..".tgz"}
 		end
 		
 		if type(api_slv.local_overlay.sha256)=="string" then
 			sliver_desc = sliver_desc.."	option overlay_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_overlay.sha256..".tgz"}
 		end
 
-		if type(api_slv.local_slice.vlan_nr)=="number" then
-			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.vlan_nr}
+		if type(api_slv.local_slice.sliver_defaults)=="table" and type(api_slv.local_slice.sliver_defaults.isolated_vlan_tag)=="number" then
+			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.sliver_defaults.isolated_vlan_tag}
 		end
 		
 		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+")
@@ -890,8 +969,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 				api_tmpl_image_uri = api_slv.local_template.image_uri,
 				api_tmpl_name = api_slv.local_template.name,
 				api_tmpl_node_archs = tools.table2string(api_slv.local_template.node_archs, " "),
-				api_exp_data_uri = type(api_slv.local_exp_data.uri)=="string" and api_slv.local_exp_data.uri or nil,
-				api_exp_data_sha256 = type(api_slv.local_exp_data.sha256)=="string" and api_slv.local_exp_data.sha256 or nil,
+				api_exp_data_uri = type(api_slv.local_data.uri)=="string" and api_slv.local_data.uri or nil,
+				api_exp_data_sha256 = type(api_slv.local_data.sha256)=="string" and api_slv.local_data.sha256 or nil,
 				api_overlay_uri = type(api_slv.local_overlay.uri)=="string" and api_slv.local_overlay.uri or nil,
 				api_overlay_sha256 = type(api_slv.local_overlay.sha256)=="string" and api_slv.local_overlay.sha256 or nil
 			}
@@ -1067,18 +1146,18 @@ function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 		local oslv = otree.local_slivers[key] or ctree.set_path_val(otree, "/local_slivers/"..key, {state=NODE.registered })
 		oslv.errors = nil
 		
+		local nslc_set_state = 	(nslv and type(nslv.local_slice)=="table" and nslv.local_slice.set_state~=null and nslv.local_slice.set_state) or
+					(nslv and type(nslv.local_slice)=="table" and type(nslv.local_slice.sliver_defaults)=="table" and nslv.local_slice.sliver_defaults.set_state ~= null and nslv.local_slice.sliver_defaults.set_state) or
+					nil
 		local nslv_set_state =
-			  (nslv and  nslv.local_slice and nslv.local_slice.set_state ~= null and (
-				not nslv.set_state or
-				nslv.set_state==null or
-				nslv.local_slice.set_state==SERVER.register or
-				(nslv.local_slice.set_state==SERVER.deploy and nslv.set_state==SERVER.start) ) and 
-			   nslv.local_slice.set_state)
+			  ( (not nslv or not nslv.set_state or nslv.set_state==null or nslc_set_state==SERVER.register or
+			      (nslc_set_state==SERVER.deploy and nslv.set_state==SERVER.start) ) and 
+			    nslc_set_state )
 			or
 			  (nslv and nslv.set_state)
 			or
 			  nil
-
+		
 		local test = false or false or nil
 		assert( test==nil)
 		
@@ -1222,12 +1301,11 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/properties/*"})
 	table.insert(tmp_rules, {"/*/properties/*/*"})
 	table.insert(tmp_rules, {"/*/instance_sn"})
-	table.insert(tmp_rules, {"/*/disk"})
 	table.insert(tmp_rules, {"/*/template"})
 	table.insert(tmp_rules, {"/*/template/uri"})
 	table.insert(tmp_rules, {"/*/template/id"})
-	table.insert(tmp_rules, {"/*/exp_data_uri"})
-	table.insert(tmp_rules, {"/*/exp_data_sha256"})
+	table.insert(tmp_rules, {"/*/data_uri"})
+	table.insert(tmp_rules, {"/*/data_sha256"})
 	table.insert(tmp_rules, {"/*/overlay_uri"})
 	table.insert(tmp_rules, {"/*/overlay_sha256"})
 	table.insert(tmp_rules, {"/*/interfaces"})
@@ -1239,6 +1317,9 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/interfaces/*/mac_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
+	table.insert(tmp_rules, {"/*/resources"})
+	table.insert(tmp_rules, {"/*/resources/*", "iterate"})
+	table.insert(tmp_rules, {"/*/resources/*/*"})
 	table.insert(tmp_rules, {"/*/nr"})
 	table.insert(tmp_rules, {"/*/state"})
 	table.insert(tmp_rules, {"/*/set_state"})

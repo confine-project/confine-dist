@@ -17,7 +17,7 @@ local dbg    = tools.dbg
 function get_url_keys( url )
 	local api_first, api_last = url:find("/api")
 	local full_key = api_last and url:sub(api_last+1) or url
-	local base_key = full_key:match( "/[%l]+/" )
+	local base_key = full_key:match( "/[%l]+/" ) or "/"
 --	local index_key = (full_key:match( "/[%d]+[-]?[%d]*$" ) or ""):gsub("/","")
 	local index_key = (full_key:match( "/[%d]+$" ) or ""):gsub("/","")
 	
@@ -354,7 +354,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 				
 				if not ( ov~=nil or nv~=nil ) then
-					assert(false)
+					assert(false, "path=%s ov=%s nv=%s" %{path..tk.."/", tostring(ov), tostring(nv)})
 				elseif not (type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil)) then
 					assert( false, "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"
 					       %{path..tk.."/", type(tk), as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]), qs_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})
