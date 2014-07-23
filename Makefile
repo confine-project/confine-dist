@@ -74,11 +74,7 @@ define create_configs
 # This command restores OpenWrt's default configuration and adds answers
 # to some options to avoid the configuration process asking for them.
 # This should be fixed in mainstream soon.
-	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
-		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
-		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
-		echo "# CONFIG_SAMSUNG_LAPTOP is not set" >> $(KCONF) && \
-		echo "# CONFIG_INTEL_OAKTRAIL is not set" >> $(KCONF) )
+	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
 	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
 	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
 		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
@@ -148,6 +144,8 @@ define create_configs
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
 	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
+	@yes "" | make -C "$(BUILD_DIR)" kernel_oldconfig > /dev/null
+
 endef
 
 
