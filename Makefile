@@ -33,6 +33,7 @@ TARGET ?= x86
 SUBTARGET ?= generic
 # Some targets (not x86) need a profile.
 PROFILE ?=
+SPECIFICS ?= #eg atom32
 PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
@@ -111,9 +112,39 @@ define create_configs
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
 	@( [ "$(PROFILE)" ] && \
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
-	@( [ "$(PARTSIZE)" ] && \
+	@( [ -z "$(SPECIFICS)" ] && [ "$(PARTSIZE)" ] && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
+
+	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
+		echo "CONFIG_X86_USE_GRUB2=y" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_KERNEL_PARTSIZE=32" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_MAXINODE=90000" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_libiptc=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libgnutls-openssl=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libdevmapper=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libnl=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libpcre=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_gnutls-utils=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_dmidecode=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_grub=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_certtool=y" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_oonf-dlep-plugin-service=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_oonf-plugin-layer2-viewer=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_oonf-plugin-nl80211-listener=y" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_bridge=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_dnsmasq-dhcpv6=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-r6040=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-sis190=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-8021q=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_hdparm=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_bash-completion=y" >> $(CONFIG) && \
+		true || true )
+
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
 	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
