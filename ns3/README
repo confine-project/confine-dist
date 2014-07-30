@@ -1,0 +1,26 @@
+
+*** INSTALLING NS3 ***
+Call ns3_install.sh to download, build and patch NS3. Afterwards NS3 can be found in /home/vct/ns3.
+
+*** FIRST START ***
+When starting an emulation for the first time:
+1. Create and start nodes.
+2. Create slice (request VLAN option is required), add slivers.
+3. Add one isolated interface to each sliver that is taking part in the emulation. Use the same parent interface in each sliver.
+4. Start slice.
+5. To setup connectivity between the slivers and NS3 call connect_ns3.py in /home/vct/confine-dist/ns3/utils. By default the script assumes VLAN ID 256 and eth1 as parent for the isolated interfaces. Should other values be required, call connect_ns3.py -h to find the proper options.
+6. Now that the connectivity between NS3 and VCT is established, proceed with starting the emulation as described in the NS3 manual.
+
+*** RESTARTING THE EMULATION ***
+1. Stop NS3 emulation.
+2. Clear ARP cache on each sliver.
+3. Start NS3 emulation.
+
+Step 2 is required because of the way NS3 assigns MAC addresses to tap devices. NS3 learns MAC Addresses from ARP packets and thus it is vital for the experiment, that the ARP requests and responses occur prior to any emulated communication that is part of the measurement.
+
+*** SSH ON SLIVERS ***
+Please Note that the isolated interfaces must be configured manually on each sliver in order to work properly. In /home/vct/confine-dist/ns3/utils you will find a script that makes logging onto slivers or running commands on them easier:
+    ssh_sliver.sh <slice ID> <sliver nr> [<cmd>]
+<slice ID> is the decimal ID of the slice as shown in the controller.
+<sliver nr> is a decimal sequential number of a sliver. The sequence begins with 0 and the numbers are assigned to slivers in the numerical order of the IDs of the nodes they run on.
+
