@@ -1,0 +1,114 @@
+--- /home/vct/ns3/ns-3-allinone/ns-3-dev/src/tap-bridge/model/tap-bridge.cc	2014-07-21 12:04:41.376399121 +0000
++++ tap-bridge.cc	2014-07-21 12:16:54.812427012 +0000
+@@ -45,6 +45,7 @@
+ #include <limits>
+ #include <cstdlib>
+ #include <unistd.h>
++#include <arpa/inet.h>
+ 
+ NS_LOG_COMPONENT_DEFINE ("TapBridge");
+ 
+@@ -73,7 +74,8 @@
+ 
+ #define TAP_MAGIC 95549
+ 
+-NS_OBJECT_ENSURE_REGISTERED (TapBridge);
++NS_OBJECT_ENSURE_REGISTERED (TapBridge)
++  ;
+ 
+ TypeId
+ TapBridge::GetTypeId (void)
+@@ -633,8 +635,7 @@
+       if (m_mode == USE_LOCAL || m_mode == USE_BRIDGE)
+         {
+           //
+-          // Set the ns-3 device's mac address to the overlying container's
+-          // mac address
++          // Get the MAC address from the tap device
+           //
+           struct ifreq s;
+           strncpy (s.ifr_name, m_tapDeviceName.c_str (), sizeof (s.ifr_name));
+@@ -645,9 +646,8 @@
+             {
+               Mac48Address learnedMac;
+               learnedMac.CopyFrom ((uint8_t *)s.ifr_hwaddr.sa_data);
+-              NS_LOG_INFO ("Learned Tap device MacAddr is " << learnedMac << ": setting ns-3 device to use this address");
+-              m_bridgedDevice->SetAddress (learnedMac);
+-              m_ns3AddressRewritten = true;
++              NS_LOG_INFO ("Read tap device MacAddr " << learnedMac << ": using this address to filter learning");
++              m_filter_mac = learnedMac;                       
+             }
+ 
+           if (!m_ns3AddressRewritten)
+@@ -756,10 +756,17 @@
+           // Set the ns-3 device's mac address to the overlying container's
+           // mac address
+           //
++        Mac48Address oldMac = Mac48Address::ConvertFrom (m_bridgedDevice->GetAddress());
++        NS_LOG_LOGIC ("Old MAC MacAddr is " << oldMac << "");
+           Mac48Address learnedMac = Mac48Address::ConvertFrom (src);
+-          NS_LOG_LOGIC ("Learned MacAddr is " << learnedMac << ": setting ns-3 device to use this address");
+-          m_bridgedDevice->SetAddress (Mac48Address::ConvertFrom (learnedMac));
+-          m_ns3AddressRewritten = true;
++          if (learnedMac != m_filter_mac) {
++            NS_LOG_LOGIC ("Learned MacAddr is " << learnedMac << ": setting ns-3 device to use this address");
++            m_bridgedDevice->SetAddress (Mac48Address::ConvertFrom (learnedMac));
++            m_ns3AddressRewritten = true;
++          }
++          else {
++              NS_LOG_LOGIC ("Not learning from this address (same as container tap device)");
++          }
+         }
+       // 
+       // If we are operating in USE_LOCAL mode, we may be attached to an ns-3
+@@ -832,8 +839,7 @@
+       return 0;
+     }
+ 
+-  uint32_t headerSize = p->PeekHeader (header);
+-  p->RemoveAtStart (headerSize);
++  p->RemoveHeader (header);
+ 
+   NS_LOG_LOGIC ("Pkt source is " << header.GetSource ());
+   NS_LOG_LOGIC ("Pkt destination is " << header.GetDestination ());
+@@ -943,7 +949,7 @@
+   // and we are expected to use it.  The tap device and the ns-3 net device
+   // will have the same MAC address by definition.
+   //
+-  // USE_LOCAL mode tells us that we have got to USE a pre-created tap device
++  // USE_LOCAL mode tells us that we have got to USE a pre-created tap devicel
+   // that will have a different MAC address from the ns-3 net device.  In this
+   // case we will be spoofing the MAC address of a received packet to match
+   // the single allowed address on the Linux side.
+@@ -952,7 +958,8 @@
+   // on which lies our tap device.
+   //
+ 
+-  if (m_mode == CONFIGURE_LOCAL && packetType == PACKET_OTHERHOST)
++  if ((m_mode == CONFIGURE_LOCAL || m_mode == USE_LOCAL) && packetType == PACKET_OTHERHOST)
++//    if (m_mode == CONFIGURE_LOCAL && packetType == PACKET_OTHERHOST)
+     {
+       //
+       // We hooked the promiscuous mode protocol handler so we could get the 
+@@ -978,7 +985,7 @@
+ 
+   header.SetLengthType (protocol);
+   p->AddHeader (header);
+-
++  
+   NS_LOG_LOGIC ("Writing packet to Linux host");
+   NS_LOG_LOGIC ("Pkt source is " << header.GetSource ());
+   NS_LOG_LOGIC ("Pkt destination is " << header.GetDestination ());
+@@ -987,10 +994,10 @@
+ 
+   NS_ASSERT_MSG (p->GetSize () <= 65536, "TapBridge::ReceiveFromBridgedDevice: Packet too big " << p->GetSize ());
+   p->CopyData (m_packetBuffer, p->GetSize ());
+-
++  
+   uint32_t bytesWritten = write (m_sock, m_packetBuffer, p->GetSize ());
+   NS_ABORT_MSG_IF (bytesWritten != p->GetSize (), "TapBridge::ReceiveFromBridgedDevice(): Write error.");
+-
++  
+   NS_LOG_LOGIC ("End of receive packet handling on node " << m_node->GetId ());
+   return true;
+ }

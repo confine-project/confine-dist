@@ -1,0 +1,269 @@
+diff -r cc580aa7f029 src/propagation/model/rice-propagation-loss-model.cc
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/src/propagation/model/rice-propagation-loss-model.cc	Wed Apr 16 15:40:15 2014 +0200
+@@ -0,0 +1,166 @@
++/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
++/*
++ * Copyright (c) 2012 University of Bonn
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation;
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ *
++ * Author: Sascha Alexander Jopen <jopen@cs.uni-bonn.de>
++ */
++
++#include "rice-propagation-loss-model.h"
++#include <ns3/mobility-model.h>
++#include <ns3/double.h>
++#include <ns3/node.h>
++#include <ns3/simulator.h>
++#include <cmath>
++
++namespace ns3 {
++
++NS_OBJECT_ENSURE_REGISTERED (RicePropagationLossModel);
++
++RiceData::RiceData () :
++    time (Seconds (-1)), vx (0.0), vy (0.0)
++{
++}
++
++TypeId 
++RicePropagationLossModel::GetTypeId (void)
++{
++  static TypeId tid = TypeId ("ns3::RicePropagationLossModel")
++    .SetParent<PropagationLossModel> ()
++    .AddConstructor<RicePropagationLossModel> ()
++    .AddAttribute ("K", "The K parameter for the rice distribution.",
++                   DoubleValue (1),
++                   MakeDoubleAccessor (&RicePropagationLossModel::SetK,
++                     &RicePropagationLossModel::GetK),
++                   MakeDoubleChecker<double> (0.0))
++    .AddAttribute ("Coherence", "The channel coherence factor.",
++                   DoubleValue (0),
++                   MakeDoubleAccessor (&RicePropagationLossModel::SetCoherence,
++                         &RicePropagationLossModel::GetCoherence),
++                   MakeDoubleChecker<double> (0.0));
++  return tid;
++}
++
++RicePropagationLossModel::RicePropagationLossModel ()
++  : m_k (1),
++    m_a (sqrt(2.0 * m_k)),
++    m_ms (m_a * m_a + 2.0),
++    m_coherence (0),
++    m_rice_data ()
++{
++  m_rng = CreateObject<NormalRandomVariable> ();
++}
++
++void
++RicePropagationLossModel::DoDispose (void)
++{
++  CleanupCoherence ();
++}
++
++void
++RicePropagationLossModel::CleanupCoherence (void)
++{
++  // Cleanup data when used with channel coherence
++  m_rice_data.clear ();
++}
++
++double
++RicePropagationLossModel::GetK (void) const
++{
++  return m_k;
++}
++
++double
++RicePropagationLossModel::GetCoherence (void) const
++{
++  return m_coherence;
++}
++
++void
++RicePropagationLossModel::SetK (double k)
++{
++  m_k = k;
++  // Calculate the rice parameters a and mean square for this instance
++  m_a = sqrt(2.0 * m_k);
++  m_ms = m_a * m_a + 2.;
++}
++
++void
++RicePropagationLossModel::SetCoherence (double coherence)
++{
++  m_coherence = coherence;
++  CleanupCoherence ();
++}
++
++double
++RicePropagationLossModel::DoCalcRxPower (double txPowerDbm,
++                                         Ptr<MobilityModel> a,
++                                         Ptr<MobilityModel> b) const
++{
++  double power = pow10(txPowerDbm/10);
++  double n1 = m_rng->GetValue();
++  double n2 = m_rng->GetValue();
++  double tmp1;
++  double tmp2;
++
++  /*
++   * Manage all that state information for each pair of nodes only if we
++   * really model channel coherence!
++   */
++  if (m_coherence > 0.0)
++    {
++      uint32_t addr1 = a->GetObject<Node> ()->GetId ();
++      uint32_t addr2 = b->GetObject<Node> ()->GetId ();
++
++      // Get going with the calculations.
++      RiceData &r = m_rice_data[addr1][addr2];
++      Time tnow = Simulator::Now ();
++      if (r.time.IsNegative ())
++        {
++          r.vx = m_a + n1;
++          r.vy = n2;
++        }
++      else
++        {
++          double a0 = pow (m_coherence, (tnow - r.time).ToDouble (Time::S));
++          double a1 = 1.0 - a0;
++          double a2 = sqrt (1.0 - a0*a0);
++          r.vx = a0 * r.vx + a1 * m_a + a2 * n1;
++          r.vy = a0 * r.vy + a2 * n2;
++        }
++      r.time = tnow;
++      tmp1 = r.vx;
++      tmp2 = r.vy;
++    }
++  else
++    {
++      /* Do simple rician fading, if we do not use channel coherence */
++      tmp1 = m_a + n1;
++      tmp2 = n2;
++    }
++
++  power *= (tmp1*tmp1 + tmp2*tmp2) / m_ms;
++
++  return 10 * log10 (power);
++}
++
++int64_t
++RicePropagationLossModel::DoAssignStreams (int64_t stream)
++{
++  m_rng->SetStream (stream);
++  return 1;
++}
++
++} // namespace ns3
+diff -r cc580aa7f029 src/propagation/model/rice-propagation-loss-model.h
+--- /dev/null	Thu Jan 01 00:00:00 1970 +0000
++++ b/src/propagation/model/rice-propagation-loss-model.h	Wed Apr 16 15:40:15 2014 +0200
+@@ -0,0 +1,76 @@
++/* -*- Mode:C++; c-file-style:"gnu"; indent-tabs-mode:nil; -*- */
++/*
++ * Copyright (c) 2012 University of Bonn
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation;
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ *
++ * Author: Sascha Alexander Jopen <jopen@cs.uni-bonn.de>
++ */
++
++#ifndef RICE_PROPAGATION_LOSS_MODEL_H
++#define RICE_PROPAGATION_LOSS_MODEL_H
++
++#include "propagation-loss-model.h"
++#include <ns3/random-variable-stream.h>
++#include <ns3/nstime.h>
++#include <map>
++
++namespace ns3 {
++
++struct RiceData {
++  RiceData ();
++
++  Time time;
++  double vx;
++  double vy;
++};
++
++/**
++ * \ingroup propagation
++ *
++ * \brief The propagation loss follows a ricean distribution.
++ */ 
++class RicePropagationLossModel : public PropagationLossModel
++{
++public:
++  static TypeId GetTypeId (void);
++
++  RicePropagationLossModel (void);
++  double GetK (void) const;
++  double GetCoherence (void) const;
++  void SetK (double k);
++  void SetCoherence (double coherence);
++
++protected:
++  virtual void DoDispose (void);
++  virtual int64_t DoAssignStreams (int64_t stream);
++private:
++  RicePropagationLossModel (const RicePropagationLossModel &o);
++  RicePropagationLossModel & operator = (const RicePropagationLossModel &o);
++  void CleanupCoherence (void);
++  virtual double DoCalcRxPower (double txPowerDbm,
++                                Ptr<MobilityModel> a,
++                                Ptr<MobilityModel> b) const;
++
++  double m_k;
++  double m_a;
++  double m_ms;
++  double m_coherence;
++  Ptr<NormalRandomVariable> m_rng;
++  mutable std::map<uint32_t, std::map<uint32_t, RiceData> > m_rice_data;
++};
++
++} // namespace ns3
++
++#endif /* RICE_PROPAGATION_LOSS_MODEL_H */
+diff -r cc580aa7f029 src/propagation/wscript
+--- a/src/propagation/wscript	Tue Feb 18 08:21:46 2014 +0100
++++ b/src/propagation/wscript	Wed Apr 16 15:40:15 2014 +0200
+@@ -13,6 +13,7 @@
+         'model/itu-r-1411-los-propagation-loss-model.cc',
+         'model/itu-r-1411-nlos-over-rooftop-propagation-loss-model.cc',
+         'model/kun-2600-mhz-propagation-loss-model.cc',
++        'model/rice-propagation-loss-model.cc',
+         ]
+ 
+     module_test = bld.create_ns3_module_test_library('propagation')
+@@ -38,6 +39,7 @@
+         'model/itu-r-1411-los-propagation-loss-model.h',
+         'model/itu-r-1411-nlos-over-rooftop-propagation-loss-model.h',
+         'model/kun-2600-mhz-propagation-loss-model.h',
++        'model/rice-propagation-loss-model.h',
+         ]
+ 
+     if (bld.env['ENABLE_EXAMPLES']):

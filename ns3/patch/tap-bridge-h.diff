@@ -1,0 +1,27 @@
+--- /home/vct/ns3/ns-3-allinone/ns-3-dev/src/tap-bridge/model/tap-bridge.h	2014-07-21 12:04:41.376399121 +0000
++++ tap-bridge.h	2014-07-21 12:17:03.352427336 +0000
+@@ -41,6 +41,15 @@
+   FdReader::Data DoRead (void);
+ };
+ 
++
++struct my_vlan_eth_header {
++    uint8_t     ether_dhost[6];         /* 0-5   Ethernet source address      */
++    uint8_t     ether_shost[6];         /* 6-11  Ethernet destination address */
++    uint16_t    ether_vlan_proto;       /* 12-13 == ETHERTYPE_8021Q           */
++    uint16_t    ether_vlan_tci;         /* 14-15 tag control information      */
++    uint16_t    ether_vlan_encap_proto; /* 16-17 Ethernet protocol            */    
++};
++
+ class Node;
+ 
+ /**
+@@ -474,6 +483,8 @@
+    * with a file descriptor.
+    */
+   bool m_linkUp;
++  
++  Mac48Address m_filter_mac;
+ 
+   /**
+    * \internal
