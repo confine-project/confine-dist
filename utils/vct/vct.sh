@@ -230,10 +230,10 @@ vct_system_config_check() {
     VCT_SLICE_OWRT_TEMPLATE_NAME=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
     VCT_SLICE_OWRT_TEMPLATE_SITE=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F"${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
 
-    variable_check VCT_SLICE_OWRT_EXP_DATA_URL  quiet
-    VCT_SLICE_OWRT_EXP_DATA_COMP=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
-    VCT_SLICE_OWRT_EXP_DATA_NAME=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
-    VCT_SLICE_OWRT_EXP_DATA_SITE=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F"${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+    variable_check VCT_SLICE_OWRT_DATA_URL  quiet
+    VCT_SLICE_OWRT_DATA_COMP=$(echo $VCT_SLICE_OWRT_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_OWRT_DATA_NAME=$(echo $VCT_SLICE_OWRT_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_DATA_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_DATA_SITE=$(echo $VCT_SLICE_OWRT_DATA_URL | awk -F"${VCT_SLICE_OWRT_DATA_NAME}.${VCT_SLICE_OWRT_DATA_COMP}" '{print $1}')
 
     variable_check VCT_SLICE_DEBIAN_TEMPLATE_URL  quiet
     VCT_SLICE_DEBIAN_TEMPLATE_COMP=$((echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
@@ -241,10 +241,10 @@ vct_system_config_check() {
     VCT_SLICE_DEBIAN_TEMPLATE_NAME=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
     VCT_SLICE_DEBIAN_TEMPLATE_SITE=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F"${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
 
-    variable_check VCT_SLICE_DEBIAN_EXP_DATA_URL  quiet
-    VCT_SLICE_DEBIAN_EXP_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
-    VCT_SLICE_DEBIAN_EXP_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
-    VCT_SLICE_DEBIAN_EXP_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
+    variable_check VCT_SLICE_DEBIAN_DATA_URL  quiet
+    VCT_SLICE_DEBIAN_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_DEBIAN_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_DATA_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_DATA_NAME}.${VCT_SLICE_DEBIAN_DATA_COMP}" '{print $1}')
 
 }
 
@@ -722,11 +722,11 @@ EOF
 	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_TEMPLATE_NAME.$VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-openwrt-template.tgz
     fi
 
-    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}
-    if ! vct_do install_url $VCT_SLICE_OWRT_EXP_DATA_URL $VCT_SLICE_OWRT_EXP_DATA_SITE $VCT_SLICE_OWRT_EXP_DATA_NAME $VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
-	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_DATA_NAME}.${VCT_SLICE_OWRT_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_DATA_URL $VCT_SLICE_OWRT_DATA_SITE $VCT_SLICE_OWRT_DATA_NAME $VCT_SLICE_OWRT_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_DATA_URL failed" $CMD_SOFT || return 1
     else
-	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_EXP_DATA_NAME.$VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_DATA_NAME.$VCT_SLICE_OWRT_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
     fi
 
     # check for update and downloadable slice-debian-template file:
@@ -737,11 +737,11 @@ EOF
 	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_TEMPLATE_NAME.$VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-debian-template.tgz
     fi
 
-    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}
-    if ! vct_do install_url $VCT_SLICE_DEBIAN_EXP_DATA_URL $VCT_SLICE_DEBIAN_EXP_DATA_SITE $VCT_SLICE_DEBIAN_EXP_DATA_NAME $VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
-	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_DATA_NAME}.${VCT_SLICE_DEBIAN_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_DATA_URL $VCT_SLICE_DEBIAN_DATA_SITE $VCT_SLICE_DEBIAN_DATA_NAME $VCT_SLICE_DEBIAN_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_DATA_URL failed" $CMD_SOFT || return 1
     else
-	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_EXP_DATA_NAME.$VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_DATA_NAME.$VCT_SLICE_DEBIAN_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
     fi
 
 
@@ -1619,20 +1619,20 @@ vct_build_node_base_image() {
 }
 
 
-vct_build_sliver_exp_data() {
+vct_build_sliver_data() {
     local EXP_PATH=$1
     local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
-    local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
+    local EXP_NAME="vct-sliver-data-build-$EXP_TAIL.tgz"
 
     [ -d $EXP_PATH ] &&\
     tar -czvf $VCT_DL_DIR/$EXP_NAME  --exclude=*~ --numeric-owner --group=root --owner=root -C $EXP_PATH . &&\
     echo &&\
-    echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
-    echo "slices->[select slice]->exp_data as:" &&\
+    echo "The slice/sliver data archive is available via the controller portal at:" &&\
+    echo "slices->[select slice]->sliver data as:" &&\
     echo "$EXP_NAME" || {
 	rm -f $VCT_DL_DIR/$EXP_NAME
 	echo
-	echo "Building new slice/sliver exp-data failed!"
+	echo "Building new slice/sliver data failed!"
 	return 1
     }
 
@@ -1789,7 +1789,7 @@ vct_help() {
     ---------------
 
     vct_build_node_base_image                   : Build node image from scratch 
-    vct_build_sliver_exp_data <EXP_DIR>         : Build sliver exp_data from dir
+    vct_build_sliver_data <EXP_DIR>             : Build sliver data from dir
     vct_build_sliver_template <OS_TYPE>         : Build sliver template image
 
     Argument Definitions
@@ -1850,7 +1850,7 @@ else
         vct_node_unmount)           $CMD "$@";;
 
         vct_build_node_base_image)  $CMD "$@";;
-        vct_build_sliver_exp_data)  $CMD "$@";;
+        vct_build_sliver_data)      $CMD "$@";;
         vct_build_sliver_template)  $CMD "$@";;
 
 	*) vct_help;;
