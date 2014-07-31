@@ -1290,6 +1290,14 @@ tmp_rules = dir_filter
 	table.insert(tmp_rules, {"/*", "iterate"})
 	table.insert(tmp_rules, {"/*/uri"})
 	table.insert(tmp_rules, {"/*/id"})
+	table.insert(tmp_rules, {"/*/node"})
+	table.insert(tmp_rules, {"/*/node/uri"})
+	table.insert(tmp_rules, {"/*/node/id"})
+	table.insert(tmp_rules, {"/*/slice"})
+	table.insert(tmp_rules, {"/*/slice/uri"})
+	table.insert(tmp_rules, {"/*/slice/id"})
+	table.insert(tmp_rules, {"/*/state"})
+	table.insert(tmp_rules, {"/*/set_state"})
 
 out_filter = {}
 tmp_rules = out_filter
