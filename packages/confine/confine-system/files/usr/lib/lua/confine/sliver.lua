@@ -1285,6 +1285,12 @@ function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
 end
 
 
+dir_filter = {}
+tmp_rules = dir_filter
+	table.insert(tmp_rules, {"/*", "iterate"})
+	table.insert(tmp_rules, {"/*/uri"})
+	table.insert(tmp_rules, {"/*/id"})
+
 out_filter = {}
 tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*"})
@@ -1344,6 +1350,12 @@ function get_templates( otree )
 	end
 	return templates
 end
+
+template_dir_filter = {}
+tmp_rules = template_dir_filter
+	table.insert(tmp_rules, {"/*", "iterate"})
+	table.insert(tmp_rules, {"/*/uri"})
+	table.insert(tmp_rules, {"/*/id", nil, "number"})
 
 template_out_filter = {}
 tmp_rules = template_out_filter

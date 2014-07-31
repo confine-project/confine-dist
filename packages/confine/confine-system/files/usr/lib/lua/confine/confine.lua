@@ -56,11 +56,14 @@ local function upd_node_rest_conf( sys_conf, node, server )
 	cdata.file_put(base, "index.html", system.rest_base_dir)
 
 	pcall(nixio.fs.remover, system.rest_templates_dir)
-	cdata.file_put(ctree.filter(sliver.template_out_filter, sliver.get_templates(node)), nil, system.rest_templates_dir)
+	local templates = sliver.get_templates(node)
+	cdata.file_put(ctree.filter(sliver.template_dir_filter, templates), "index.html", system.rest_templates_dir)
+	cdata.file_put(ctree.filter(sliver.template_out_filter, templates), nil, system.rest_templates_dir)
 
 	cdata.file_put(ctree.filter(cnode.out_filter, node), "index.html", system.rest_node_dir)	
 	
 	pcall(nixio.fs.remover, system.rest_slivers_dir)
+	cdata.file_put(ctree.filter(sliver.dir_filter, node.slivers), "index.html", system.rest_slivers_dir)
 	if node.local_slivers then
 		cdata.file_put(ctree.filter(sliver.out_filter, node.slivers), nil, system.rest_slivers_dir)
 	end

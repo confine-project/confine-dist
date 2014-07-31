@@ -352,7 +352,9 @@ function file_view(request, name, patterns)
     local map = {
         ['base'] = 'index.html',
         ['node'] = 'node/index.html',
+        ['slivers'] = 'slivers/index.html',
         ['sliver'] = 'slivers/%s/index.html',
+        ['templates'] = 'templates/index.html',
         ['template'] = 'templates/%s/index.html',
     }
     
@@ -451,9 +453,11 @@ function api_path_dispatch(request, api_path)
         ['^/node/ctl/refresh/$'] = {pullrequest_view, 'ctl'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
-        ['^/slivers/$'] = {listdir_view, 'slivers'},
+--      ['^/slivers/$'] = {listdir_view, 'slivers'},
+        ['^/slivers/$'] = {file_view, 'slivers'},
         ['^/templates/(%d+)/$'] = {file_view, 'template'},
-        ['^/templates/$'] = {listdir_view, 'templates'},
+--      ['^/templates/$'] = {listdir_view, 'templates'},
+        ['^/templates/$'] = {file_view, 'templates'},
     }
     for p, view in pairs(map) do
         local patterns = api_path:match(p)
