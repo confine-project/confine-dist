@@ -1207,6 +1207,40 @@ confine_sliver_start() {
 
 	uci_set confine-slivers.$SL_ID.state=starting
 
+	# In case the node crashed, sliver overlay and rootfs mounts from previous deployments got lost and must be remounted...
+	#
+	# remount sliver overlay:
+	if mount | grep -e "^$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 on $LXC_IMAGES_PATH/$CT_NR/overlay.mount type" ; then
+		echo "sliver overlay already mounted"
+	else
+		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+			echo "remount sliver overlay" || {
+				confine_sliver_undeploy $SL_ID
+				err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
+			}
+	fi
+	#
+	# remount sliver rootfs:
+	if mount | grep -e "^confine-sliver-$SL_ID on $LXC_IMAGES_PATH/$CT_NR/rootfs type overlayfs" ; then
+		echo "sliver rootfs already mounted"
+	else
+		local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
+		local FS_URL=$( uci_get confine-slivers.$SL_ID.fs_template_url soft,quiet )
+		local FS_COMP=$( ( echo $FS_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+	                         ( echo $FS_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+	                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+		local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F".${FS_COMP}" '{print $1}')
+		
+		[ "$LXC_TEMPLATES_PATH" ] && [ "$FS_URL" ] && [ "$FS_COMP" ] && [ "$FS_NAME" ] &&\
+		[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] &&\
+			echo "remount sliver rootfs" &&\
+			mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
+				confine_sliver_undeploy $SL_ID
+				err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
+			}
+	fi
+
+	
 	confine_sliver_firewall_restart $SL_ID
 
 	lxc.lib lxc_start $CT_NR
