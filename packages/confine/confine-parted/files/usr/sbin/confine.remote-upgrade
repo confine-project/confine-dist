@@ -3,7 +3,6 @@ SERVERS="10.228.207.4 distro.confine-project.eu"
 IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
 LIMG="/tmp/confine.upgrade.img.gz"
 MD5="/misc/CONFINE-owrt-master-atom-current.version"
-TO_SAVE="/etc/config /etc/tinc /etc/dropbear /etc/uhttpd.crt.pem /etc/uhttpd.key.pem"
 TO_REMOVE="/overlay/etc/config/confine-defaults /overlay/usr/lib/opkg"
 
 error() {
@@ -20,9 +19,6 @@ check_md5() {
 
 upgrade_overlay() {
     echo "Detected overlay"
-    for d in $TO_SAVE; do
-        find $d -exec touch {} \;
-    done
     for d in $TO_REMOVE; do
         find $d -exec rm -rf {} \;
     done

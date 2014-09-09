@@ -1,2 +1,5 @@
 /etc/uhttpd.crt.pem
 /etc/uhttpd.key.pem
+/etc/config
+/etc/tinc
+/etc/dropbear
