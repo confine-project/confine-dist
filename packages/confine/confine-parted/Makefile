@@ -61,9 +61,10 @@ define Package/confine-parted/install
 	$(INSTALL_DIR) $(1)/lib/upgrade
 	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 
-	$(INSTALL_BIN) ./files/usr/sbin/confine.disk-parted $(1)/usr/sbin/
-	$(INSTALL_BIN) ./files/usr/sbin/confine.sysupgrade $(1)/usr/sbin/
-	$(INSTALL_BIN) ./files/usr/sbin/confine.remote-upgrade $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/usr/sbin/* $(1)/usr/sbin/
+	$(INSTALL_BIN) ./files/etc/firstboot/* $(1)/etc/firstboot/
+	$(CP) ./files/lib/upgrade/keep.d/* $(1)/lib/upgrade/keep.d/
+
 endef
 
 $(eval $(call BuildPackage,confine-parted))
