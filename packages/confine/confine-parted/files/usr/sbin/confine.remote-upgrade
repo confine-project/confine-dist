@@ -20,7 +20,7 @@ check_md5() {
 upgrade_overlay() {
     echo "Detected overlay"
     for d in $TO_REMOVE; do
-        find $d -exec rm -rf {} \;
+        [ -e $d ] && find $d -exec rm -rf {} \;
     done
     confine.sysupgrade "$OPTS" $LIMG
 }
