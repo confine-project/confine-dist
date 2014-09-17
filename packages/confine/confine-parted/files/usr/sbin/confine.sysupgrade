@@ -197,7 +197,8 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
 
     # Read files to save and touch them to place them in the overlay
     add_conffiles "$CONFFILES"
-    for d in $CONFFILES; do
+    AUX=`cat $CONFFILES`
+    for d in $AUX; do
         [ -e $d ] && find $d -exec touch {} \;
     done
 
