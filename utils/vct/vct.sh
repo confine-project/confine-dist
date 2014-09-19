@@ -512,6 +512,20 @@ vct_system_install_server() {
 	
 	EOF
 
+    # Update VCT server API URIs as plain HTTP as has no configured certificate
+    # WARNING the following code is sensitive to indentation !!
+    cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
+    from nodes.models import Server
+    
+    print '\nUpdating ServerAPI to use plain HTTP'
+    server = Server.objects.first()
+    if hasattr(server, 'api'): # only version > 0.11 requires this patch
+        for api in server.api.filter(base_uri__startswith='https'):
+            api.base_uri = api.base_uri.replace('https', 'http', 1)
+            api.save()
+    
+	EOF
+
     # Load further data into the database
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vcttemplates.json"
     vct_do python "$VCT_DIR/server/manage.py" loaddata "$VCT_DIR/server/vct/fixtures/vctslices.json"
