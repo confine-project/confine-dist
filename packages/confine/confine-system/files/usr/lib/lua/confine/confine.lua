@@ -40,7 +40,7 @@ local function get_local_base( sys_conf, node, server )
 		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
 		}
 
-	base.testbed_resources	= server.local_base.testbed_resources or {}
+	base.testbed_resources	= server.local_base and server.local_base.testbed_resources or {}
 		
 --	base.node_uri		= node.uri
 --	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
