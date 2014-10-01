@@ -61,7 +61,7 @@ def vm_management(modeladmin, request, queryset):
             if name not in ['remove', 'create']:
                 cmd = None
             commands = [DELETE]
-            if build.state != Build.FAILED:
+            if build.state not in [Build.FAILED, Build.DELETED]:
                 commands = [CREATE, DELETE]
     else:
         info = None
