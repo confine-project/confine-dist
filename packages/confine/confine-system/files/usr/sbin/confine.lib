@@ -1161,7 +1161,7 @@ confine_sliver_firewall_restart() {
 
 	    # set default policy ...
 	    # however, due to a supposed ebtables bug causing IPv4/UDP fragmentation on ACCEPTED UPD ports to fail
-	    # the follosing line is sommented in favor of what follows afterwards:
+	    # the follosing line is commented in favor of what follows afterwards:
 	    # ebtables -I FORWARD -i $IF_PAIR -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p ! IPv4 -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto ! UDP -j DROP
@@ -1175,7 +1175,7 @@ confine_sliver_firewall_restart() {
 		$EBTCMD
 	    done
 
-	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto UDP --ip-sport 0:1023  -j DROP
+#	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto UDP --ip-sport 0:1023  -j DROP # added via /etc/confine-ebtables.lst
 
 	    # set general rules ...
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 $( [ "$IF_IPV4" ] && echo "--ip-src ! $IF_IPV4" || echo "--ip-src 0.0.0.0/0" ) -j DROP
