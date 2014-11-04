@@ -754,8 +754,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_slice = slv.local_slice or {}
 			slv.local_slice.name = sv.exp_name
 			slv.local_slice.instance_sn = tonumber(sv.api_slice_instance_sn)
-			slv.local_slice.sliver_defaults = slv.local_slice.sliver_defaults or {}
-			slv.local_slice.sliver_defaults.isolated_vlan_tag = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or null
+			slv.local_slice.isolated_vlan_tag = sv.vlan_nr and tonumber(sv.vlan_nr, 16) or null
 
 			-- sys_get_lsliver_lslice_lgroup()
 			-- slv.local_slice.local_group  = ssh.sys_get__lgroup( sys_conf.sliver_system_dir..sv.sliver_nr..SLIVER_AUTH_FILES[sv.fs_template_type], false)
@@ -779,6 +778,11 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 						{uri=sv.api_overlay_uri, sha256=sv.api_overlay_sha256} or
 						{uri=null, sha256=null}
 						
+			slv.local_slice.sliver_defaults = slv.local_slice.sliver_defaults or {}
+			slv.local_slice.sliver_defaults.instance_sn = slv.instance_sn
+			slv.local_slice.sliver_defaults.resources = slv.resources
+
+
 			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
 			local ifk,ifv
@@ -930,8 +934,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 			sliver_desc = sliver_desc.."	option overlay_url 'file://%s%s'\n" %{sys_conf.sliver_template_dir,api_slv.local_overlay.sha256..".tgz"}
 		end
 
-		if type(api_slv.local_slice.sliver_defaults)=="table" and type(api_slv.local_slice.sliver_defaults.isolated_vlan_tag)=="number" then
-			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.sliver_defaults.isolated_vlan_tag}
+		if type(api_slv.local_slice.isolated_vlan_tag)=="number" then
+			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.isolated_vlan_tag}
 		end
 		
 		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+")
