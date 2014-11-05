@@ -480,6 +480,7 @@ vct_system_install_server() {
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
     # WARNING the following code is sensitive to indentation !!
+    # NOTE you need to include an EMPTY line to clean indentation
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
 	from users.models import *
 
@@ -488,7 +489,8 @@ vct_system_install_server() {
 	if not User.objects.filter(username='vct').exists():
 	    print 'Creating vct superuser'
 	    User.objects.create_superuser('vct', 'vct@localhost', 'vct', name='vct')
-	    users['vct'] = User.objects.get(username='vct')
+
+	users['vct'] = User.objects.get(username='vct')
 
 	for username in ['admin', 'researcher', 'technician', 'member']:
 	    if not User.objects.filter(username=username).exists():
