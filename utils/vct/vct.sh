@@ -1412,7 +1412,7 @@ vct_node_ssh() {
             vct_do_ping $IP >/dev/null && break
             
             [ "$COUNT" = 0 ] && \
-                echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
+                echo -n "Waiting for $VCRD_ID to listen on $IP (first boot may take up to 40 secs)" || \
                 echo -n "."
 
             COUNT=$(( $COUNT + 1 ))
@@ -1465,7 +1465,7 @@ vct_node_scp() {
 
 	    vct_do_ping $IP >/dev/null && break
 	    
-	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IP (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IP (first boot may take up to 40 secs)" >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
