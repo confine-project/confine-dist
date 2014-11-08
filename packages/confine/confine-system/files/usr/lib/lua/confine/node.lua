@@ -131,9 +131,9 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.uri                   = sys_conf.node_base_uri.."/node"
 	node.id                    = sys_conf.id
 	node.uuid                  = sys_conf.uuid
---	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
 	node.cert                  = type(node.cert)=="string" and node.cert:gsub("\r","") or null
+	node.api                   = { type="node", base_uri=sys_conf.node_base_uri, cert=node.cert }
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	
@@ -425,7 +425,11 @@ tmp_rules = in_rules2
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
-	table.insert(tmp_rules, {"/cert", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"})
+	table.insert(tmp_rules, {"/api", 				crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/type", 				crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/base_uri",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/cert", 				crules.cb2_nop})
+
 	table.insert(tmp_rules, {"/arch",				cb2_set_setup, "differs from predefined RD hardware!"})
 
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
@@ -541,7 +545,12 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/id"})
 --	table.insert(tmp_rules, {"/uuid"})
 	table.insert(tmp_rules, {"/pubkey"})
-	table.insert(tmp_rules, {"/cert"})
+--	table.insert(tmp_rules, {"/cert"})
+	table.insert(tmp_rules, {"/api"})
+	table.insert(tmp_rules, {"/api/type"})
+	table.insert(tmp_rules, {"/api/base_uri"})
+	table.insert(tmp_rules, {"/api/cert"})
+
 	table.insert(tmp_rules, {"/arch"})
 
 	table.insert(tmp_rules, {"/addrs"})
