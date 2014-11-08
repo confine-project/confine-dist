@@ -22,9 +22,9 @@ function set_configuration()
     local sys_conf = file_get("/var/run/confine/system_state")
     
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
+    SERVER_URI = sys_conf.server_base_uri:match('://(.*)')
     API_PATH_PREFIX = sys_conf.node_base_path
     NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
-    SERVER_API_PATH_PREFIX = sys_conf.server_base_path
     WWW_PATH = '/var/confine/'
     NODE_ID = sys_conf.id
     DAEMON_PID_FILE = '/var/run/confine/pid'
@@ -190,7 +190,7 @@ function get_links(request, name, patterns)
     end
     
     for k, link in pairs(server_links) do
-        url = '<' .. proto .. '://' .. SERVER_ADDR .. SERVER_API_PATH_PREFIX .. '/' .. link[1] .. '>; '
+        url = '<' .. proto .. '://' .. SERVER_URI .. '/' .. link[1] .. '>; '
         url = interp(url, {node_id=NODE_ID, object_id=patterns})
         rel = 'rel="http://confine-project.eu/rel/' .. link[2] .. '"'
         links[k] = url .. rel
@@ -476,7 +476,7 @@ function internal_server_error(request, err_msg)
     local headers = {
         ['Status'] = "HTTP/1.0 500 Internal Server Error",
         ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
-        ['ETag'] = get_etag(err_msg),
+--        ['ETag'] = get_etag(err_msg),
         ['Allow'] = 'GET HEAD',
         ['Content-Type'] = "text/plain",
         ['Content-Encoding'] = "chunked",
