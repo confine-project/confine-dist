@@ -115,6 +115,16 @@ local function get_lnode_sliver_pub_ipv4 (sys_conf)
 	return sliver_pub_ipv4_proto, sliver_pub_ipv4_range
 end
 
+function get_node_mgmt_net(sys_conf)
+	
+	if type(sys_conf.tinc_gateway) == "string" then
+		return tinc.get_tinc_mgmt_net(sys_conf)
+	else
+		
+		return {addr=sys_conf.addrs.mgmt, backend="native"}, null
+	end
+end
+
 
 
 function get_new_cycle_lnode( sys_conf, cached_node )
@@ -158,9 +168,9 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	node.properties            = cached_node.properties --or {}
 ----	
-	node.mgmt_net		   = tinc.get_node_mgmt_net(sys_conf, cached_node.mgmt_net)
---	node.local_server          = tinc.get_lserver(sys_conf)
---	node.local_gateways        = tinc.get_lgateways(sys_conf)
+
+	node.mgmt_net,node.tinc    = get_node_mgmt_net(sys_conf)
+--	node.mgmt_net		   = get_tinc_net(sys_conf, "node_" .. sys_conf.id)
 	
 --	node.local_group           = ssh.sys_get__lgroup(sys_conf.ssh_node_auth_file, true)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
@@ -435,43 +445,23 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/addr",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/backend",			crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/native",			crules.cb2_set})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_server",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey",	crules.cb2_nop})
 
+	table.insert(tmp_rules, {"/tinc",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/name",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/pubkey",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses/*",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses/*/*",			crules.cb2_nop})
 
-	table.insert(tmp_rules, {"/local_server",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/app_url",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net",				tinc.cb2_mgmt_net})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",					crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/backend",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/native",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/name",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/addr",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/port",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island/uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/pubkey",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/is_active",		crules.cb2_set})
-
-
-	table.insert(tmp_rules, {"/local_gateways",			crules.cb2_set})  --must exist
-	table.insert(tmp_rules, {"/local_gateways/*",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/description",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",				tinc.cb2_mgmt_net})
+--[[
+	table.insert(tmp_rules, {"/local_gateways",						crules.cb2_set})  --must exist
+	table.insert(tmp_rules, {"/local_gateways/*",						crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/uri",					crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn",					crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/description",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",					tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/addr",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/backend",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/native",				crules.cb2_set})
@@ -485,7 +475,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/addresses/*/island/uri",crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/pubkey",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/is_active",		crules.cb2_set})
-	
+]]--
 
 
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_direct_ifaces})
@@ -569,10 +559,13 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/mgmt_net"})
 	table.insert(tmp_rules, {"/mgmt_net/addr"})
 	table.insert(tmp_rules, {"/mgmt_net/backend"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_server"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey"})
+
+	table.insert(tmp_rules, {"/tinc"})
+	table.insert(tmp_rules, {"/tinc/name"})
+	table.insert(tmp_rules, {"/tinc/pubkey"})
+	table.insert(tmp_rules, {"/tinc/addresses"})
+	table.insert(tmp_rules, {"/tinc/addresses/*"})
+	table.insert(tmp_rules, {"/tinc/addresses/*/*"})
 
 	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})
