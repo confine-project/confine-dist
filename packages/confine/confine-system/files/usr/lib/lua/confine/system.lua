@@ -222,7 +222,7 @@ function get_system_conf(sys_conf, arg)
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
 
-	conf.tinc_gateway          = uci.get("confine", "mgmt_net", "tinc_gateway")
+	conf.tinc_gateway          = uci.get("confine", "node", "tinc_gateway")
 --	conf.tinc_node_key_priv    = "/etc/tinc/confine/rsa_key.priv" -- required
 --	conf.tinc_node_key_pub     = "/etc/tinc/confine/rsa_key.pub"  -- created by confine_node_enable
 	conf.tinc_hosts_dir        = "/etc/tinc/confine/hosts/"       -- required
