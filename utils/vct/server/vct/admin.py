@@ -99,14 +99,14 @@ if settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
     if EXISTS_SLIVER_DEFAULTS:
-        # TODO replace deprecated SLICES_SLICE_EXP_DATA_EXTENSIONS with 
-        # SLICES_SLIVER_DATA_EXTENSIONS
+        #200 drop overlay field but keep backwards compatibility
+        FILE_FIELDS = ('data', 'overlay') if 'overlay' in dir(Sliver) else ('data',)
         SliverDefaultsInline.form = local_files_form_factory(SliverDefaults,
-                ('data', 'overlay'), base_class=SliverDefaultsInline.form)
-        SliceSliversAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'))
-        SliverAdmin.form = local_files_form_factory(Sliver, ('data', 'overlay'),
+                FILE_FIELDS, base_class=SliverDefaultsInline.form)
+        SliceSliversAdmin.form = local_files_form_factory(Sliver, FILE_FIELDS)
+        SliverAdmin.form = local_files_form_factory(Sliver, FILE_FIELDS,
                 base_class=SliverAdmin.form)
-    else: # backwards compatibility
+    else: #234 backwards compatibility
         SliceAdmin.form = local_files_form_factory(Slice, ('exp_data', 'overlay'),
                 base_class=SliceAdmin.form)
         SliceSliversAdmin.form = local_files_form_factory(Sliver,
