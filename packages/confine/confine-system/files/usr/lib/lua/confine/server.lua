@@ -89,8 +89,6 @@ function get_server_node(sys_conf, cache)
 		--FIXME, REMOVEME once #234 got closed:
 		slice_obj.exp_data_uri=nil
 		slice_obj.exp_data_sha256=nil
-		slice_obj.overlay_uri=nil
-		slice_obj.overlay_sha256=nil
 		slice_obj.template=nil
 		slice_obj.vlan_nr=nil
 		
@@ -125,21 +123,6 @@ function get_server_node(sys_conf, cache)
 			
 		else
 			sliver_obj.local_data = {uri=data.null, sha256=data.null}
-		end
-		
-		
-		if type(sliver_obj.overlay_uri)=="string" and sliver_obj.overlay_uri:len() > 0 and
-			type(sliver_obj.overlay_sha256)=="string" and sliver_obj.overlay_sha256:len() then
-			
-			sliver_obj.local_overlay = {uri=sliver_obj.overlay_uri, sha256=sliver_obj.overlay_sha256}
-			
-		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.overlay_uri)=="string" and slice_obj.sliver_defaults.overlay_uri:len() > 0 and
-			type(slice_obj.sliver_defaults.overlay_sha256)=="string" and slice_obj.sliver_defaults.overlay_sha256:len() then
-			
-			sliver_obj.local_overlay = {uri=slice_obj.sliver_defaults.overlay_uri, sha256=slice_obj.sliver_defaults.overlay_sha256}
-			
-		else
-			sliver_obj.local_overlay = {uri=data.null, sha256=data.null}
 		end
 		
 	end
