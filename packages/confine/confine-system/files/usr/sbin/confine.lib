@@ -1040,7 +1040,7 @@ CONFINE_SLIVER_DISK_MB=150
 	    [ "$DATA_URL" = "${DATA_SITE}${DATA_NAME}.${DATA_COMP}" ] ||\
                    err $FUNCNAME "Invalid $DATA_URL != ${DATA_SITE}${DATA_NAME}.${DATA_COMP}"
 	    
-	    install_url $DATA_URL $DATA_SITE $DATA_NAME $DATA_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install,soft &&\
+	    install_url $DATA_URL $DATA_SITE $DATA_NAME $DATA_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install,soft,xattrs &&\
     	    echo "installed overlay data $DATA_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 		confine_sliver_undeploy $SL_ID
 		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
@@ -1318,7 +1318,7 @@ confine_sliver_dump_overlay() {
 	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
 	   [ "$CT_NR" ] && \
 	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
-		tar -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		tar --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
 		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
 		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
 	else

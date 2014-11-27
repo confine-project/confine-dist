@@ -349,6 +349,7 @@ install_url() {
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," || echo "" )
     local CMD_INSTALL=$( echo "$OPT_CMD" | grep -e "install" > /dev/null && echo "install," || echo "" )
     local CMD_UPDATE=$( echo "$OPT_CMD" | grep -e "update" > /dev/null && echo "update," || echo "" )
+    local CMD_XATTRS=$( echo "$OPT_CMD" | grep -e "xattrs" > /dev/null && echo "--xattrs" || echo "" )
 
     # echo $@ >&2
     
@@ -408,8 +409,8 @@ install_url() {
 
 	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
             ( [ -d $INSTALL_PATH ] && \
-	    tar --no-overwrite-dir -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
-	    tar --no-overwrite-dir -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    tar --no-overwrite-dir $CMD_XATTRS -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    tar --no-overwrite-dir $CMD_XATTRS -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
 	    
 	    echo "nop" > /dev/null
 	    
