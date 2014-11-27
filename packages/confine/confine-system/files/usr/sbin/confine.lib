@@ -1046,6 +1046,12 @@ CONFINE_SLIVER_DISK_MB=150
 		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
 	    }
 	    
+	    local f=
+	    for f in $(find $LXC_IMAGES_PATH/$CT_NR/overlay.mount -type l ); do
+		ls -l $f | grep -qe "-> (overlay-whiteout)$" && \
+			setfattr --no-dereference --name=trusted.overlay.whiteout --value=y $f
+	    done
+	    
 	fi
 
 	# Install sliver rootfs:
