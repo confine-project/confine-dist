@@ -1618,6 +1618,13 @@ vct_build_node_base_image() {
     }
 }
 
+vct_build_node_base_image_clean() {
+    local BUILD_PATH="$VCT_DIR/../.."
+    rm -rf $BUILD_PATH/.prepared
+    rm -rf $BUILD_PATH/openwrt
+    mkdir $BUILD_PATH/openwrt
+    vct_build_node_base_image $@
+}
 
 vct_build_sliver_data() {
     local EXP_PATH=$1
@@ -1788,7 +1795,8 @@ vct_help() {
     Build Functions
     ---------------
 
-    vct_build_node_base_image                   : Build node image from scratch 
+    vct_build_node_base_image                   : Build node image
+    vct_build_node_base_image_clean             : Build node image from scratch 
     vct_build_sliver_data <EXP_DIR>             : Build sliver data from dir
     vct_build_sliver_template <OS_TYPE>         : Build sliver template image
 
@@ -1849,7 +1857,7 @@ else
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;
 
-        vct_build_node_base_image)  $CMD "$@";;
+        vct_build_node_base_image*) $CMD "$@";;
         vct_build_sliver_data)      $CMD "$@";;
         vct_build_sliver_template)  $CMD "$@";;
 
