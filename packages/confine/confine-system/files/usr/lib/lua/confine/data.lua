@@ -143,12 +143,7 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 		os.remove(header_file)
 		os.remove(data_file)
 		
-		if header:match("^HTTP/1.[%d] 404 ") then --NOT FOUND
-			
-			dbg("%6s url=%-60s base_key=%s index_key=%s", "MISSING", url, tostring(base_key), tostring(index_key))
-			assert( false, "wget returned: '404 NOT FOUND' full response: " .. tostring(header) )
-			
-		elseif header:match("^HTTP/1.[%d] 200 OK") then
+		if header:match("^HTTP/1.[%d] 200 OK") then
 			
 			header_etag = (header:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n",""):match("^[^;]+")
 			
@@ -179,13 +174,13 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "UNCHANGED", url, tostring(base_key), tostring(index_key))
 			
-			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache")
+			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache when retrieving "..url)
 			cached.sqn = cache.sqn
 			
 			return cached.data, index_key
 			
 		else
-			assert( false, "ERROR url=%-60s base_key=%s index_key=%s header=%s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
+			assert( false, "ERROR url=%s base_key=%s index_key=%s header: %s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
 		end		
 		
 	end
