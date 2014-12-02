@@ -416,7 +416,9 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data,private/overlay,pki/ca}
+    # Since controller v.0.8a32 slices files path has changed (rev ae55e13c)
+    vct_do mkdir -p $VCT_SERVER_DIR/{static,pki/ca}
+    vct_do mkdir -p $VCT_DL_DIR/{templates,exp_data,overlay}
     # Don't know why /pki gets created as root.. but here a quick fix:
     vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     

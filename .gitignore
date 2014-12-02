@@ -14,3 +14,4 @@ vct.nodes.local
 *~
 local_settings.py
 /files/etc/confine.version
+*.swp

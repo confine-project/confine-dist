@@ -59,7 +59,6 @@ DATABASES = {
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-#MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'media')
 MEDIA_ROOT = get_vct_config('VCT_DL_DIR')
 PRIVATE_MEDIA_ROOT = os.path.join(VCT_SERVER_ROOT, 'private')
 

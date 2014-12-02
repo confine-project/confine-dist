@@ -47,6 +47,7 @@ def local_files_form_factory(model_class, field_names, extensions=None, base_cla
     def __init__(self, *args, **kwargs):
         base_class.__init__(self, *args, **kwargs)
         for field_name in field_names:
+            #FIXME path is invalid on dynamic upload_to + settings override
             path = get_file_field_base_path(model_class, field_name)
             field = model_class._meta.get_field_by_name(field_name)[0]
             choices = []
