@@ -1604,8 +1604,8 @@ vct_build_node_base_image() {
       ./scripts/feeds update -a &&\
       ./scripts/feeds install -a )) &&\
     cd $BUILD_PATH &&\
-    make confclean &&\
-    make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\
+    make confclean  $@  &&\
+    make J=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}') $@ &&\
     ln -fs $BUILD_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
     echo &&\
     echo "The new image is available at:" &&\
