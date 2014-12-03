@@ -181,6 +181,9 @@ VCT_DEB_PACKAGES=" \
     gettext \
     psmisc \
     debootstrap \
+    automake \
+    autoconf \
+    help2man \
 "
 
 VCT_RPM_PACKAGES=" \
