@@ -130,7 +130,7 @@ if 'SLICES_SLICE_EXP_DATA_DIR' in dir(slc_settings):
     SLICES_SLIVER_EXP_DATA_NAME = SLICES_SLIVER_DATA_NAME
 
 # State
-STATE_SCHEDULE = 10
+STATE_SCHEDULE = 20
 
 # Public Key Infrastructure
 PKI_CA_PRIV_KEY_PATH = os.path.join(VCT_SERVER_ROOT, 'pki/ca/key.priv')
