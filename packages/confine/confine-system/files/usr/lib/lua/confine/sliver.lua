@@ -286,6 +286,7 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 		ctree.set_path_val(otree, path.."ipv4_addr/", nval.ipv4_addr or null)
 		ctree.set_path_val(otree, path.."ipv6_addr/", nval.ipv6_addr or null)
 		ctree.set_path_val(otree, path.."mac_addr/", nval.mac_addr or null)
+		ctree.set_path_val(otree, path.."vlan_tag/", nval.vlan_tag or null)
 
 		if failure then
 			ctree.set_path_val( otree, path, nil )
@@ -774,6 +775,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 						type        = sv["if%s_type"%ifv],
 						name        = sv["if%s_name"%ifv],
 						parent_name = sv["if%s_parent"%ifv] or null,
+						vlan_tag    = sv["if%s_type"%ifv]:match(IF_TYPES.isolated) and slv.local_slice.isolated_vlan_tag or null,
 						mac_addr    = sv["if%s_mac"%ifv],
 						ipv4_addr   = sv["if%s_ipv4"%ifv] and sv["if%s_ipv4"%ifv]:gsub("/[%d]+$","") or null,
 						ipv6_addr   = sv["if%s_ipv6"%ifv] and sv["if%s_ipv6"%ifv]:gsub("/[%d]+$","") or null
@@ -1316,6 +1318,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/interfaces/*/name"})
 	table.insert(tmp_rules, {"/*/interfaces/*/type"})
 	table.insert(tmp_rules, {"/*/interfaces/*/parent_name"}) --FIXME: parent_name (and search for parent)
+	table.insert(tmp_rules, {"/*/interfaces/*/vlan_tag"})
 	table.insert(tmp_rules, {"/*/interfaces/*/mac_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv4_addr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/ipv6_addr"})
