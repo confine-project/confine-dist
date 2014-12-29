@@ -195,6 +195,7 @@ define kmenuconfig_owrt
 endef
 
 define set_version
+# Never change the order of these values (processed by confine node system)!!!
 	: > files/etc/confine.version
 	echo "$(TIMESTAMP)" >> files/etc/confine.version
 	echo "$(GIT_BRANCH)" >> files/etc/confine.version

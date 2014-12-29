@@ -138,8 +138,6 @@ define Build/Compile
 endef
 
 define Package/confine-system/install
-	$(eval BRANCH_GIT := $(shell git branch | grep ^* | cut -d " " -f 2))
-	$(eval REV_GIT := $(shell git --no-pager log -n 1 --oneline | cut -d " " -f 1))
 
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
@@ -156,8 +154,6 @@ define Package/confine-system/install
 
 	$(CP) ./files/etc/firstboot/*                      $(1)/etc/firstboot
 	chmod +x $(1)/etc/firstboot/*
-	$(SED) 's,$$$$BRANCH,$(BRANCH_GIT),g'              $(1)/etc/firstboot/confine-banner.sh
-	$(SED) 's,$$$$REV,$(REV_GIT),g'                    $(1)/etc/firstboot/confine-banner.sh
 	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
