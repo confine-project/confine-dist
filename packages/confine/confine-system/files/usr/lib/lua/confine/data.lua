@@ -47,9 +47,11 @@ function file_put( data, file, dir )
 	dbg("updating "..dir..(file or ""))
 	
 	if file and data then
+		local jstr = json.encode(data):gsub('"properties":%[%]', '"properties":{}')
 		local out = io.open(dir .. file, "w")
 		assert(out, "Failed to open %s" %dir .. file)	
-		ltn12.pump.all(json.Encoder(data):source(), ltn12.sink.file(out))
+		out:write(jstr)
+		out:close()
 		
 		local tmp = os.tmpname()
 		local cmd = "cat "..dir..file.." | "..json_pretty_print_tool.." > "..tmp
