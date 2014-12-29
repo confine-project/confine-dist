@@ -414,7 +414,7 @@ end
 function cb2_lnode_lgroup_role( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_lnode_lgroup_role" end
 	
-	return ssh.sys_set__lgroup_role( sys_conf.ssh_node_auth_file, true, otree, ntree, path, begin, changed )
+	return ssh.sys_set__lgroup_role( sys_conf.ssh_node_auth_file, sys_conf.sync_node_admins, true, otree, ntree, path, begin, changed )
 end
 
 

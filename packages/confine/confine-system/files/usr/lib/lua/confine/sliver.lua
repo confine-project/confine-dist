@@ -541,7 +541,7 @@ function cb2_lsliver_lgroup_role( rules, sys_conf, otree, ntree, path, begin, ch
 	
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 	
-	return ssh.sys_set__lgroup_role( sys_conf.sliver_system_dir..("%.2x"%{oslv.nr})..SLIVER_AUTH_FILES[oslv.local_template.type], false, otree, ntree, path, begin, changed )
+	return ssh.sys_set__lgroup_role( sys_conf.sliver_system_dir..("%.2x"%{oslv.nr})..SLIVER_AUTH_FILES[oslv.local_template.type], true, false, otree, ntree, path, begin, changed )
 end
 
 
