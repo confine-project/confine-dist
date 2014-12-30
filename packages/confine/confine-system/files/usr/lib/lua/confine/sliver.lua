@@ -132,13 +132,13 @@ function cb2_sliver_uri( rules, sys_conf, otree, ntree, path, begin, changed )
 
 	local oslv = ctree.get_path_val(otree,path:match("^/local_slivers/[^/]+/"))
 	
-	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..oslv.uri_id)
+	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/slivers/"..oslv.uri_id.."/")
 end
 
 function cb2_node_uri( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_node_uri" end
 
-	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/node")
+	ctree.set_path_val(otree, path, sys_conf.node_base_uri.."/node/")
 end
 
 
@@ -415,10 +415,9 @@ function cb2_template( rules, sys_conf, otree, ntree, path, begin, changed )
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_uri/",   "string", {"^https?://.*%.tgz$", "^https?://.*%.tar%.gz$"} ) or failure
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."image_sha256/","string", {"^[%x]+$"} ) or failure
 
---		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."uri/",         "string", {"^https?://.*/[%d]+$"} ) or failure
-		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+$") then
-			local id = ((nval.uri:match("/[%d]+$")):gsub("/",""))
-			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id  )
+		if type(nval.uri)=="string" and nval.uri:match("^https?://.*/[%d]+/?$") then
+			local id = ((nval.uri:match("/[%d]+/?$")):gsub("/",""))
+			ctree.set_path_val( otree, path.."uri/", sys_conf.node_base_uri.."/templates/"..id.."/"  )
 			ctree.set_path_val( otree, path.."id/", id )
 		else
 			dbg( add_lslv_err( otree, path.."uri/", "Invalid", nval.uri) )
@@ -754,7 +753,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.name = sv.api_tmpl_name
 			slv.local_template.node_archs = ctree.copy_recursive_rebase_keys(tools.str2table(sv.api_tmpl_node_archs,"[^ ]+"), "node_archs" )
 			slv.local_template.type = sv.fs_template_type
-			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id
+			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id.."/"
 
 			slv.local_data = (sv.api_exp_data_uri and sv.api_exp_data_sha256) and
 						{uri=sv.api_exp_data_uri, sha256=sv.api_exp_data_sha256} or
@@ -784,7 +783,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			end		
 			
 			
-			slv.node = { uri = sys_conf.node_base_uri.."/node", id = sys_conf.id }
+			slv.node = { uri = sys_conf.node_base_uri.."/node/", id = sys_conf.id }
 			slv.slice = { uri = sv.api_slice_uri , id = tonumber(id) }
 			slv.state = sv.state
 			slv.template = { uri = slv.local_template.uri, id = slv.local_template.id }
