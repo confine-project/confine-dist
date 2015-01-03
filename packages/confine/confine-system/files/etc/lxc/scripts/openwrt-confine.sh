@@ -175,17 +175,23 @@ mkdir -p /etc/uci-applied-defaults
 cp /etc/uci-defaults/* /etc/uci-applied-defaults/
 EOF
 
-
+	uci_set dropbear.@dropbear[0].PasswordAuth=off     path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
+	uci_set dropbear.@dropbear[0].RootPasswordAuth=off path=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/config
 
 # set random passwd (FIXME: not working!):
-	local PASSWD="$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )"
-	cat <<EOF1 > /dev/null # $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/random-passwd.sh
+	PWDSCRIPT=$LXC_IMAGES_PATH/$CT_NR/rootfs/etc/uci-defaults/zzz-random-passwd.sh
+	cat <<EOF1 > $PWDSCRIPT
 #!/bin/sh
-echo "Setting random passwd=$PASSWD (disabling telnet, enabling ssh authorized key login)"
+
+PASSWD=\$( dd if=/dev/urandom  bs=1 count=8 2>/dev/null | hexdump -e '/4 "%08X" /4 "%08X" "\n"' )
+#PASSWD="confine"
+#echo "Setting random passwd=\$PASSWD (disabling telnet, enabling ssh authorized key login)" > /root/pwd.log
+
 passwd <<EOF2
-$PASSWD
-$PASSWD
+\$PASSWD
+\$PASSWD
 EOF2
 EOF1
+	chmod u+x $PWDSCRIPT
 
 }
