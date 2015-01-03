@@ -25,7 +25,7 @@ VCT_VIRT_DIR=/var/lib/vct
 # valid url types: http://, https://, ftp://, file://, ssh:[port]:<user@domain>://
 # valid image types: raw, img, or vmdk (vmdk only for virsh --version >= 0.9.9)
 # valid compressions: tgz or gz
-VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/misc/CONFINE-owrt-master-atom-20130925-1614.img.gz"
+VCT_NODE_TEMPLATE_URL="http://media.confine-project.eu/vct/vct-node-base-image-build.img.gz"
 
 # for developers:
 # by using url-tpye ssh or file one can quickly switch to
@@ -43,11 +43,11 @@ VCT_NODE_IMAGE_SIZE_MiB=$((8 * 1024))  # 8 GiB
 
 
 #VCT_SLICE_OWRT_TEMPLATE_URL="http://downloads.openwrt.org/backfire/10.03.1-rc6/x86_generic/openwrt-x86-generic-rootfs.tar.gz"
-VCT_SLICE_OWRT_TEMPLATE_URL="http://media.confine-project.eu/vct/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz"
+VCT_SLICE_OWRT_TEMPLATE_URL="http://media.confine-project.eu/vct/vct-sliver-template-build-openwrt-aa.tgz"
 VCT_SLICE_OWRT_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-openwrt.tgz" # MUST BE .tgz
 
-VCT_SLICE_DEBIAN_TEMPLATE_URL="http://media.confine-project.eu/vct/debian32-02.tgz"
-VCT_SLICE_DEBIAN_DATA_URL="http://media.confine-project.eu/vct/exp-data-hello-world-debian.tgz"
+VCT_SLICE_DEBIAN_TEMPLATE_URL="http://media.confine-project.eu/vct/vct-sliver-template-build-debian-wheezy.tgz"
+VCT_SLICE_DEBIAN_DATA_URL="http://media.confine-project.eu/vct/vct-exp-data-build-speedtest-confine-private-ifs.tgz"
 
 
 
