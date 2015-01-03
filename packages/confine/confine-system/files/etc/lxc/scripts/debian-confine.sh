@@ -138,6 +138,8 @@ EOF
 	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
 	[ "$USER_PUBKEY" ] && echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/authorized_keys	    
 
+	[ -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_rsa_key ] || ssh-keygen -q -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_rsa_key -N '' -t rsa
+	[ -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_dsa_key ] || ssh-keygen -q -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_dsa_key -N '' -t dsa	
 }
 
 
