@@ -1,3 +1,3 @@
 [submodule "openwrt"]
 	path = openwrt
-	url = http://git.confine-project.eu/confine/openwrt.git
+	url = git://git.openwrt.org/14.07/openwrt.git
