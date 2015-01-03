@@ -23,7 +23,6 @@ GIT_HASH := $(shell git rev-parse HEAD)
 BUILD_DIR := openwrt
 FILES_DIR := files
 PACKAGE_DIR := packages
-OWRT_PKG_DIR := $(PACKAGE_DIR)/openwrt
 OWRT_FEEDS := feeds.conf.in
 MY_CONFIGS := my_configs
 DOWNLOAD_DIR := dl
@@ -222,7 +221,7 @@ endef
 define nightly_build
 	$(eval REV_ID := $(shell git log -n 1 --format=format:%h))
 	$(eval OWRT_REV_ID := $(shell cd $(BUILD_DIR); git log -n 1 --format=format:%h))
-	$(eval PACKAGES_REV_ID := $(shell cd $(OWRT_PKG_DIR); git log -n 1 --format=format:%h))
+	$(eval PACKAGES_REV_ID := $(shell cd $(BUILD_DIR)/feeds/packages; git log -n 1 --format=format:%h))
 
 	$(eval BUILD_ID := $(BUILD_NUMBER)-$(REV_ID)-$(OWRT_REV_ID)-$(PACKAGES_REV_ID))
 
