@@ -172,6 +172,9 @@ VCT_DEB_PACKAGES=" \
     xmlstarlet \
     ca-certificates \
     wget \
+    curl \
+    lynx \
+    telnet-ssl \
     build-essential \
     subversion \
     libncurses5-dev \
