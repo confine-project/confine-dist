@@ -1563,7 +1563,7 @@ vct_node_mount() {
 
 	    mkdir -p $VCRD_MNTP
 	    
-	    vct_sudo mount -o loop,rw,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
+	    echo vct_sudo mount -o loop,rw,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
 		err $FUNCNAME "Failed mounting $VCRD_PATH"
 
 	    echo $VCRD_MNTP
@@ -1648,15 +1648,17 @@ vct_build_sliver_data() {
 }
 
 vct_build_sliver_template() {
-    local OS_TYPE=$1
-
-    VCT_SLICE_TEMPLATE_PASSWD="confine"
+    local OS=${1:-"debian"}
+    local OS_TYPE=$(echo $OS | awk -F'/' '{print $1}')
+    local OS_VARIANT=$(echo $OS | awk -F'/' '{print $2}')
+    shift
 
     mkdir -p $VCT_VIRT_DIR/sliver-templates
 
-    if echo $OS_TYPE | grep "debian" >/dev/null; then
-	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/debian
-	local TMPL_NAME=vct-sliver-template-build-debian
+    if [ "$OS_TYPE" == "debian" ]; then
+	OS_VARIANT=${OS_VARIANT:-"wheezy"}
+	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/$OS_TYPE-$OS_VARIANT
+	local TMPL_NAME=vct-sliver-template-build-$OS_TYPE-$OS_VARIANT
 	vct_sudo rm -rf $TMPL_DIR
 	mkdir -p $TMPL_DIR
 	
@@ -1682,7 +1684,7 @@ vct_build_sliver_template() {
 
 	    # Inspired by: http://www.wallix.org/2011/09/20/how-to-use-linux-containers-lxc-under-debian-squeeze/
 
-	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
+	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES $OS_VARIANT $TMPL_DIR/rootfs $VCT_SLIVER_TEMPLATE_DEBIAN_BASE_URL
 	    vct_sudo rm -f $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
 	    vct_sudo rm -f $TMPL_DIR/rootfs/dev/shm
 	    vct_sudo mkdir -p $TMPL_DIR/rootfs/dev/shm
@@ -1709,9 +1711,13 @@ PasswordAuthentication no
 EOF
 "
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
-confine
-confine
+$VCT_SLIVER_TEMPLATE_PASSWD
+$VCT_SLIVER_TEMPLATE_PASSWD
 EOF
+
+	    vct_sudo rm -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_*_key*
+#	    vct_sudo ssh-keygen -q -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_rsa_key -N '' -t rsa
+#	    vct_sudo ssh-keygen -q -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_dsa_key -N '' -t dsa
 
 	    vct_sudo_sh "cat <<EOF > $TMPL_DIR/rootfs/etc/inittab 
 id:2:initdefault:
@@ -1747,19 +1753,45 @@ EOF
 	    vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME.tgz --numeric-owner --directory $TMPL_DIR/rootfs .
 
 	    echo 
-            echo "The slice/sliver template image is available via the controller portal at:"
-            echo "Slices->Templates->[select template]->image as:"
-	    echo $TMPL_NAME.tgz
-	    echo "You may have to delete and recreate the template to consider the new image"
+            echo "The slice/sliver template image can be uploaded via the controller portal at:"
+            echo "Slices->Templates->[select template]->image from:"
+	    echo $VCT_DL_DIR/$TMPL_NAME.tgz
+	    ls -l $VCT_DL_DIR/$TMPL_NAME.tgz
 	    echo
 
 	fi
 	
 
 
-    elif echo $OS_TYPE | grep "openwrt" >/dev/null; then
+    elif [ "$OS_TYPE" == "openwrt" ]; then
+	OS_VARIANT=${OS_VARIANT:-"aa"}
+	local DL_PATH="$VCT_USER_HOME/dl"
+	local BUILD_DIR=$VCT_VIRT_DIR/sliver-templates/$OS_TYPE-$OS_VARIANT
+	local BUILD_NAME=vct-sliver-template-build-$OS_TYPE-$OS_VARIANT
+	local GIT_URL=$( ( [ "$OS_VARIANT" == "aa" ] && echo $VCT_SLIVER_TEMPLATE_OPENWRT_AA_SYSTEM_GIT_URL) ||  ( [ "$OS_VARIANT" == "bb" ] && echo $VCT_SLIVER_TEMPLATE_OPENWRT_BB_SYSTEM_GIT_URL) || echo "ERROR")
+	local BUILD_CONFIG="$BUILD_DIR/openwrt/.config"
 
-	echo "Sorry, not yet implemented"
+	mkdir -p $BUILD_DIR
+	mkdir -p $DL_PATH
+
+	(( [ -d $BUILD_DIR/openwrt ] && cd $BUILD_DIR/openwrt && git remote show origin  && git pull origin && git status) ||  git clone $GIT_URL $BUILD_DIR/openwrt) &&\
+	ln -fs $DL_PATH $BUILD_DIR/openwrt/dl &&\
+	( cd $BUILD_DIR/openwrt &&\
+	  scripts/feeds update -a &&\
+	  scripts/feeds install -a ) &&\
+	echo "$VCT_SLIVER_TEMPLATE_OPENWRT_BUILD_OPTS" > $BUILD_CONFIG &&\
+	( for PACKAGE in ${VCT_SLIVER_TEMPLATE_OPENWRT_PACKAGES}; do echo "CONFIG_PACKAGE_${PACKAGE}=y" >> $BUILD_CONFIG; done ) &&\
+	make -C $BUILD_DIR/openwrt defconfig > /dev/null &&\
+	time make -C $BUILD_DIR/openwrt J=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}') $@ &&\
+	cp $BUILD_DIR/openwrt/bin/x86/openwrt-x86-generic-rootfs.tar.gz $VCT_DL_DIR/$BUILD_NAME.tgz &&\
+	true || err $0 "Failed building $OS node image!!"  || return 1
+
+	echo 
+        echo "The slice/sliver template image can be uploaded via the controller portal at:"
+        echo "Slices->Templates->[select template]->image from:"
+	echo $VCT_DL_DIR/$BUILD_NAME.tgz
+	ls -l $VCT_DL_DIR/$BUILD_NAME.tgz
+	echo
 
     fi
     return 1
