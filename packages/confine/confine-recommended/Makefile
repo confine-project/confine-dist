@@ -41,7 +41,6 @@ define Package/confine-recommended
 	+kmod-openvswitch \
 	\
 	+screen \
-	+coreutils-dd \
 	+lm-sensors +lm-sensors-detect \
 	+usbutils +binutils +patch +pciutils \
 	\
@@ -54,18 +53,12 @@ define Package/confine-recommended
 	+ruby-readline +ruby-rexml +ruby-webrick +ruby-xmlrpc \
 	+ruby-yaml +ruby-zlib \
 	\
-	+bash +nano +less +fdisk \
+	+nano +less +fdisk \
 	+less +vim \
 	+bzip2 \
 	\
-	+e2fsprogs \
-	+sysfsutils \
-	+kmod-fs-vfat \
-	\
-	+radvd \
 	+hostapd \
 	+wpad \
-	+wireless-tools +iw \
 	+wide-dhcpv6-client +wide-dhcpv6-control \
 	+wide-dhcpv6-server \
 	+openvpn \
@@ -90,9 +83,6 @@ define Package/confine-recommended
 	+htop \
 	+debootstrap \
 	\
-	+kmod-usb-storage +kmod-usb-uhci +kmod-usb2 +kmod-usb-ohci +kmod-usb-core \
-	+kmod-usb-hid \
-	\
 	+usbip +usbip-client +usbip-server \
 	\
 	+kmod-usb-net \
@@ -110,10 +100,6 @@ define Package/confine-recommended
 	+kmod-iptunnel4 +kmod-ip6-tunnel +kmod-iptunnel6 \
 	+kmod-tun \
 	+kmod-nls-base \
-	\
-	+kmod-llc +kmod-loop \
-	+kmod-sched +kmod-sched-core \
-	+kmod-sit +kmod-stp \
 	\
 	+kmod-p54-common \
 	+kmod-p54-usb \
@@ -134,24 +120,6 @@ define Package/confine-recommended
 	+kmod-ipsec4 \
 	+kmod-ipsec6 \
 	\
-	+kmod-3c59x \
-	+kmod-8139cp \
-	+kmod-8139too \
-	+kmod-atl1 \
-	+kmod-atl1c \
-	+kmod-atl1e \
-	+kmod-atl2 \
-	+kmod-b44 \
-	+kmod-b43 \
-	+kmod-dm9000 \
-	+kmod-e100 \
-	+kmod-e1000 \
-	+kmod-et131x \
-	+kmod-gigaset \
-	+kmod-ne2k-pci \
-	+kmod-pcnet32 \
-	+kmod-r8169 \
-	+kmod-atm \
 
 endef
 

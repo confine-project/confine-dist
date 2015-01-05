@@ -52,13 +52,18 @@ define Package/confine-system
 	+strace \
 	+gawk \
 	+ip +tc +iw \
+	+wireless-tools \
 	+ebtables \
 	+tinc \
+	+radvd \
 	+file \
 	+diffutils \
 	+procps \
 	+losetup \
 	+coreutils-readlink \
+	+coreutils-dd \
+	+sysfsutils \
+	+e2fsprogs \
 	+fallocate-e2fsprogs \
 	+mount-utils \
 	+px5g \
@@ -102,13 +107,39 @@ define Package/confine-system
 	+uhttpd-mod-tls \
 	+uhttpd-mod-tls_cyassl \
 	\
+	+kmod-llc +kmod-loop \
+	+kmod-sched +kmod-sched-core \
+	+kmod-sit +kmod-stp \
+	\
 	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
 	\
 	+kmod-e1000e \
+	+kmod-3c59x \
+	+kmod-8139cp \
+	+kmod-8139too \
+	+kmod-atl1 \
+	+kmod-atl1c \
+	+kmod-atl1e \
+	+kmod-atl2 \
+	+kmod-b44 \
+	+kmod-b43 \
+	+kmod-dm9000 \
+	+kmod-e100 \
+	+kmod-e1000 \
+	+kmod-et131x \
+	+kmod-gigaset \
+	+kmod-ne2k-pci \
+	+kmod-pcnet32 \
+	+kmod-r8169 \
+	+kmod-atm \
 	\
 	+kmod-dummy \
 	+kmod-gre \
 	+kmod-fs-ext4 \
+	+kmod-fs-vfat \
+	\
+	+kmod-usb-storage +kmod-usb-uhci +kmod-usb2 +kmod-usb-ohci +kmod-usb-core \
+	+kmod-usb-hid \
 	\
 	+kmod-cfg80211 +kmod-mac80211 \
 	+kmod-ath5k +kmod-ath9k \
