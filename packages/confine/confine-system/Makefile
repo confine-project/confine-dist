@@ -39,7 +39,7 @@ define Package/confine-system
 	\
 	+lxc \
 	+veth +swconfig \
-	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
+	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig \
 	+kmod-ipv6 \
 	\
 	+coreutils +coreutils-rm +coreutils-timeout \
@@ -83,29 +83,18 @@ define Package/confine-system
 	+luci-app-diag-core \
 	+luci-app-firewall \
 	+luci-i18n-english \
-	+luci-lib-core \
-	+luci-lib-ipkg \
 	+luci-lib-json \
-	+luci-lib-lmo \
 	+luci-lib-nixio \
-	+luci-lib-sys \
-	+luci-lib-web \
-	+luci-mod-admin-core \
 	+luci-mod-admin-full \
 	+luci-mod-rpc \
-	+luci-proto-core \
 	+luci-proto-ppp \
-	+luci-sgi-cgi \
-	+luci-sgi-uhttpd \
 	+luci-ssl \
-	+luci-theme-base \
 	+luci-theme-openwrt \
 	\
 	+uclibcxx \
 	+uhttpd \
 	+uhttpd-mod-lua \
 	+uhttpd-mod-tls \
-	+uhttpd-mod-tls_cyassl \
 	\
 	+kmod-llc +kmod-loop \
 	+kmod-sched +kmod-sched-core \
