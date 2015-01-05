@@ -72,13 +72,10 @@ define create_configs
 	@( echo "reverting $(KCONFIG) for TARGET=$(TARGET)" )
 # This command restores OpenWrt's default configuration and adds answers
 # to some options to avoid the configuration process asking for them.
-# This should be fixed in mainstream soon.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
 	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
 	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
 		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
-		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
-		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) && \
 		echo "CONFIG_BUSYBOX_CONFIG_DF=y"                >> $(CONFIG) && \
 		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY=y"  >> $(CONFIG) )
         @( [ "with gdb" ] && \
