@@ -29,6 +29,7 @@ PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
+
 define Package/confine-system
   SECTION:=net
   CATEGORY:=Base system
@@ -38,6 +39,34 @@ define Package/confine-system
 	+confine-parted \
 	\
 	+lxc \
+	+lxc-attach \
+	+lxc-autostart \
+	+lxc-cgroup \
+	+lxc-checkconfig \
+	+lxc-clone \
+	+lxc-common \
+	+lxc-config \
+	+lxc-console \
+	+lxc-create \
+	+lxc-destroy \
+	+lxc-execute \
+	+lxc-freeze \
+	+lxc-hooks \
+	+lxc-info \
+	+lxc-ls \
+	+lxc-lua \
+	+lxc-monitor \
+	+lxc-monitord \
+	+lxc-snapshot \
+	+lxc-start \
+	+lxc-stop \
+	+lxc-unfreeze \
+	+lxc-unshare \
+	+lxc-user-nic \
+	+lxc-usernsexec \
+	+lxc-wait \
+	\
+	\
 	+veth +swconfig \
 	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig \
 	+kmod-ipv6 \
