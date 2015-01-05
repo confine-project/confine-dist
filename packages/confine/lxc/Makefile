@@ -75,9 +75,6 @@ define Package/lxc/description
 	Userspace tools to manage linux containers
 endef
 
-define Package/lxc/conffiles
-/etc/config/lxc
-endef
 
 
 
@@ -85,10 +82,6 @@ CONFIGURE_ARGS += --with-linuxdir=$(LINUX_DIR) --disable-apparmor
 
 define Package/lxc/install
 
-	$(INSTALL_DIR) $(1)/home
-	$(INSTALL_DIR) $(1)/home/lxc
-	$(INSTALL_DIR) $(1)/home/lxc/images
-	$(INSTALL_DIR) $(1)/home/lxc/templates
 	$(INSTALL_DIR) $(1)/cgroup
 
 	$(INSTALL_DIR) $(1)/usr/bin
@@ -96,26 +89,8 @@ define Package/lxc/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/
 	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_DIR) $(1)/etc/lxc
-	$(INSTALL_DIR) $(1)/etc/lxc/scripts
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_DIR) $(1)/etc/config
 
-	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
-	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
-	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
-	$(CP) ./files/etc/lxc/scripts/openwrt.sh   $(1)/etc/lxc/scripts/
-	$(CP) ./files/etc/lxc/scripts/debian.sh    $(1)/etc/lxc/scripts/
 	$(CP) ./files/usr/sbin/lxc.checkconfig $(1)/usr/sbin/
-	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
-	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_help
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_create
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_start
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_stop
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_remove
-	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_purge
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-attach $(1)/usr/bin/lxc-attach
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/src/lxc/lxc-cgroup $(1)/usr/bin/lxc-cgroup

@@ -37,9 +37,18 @@ define Package/confine-system
   DEPENDS:= \
 	+confine-parted \
 	\
+	+lxc \
+	+veth +swconfig \
+	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
+	+kmod-ipv6 \
+	\
+	+coreutils +coreutils-rm \
+	+coreutils-chroot +coreutils-sha1sum \
+	+bzip2 +gzip +tar \
+	\
+	\
 	+grub2 \
 	+bash \
-	+lxc \
 	+strace \
 	+gawk \
 	+ip +tc +iw \
@@ -125,6 +134,7 @@ define Package/confine-system/conffiles
 /etc/config/confine
 /etc/config/confine-slivers
 /etc/config/confine-slice-attributes
+/etc/config/lxc
 endef
 
 define Build/Prepare
@@ -138,6 +148,37 @@ define Build/Compile
 endef
 
 define Package/confine-system/install
+
+	$(INSTALL_DIR) $(1)/home
+	$(INSTALL_DIR) $(1)/home/lxc
+	$(INSTALL_DIR) $(1)/home/lxc/images
+	$(INSTALL_DIR) $(1)/home/lxc/templates
+	$(INSTALL_DIR) $(1)/cgroup
+
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(INSTALL_DIR) $(1)/usr/lib/lxc/
+	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/lxc
+	$(INSTALL_DIR) $(1)/etc/lxc/scripts
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/etc/config
+
+	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
+	$(CP) ./files/etc/lxc/scripts/openwrt.sh   $(1)/etc/lxc/scripts/
+	$(CP) ./files/etc/lxc/scripts/debian.sh    $(1)/etc/lxc/scripts/
+	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_help
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_create
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_start
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_stop
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_remove
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_purge
 
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin
