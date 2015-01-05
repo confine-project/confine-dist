@@ -1,5 +1,0 @@
-#!/bin/sh
-
-mount -t cgroup none /cgroup
-
-exit 0
