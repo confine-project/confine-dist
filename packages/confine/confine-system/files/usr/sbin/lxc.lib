@@ -63,13 +63,22 @@ lxc_name() {
     echo "$SL_NAME"
 }
 
+lxc_state() {
+	local SL_NAME=$( lxc_name "$1" )
+	lxc-info -n $SL_NAME 2>/dev/null | grep -ie "^state:" | awk '{print $2}'
+}
+
+lxc_pid() {
+	local SL_NAME=$( lxc_name "$1" )
+	lxc-info -n $SL_NAME 2>/dev/null | grep -ie "^pid:" | awk '{print $2}'
+}
 
 lxc_remove() {
     local SL_NAME=$( lxc_name "$1" )
 
     lxc_check
 
-    lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null && \
+    [ "$(lxc_state $SL_NAME)" == "RUNNING" ] && \
 	err $FUNCNAME "Container $SL_NAME still running"
     
     [ -d $LXC_IMAGES_PATH/$SL_NAME ] && rm -rf $LXC_IMAGES_PATH/$SL_NAME
@@ -80,9 +89,7 @@ lxc_purge() {
 
     lxc_check
 
-    
-
-    lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null && \
+    [ "$(lxc_state $SL_NAME)" == "RUNNING" ] && \
 	err $FUNCNAME "Container $SL_NAME still running"
 
     lxc_remove $SL_NAME
@@ -526,12 +533,14 @@ lxc_cleanup_dev() {
 
 }
 
+
+
 lxc_start() {
     local SL_NAME=$( lxc_name "$1" )
 
     lxc_check
 
-    if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ;then
+    if [ "$(lxc_state $SL_NAME)" == "RUNNING" ] ;then
 
 	err $FUNCNAME "Container $SL_NAME already running" soft
 
@@ -545,7 +554,7 @@ lxc_start() {
 	lxc-start -n $SL_NAME -d 
 	sleep 1
 
-	if ! lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	if ! [ "$(lxc_state $SL_NAME)" == "RUNNING" ] ;then
 	    lxc_cleanup_dev $SL_NAME
 	    lxc_stop $SL_NAME
 	    sleep 1
@@ -554,9 +563,8 @@ lxc_start() {
 	    sleep 1
 	fi
 	
-	if lxc-info -n $SL_NAME 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	if [ "$(lxc_state $SL_NAME)" == "RUNNING" ] ;then
 	    
-
 	    local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
 	    local IF_KEY=
 

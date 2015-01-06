@@ -1224,7 +1224,7 @@ confine_sliver_start() {
 
 	lxc.lib lxc_start $CT_NR
 
-	if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	if [ "$(lxc.lib lxc_state $CT_NR)" == "RUNNING" ] ; then
 	    uci_set confine-slivers.$SL_ID.state=started
 	else
 	    lxc.lib lxc_stop $CT_NR
@@ -1256,7 +1256,7 @@ confine_sliver_stop() {
 
 	if  [ "$CT_NR" ] ; then
 	    
-	    if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	    if [ "$(lxc.lib lxc_state $CT_NR)" == "RUNNING" ] ; then
 		lxc.lib lxc_stop $CT_NR
 	    fi
 
@@ -1352,12 +1352,12 @@ confine_info() {
 
 	local SLIVER_NR="$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet )"
 	local SLIVER_STATE="$( uci_get confine-slivers.$SLICE_ID.state soft,quiet )"
-	local LXC_PID="$( lxc-info -n $SLIVER_NR 2>/dev/null | grep pid: | awk '{print $2}' )"
+	local LXC_PID="$( lxc.lib lxc_pid $SLIVER_NR )"
 	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
 
 	printf "0x%-14s %-3s %-5s %-10s %-30s \n" \
-	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE "'$SLIVER_EXP_NAME'"
+	    $SLICE_ID $SLIVER_NR ${LXC_PID:-"-1"} $SLIVER_STATE "'$SLIVER_EXP_NAME'"
 
     done
 }
