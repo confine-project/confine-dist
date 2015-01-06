@@ -36,6 +36,20 @@ define Package/confine-system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	\
+	+@KERNEL_IKCONFIG \
+	+@KERNEL_CGROUPS \
+	+@KERNEL_CGROUP_FREEZER +@KERNEL_CGROUP_DEVICE +@KERNEL_CPUSETS +@KERNEL_CGROUP_CPUACCT +@KERNEL_RESOURCE_COUNTERS +@KERNEL_MEMCG +@KERNEL_CGROUP_SCHED +@KERNEL_FAIR_GROUP_SCHED \
+	+@KERNEL_NAMESPACES \
+	+@KERNEL_UTS_NS +@KERNEL_IPC_NS +@KERNEL_USER_NS +@KERNEL_PID_NS +@KERNEL_NET_NS \
+	+@KERNEL_LXC_MISC \
+	+@KERNEL_TTY +@KERNEL_UNIX98_PTYS +@KERNEL_DEVPTS_MULTIPLE_INSTANCES \
+	+@KERNEL_NETDEVICES +@KERNEL_MACVLAN +@KERNEL_VETH \
+	\
+	+libopenssl +openssh-keygen +openssl-util \
+	+@LIBCURL_OPENSSL +@LIBCURL_CRYPTO_AUTH +@LIBCURL_TLS-SRP +@LIBCURL_PROXY +@LIBCURL_ZLIB \
+	+libcurl \
+	\
 	+confine-parted \
 	\
 	+lxc \
@@ -161,7 +175,9 @@ define Package/confine-system
 	\
 	+kmod-cfg80211 +kmod-mac80211 \
 	+kmod-ath5k +kmod-ath9k \
-	+kmod-ath9k-common +kmod-ath9k-htc
+	+kmod-ath9k-common +kmod-ath9k-htc \
+	\
+
 
 endef
 
