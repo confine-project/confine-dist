@@ -42,7 +42,7 @@ define Package/confine-system
 	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig +kmod-macvtap \
 	+kmod-ipv6 \
 	\
-	+coreutils +coreutils-rm \
+	+coreutils +coreutils-rm +coreutils-timeout \
 	+coreutils-chroot +coreutils-sha1sum \
 	+bzip2 +gzip +tar \
 	\
