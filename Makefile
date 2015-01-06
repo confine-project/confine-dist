@@ -38,7 +38,7 @@ MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
 
 CONFIG := $(BUILD_DIR)/.config
-KCONF := target/linux/$(TARGET)/config-3.3
+KCONF := target/linux/$(TARGET)/config-3.10
 KCONFIG := $(BUILD_DIR)/$(KCONF)
 
 IMAGES = images
@@ -74,11 +74,15 @@ define create_configs
 # to some options to avoid the configuration process asking for them.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
 	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
-	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
-		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
-		echo "CONFIG_BUSYBOX_CONFIG_DF=y"                >> $(CONFIG) && \
-		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY=y"  >> $(CONFIG) )
-        @( [ "with gdb" ] && \
+	@( echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) )
+	@( [ "$(SUBTARGET)" ] && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
+	@( [ "$(PROFILE)" ]   && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
+	echo "CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY=y"  >> $(CONFIG)
+	echo "CONFIG_BUSYBOX_CONFIG_DF=y"                >> $(CONFIG)
+	echo "CONFIG_LIBCURL_OPENSSL=y"                  >> $(CONFIG)
+	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
+
+        @( ! [ "with gdb" ] && \
                 echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
                 echo "CONFIG_GDB=y"                       >> $(CONFIG) || true )
 	@( ! [ "static binaries for confine slivers" ] && \
@@ -102,10 +106,6 @@ define create_configs
 		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IPCALC_LONG_OPTIONS=y"          >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_openssh-client=y"                              >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_openssh-sftp-server=y"                         >> $(CONFIG) || true )
-	@( [ "$(SUBTARGET)" ] && \
-		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
-	@( [ "$(PROFILE)" ] && \
-		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
 	@( [ -z "$(SPECIFICS)" ] && [ "$(PARTSIZE)" ] && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
@@ -164,10 +164,9 @@ define create_configs
 		echo "CONFIG_PACKAGE_bash-completion=y" >> $(CONFIG) && \
 		true || true )
 
-	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
 	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
-	@yes "" | make -C "$(BUILD_DIR)" kernel_oldconfig > /dev/null
+#	@yes "" | make -C "$(BUILD_DIR)" kernel_oldconfig > /dev/null
 
 endef
 
