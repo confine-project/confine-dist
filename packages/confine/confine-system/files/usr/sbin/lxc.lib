@@ -475,10 +475,14 @@ loop_bridge_ifnames() {
 
 lxc_stop() {
     local SL_NAME=$( lxc_name "$1" )
+    local SL_PID=$( lxc_pid $SL_NAME )
 
     lxc_check
 
-    lxc-stop -n $SL_NAME
+    timeout 6 lxc-stop -n $SL_NAME || {
+	err $FUNCNAME "Failed soft-stopping container $SL_NAME! Killing pid=$SL_PID the hard way" soft
+	[ "$SL_PID" ] && kill -9 $SL_PID
+	}
 
     local IF_KEYS="$( uci_get lxc.general.lxc_if_keys )"
     local IF_KEY=
