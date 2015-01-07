@@ -174,6 +174,8 @@ if system.check_pid() then
 	sig.signal(sig.SIGTERM, tools.handler)
 	sig.signal(sig.SIGCONT, tools.wakeup)
 	
+	os.execute( "date >> /root/confine.daemon-starts" )
+	
 	local sys_conf = system.get_system_conf( nil, arg )
 	assert(sys_conf)
 	
