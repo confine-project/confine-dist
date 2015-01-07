@@ -625,7 +625,7 @@ confine_node_enable() {
 	
 	uci_set confine.node.state=started
 
-	confine.lib confine_daemon_continue
+	[ "$(uci_get confine.node.cns_daemon   soft,quiet)" == "false" ] || confine_daemon_continue
 
 	return 0
     fi
