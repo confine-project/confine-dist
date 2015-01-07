@@ -96,12 +96,15 @@ function curl(url, data, header, etag, cert, compressed, timeout, stderr)
 		local cert_opt = cert and ("--ca-certificate=%s" %{cert}) or "--insecure"
 		local compressed_opt = compressed and "--compressed" or ""		
 		local timeout_opt = timeout and ("--max-time %s --connect-timeout %s" %{timeout, timeout}) or "3600"
-		local stderr_log = stderr and "" or "2>/dev/null"
 		
-		local cmd = [[ /usr/bin/curl -gLG %s %s %s --output %s %s %s %s %s ]]
-				%{cert_opt, compressed_opt, timeout_opt, data, header_opt, etag_opt, url, stderr_log}
-				
-		return os.execute( cmd )
+		local cmd = [[ /usr/bin/curl -gLG %s %s %s --output %s %s %s %s ]]
+				%{cert_opt, compressed_opt, timeout_opt, data, header_opt, etag_opt, url}
+		
+		if stderr then
+			return tools.execute( cmd )
+		else
+			return os.execute( cmd .. " 2>/dev/null")
+		end
 end
 
 function http_get_raw( url, dst, cert_file )
