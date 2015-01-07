@@ -72,8 +72,13 @@ end
 
 function execute(cmd)
 	dbg(cmd)
-	local result = os.execute(cmd)
-	dbg("return code = %s",result)
+
+	local out_file = os.tmpname()
+	local result = os.execute(cmd .. " > " .. out_file .. " 2>&1")
+	local out_data = nixio.fs.readfile( out_file )
+	os.remove(out_file)
+	
+	dbg("return code=%s output:\n%s",result, out_data)
 	return result
 end
 
