@@ -1261,8 +1261,9 @@ confine_sliver_stop() {
 	    fi
 
 	    confine_sliver_firewall_stop $CT_NR
+	    local SL_STATE=$( uci_get confine-slivers.$SL_ID.state soft )
 	    
-	    if [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "started" ] ; then
+	    if [ "$SL_STATE" = "started" ] || [ "$SL_STATE" = "starting" ]; then
 		uci_set confine-slivers.$SL_ID.state=deployed
 	    fi
 	    
