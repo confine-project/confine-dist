@@ -1008,8 +1008,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.deployed and uci_state==NODE.allocated then
 		
-		local sliver_desc = "config sliver '%s_%.4x'\n" %{uci_key,sys_conf.id}
-		if tools.execute( SLV_DEPLOY_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n" )==0 then
+		if tools.execute( SLV_DEPLOY_BIN.." "..uci_key )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
 			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
