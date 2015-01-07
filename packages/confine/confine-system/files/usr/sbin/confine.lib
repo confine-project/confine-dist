@@ -998,8 +998,8 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
 		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir && \
-		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" || {
-#		    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_TEMPLATES_PATH/$FS_NAME.dir install,soft || {
+		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
+		    echo "installed sliver template to $LXC_TEMPLATES_PATH/$FS_NAME.dir" || {
 			rm -rf $LXC_TEMPLATES_PATH/$FS_NAME.dir
 			rm -f $LXC_TEMPLATES_PATH/$FS_NAME
 			err $FUNCNAME "installing sliver=$SL_ID template to $LXC_TEMPLATES_PATH/$FS_NAME.dir failed!"
@@ -1016,9 +1016,9 @@ CONFINE_SLIVER_DISK_MB=150
 		touch $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		fallocate-e2fsprogs -l ${FS_SIZE_MB}M $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ &&\
-		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 \
-		&&\
-		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount || {
+		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
+		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+		echo "loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
 		}
@@ -1057,8 +1057,8 @@ CONFINE_SLIVER_DISK_MB=150
 	# Install sliver rootfs:
 	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
-		echo "installed sliver rootfs" &&\
-		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
+		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+		echo "mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
 		}
@@ -1193,7 +1193,7 @@ confine_sliver_start() {
 		echo "sliver overlay already mounted"
 	else
 		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
-			echo "remount sliver overlay" || {
+			echo "re-loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 				confine_sliver_undeploy $SL_ID
 				err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
 			}
@@ -1212,8 +1212,8 @@ confine_sliver_start() {
 		
 		[ "$LXC_TEMPLATES_PATH" ] && [ "$FS_URL" ] && [ "$FS_COMP" ] && [ "$FS_NAME" ] &&\
 		[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] &&\
-			echo "remount sliver rootfs" &&\
-			mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
+			mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+			echo "re-mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
 				confine_sliver_undeploy $SL_ID
 				err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
 			}
