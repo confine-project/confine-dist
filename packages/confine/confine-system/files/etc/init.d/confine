@@ -11,11 +11,11 @@ firstboot() {
     [ ! -d "$FIRSTB_BACKUP" ] && mkdir -p $FIRSTB_BACKUP
     ls $FIRSTB/* > /dev/null 2>&1
     [ $? -ne 0 ] && return
-    for f in $FIRSTB/*; do
-        echo "[FirstBoot] Executing $f"
-	cp -f $f $FIRSTB_BACKUP/
-	$f
-        rm -f $f
+    for f in $(ls $FIRSTB); do
+        echo "[FirstBoot] Executing $FIRSTB/$f"
+	cp -f $FIRSTB/$f $FIRSTB_BACKUP/
+        rm -f $FIRSTB/$f # rm before executing or rebooting scripts will never get removed and loop forever
+	$FIRSTB_BACKUP/$f
     done
 }
 
