@@ -2,7 +2,8 @@
 echo "Firstboot executed, rebooting system in 5 seconds"
 sleep 5
 echo "$(date) zzz-reboot" >> /root/confine.daemon-starts
-reboot
+sync
+reboot -f
 echo "$(date) zzz-reboot-000" >> /root/confine.daemon-starts
 sleep 5
 echo "$(date) zzz-reboot-005" >> /root/confine.daemon-starts
