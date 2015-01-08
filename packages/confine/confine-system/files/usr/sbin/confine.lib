@@ -15,7 +15,7 @@ ERR_LOG_TAG='CONFINE'
 
 BIN_MOUNT=/usr/bin/mount
 BIN_UMOUNT=/usr/bin/umount
-
+BIN_PS=/usr/bin/ps
 
 . /usr/sbin/lxc.functions
 . /usr/sbin/confine.functions
@@ -249,7 +249,7 @@ confine_tinc_stop() {
     echo "$FUNCNAME $@" >&2
 
     local TINC_CMD="tincd --logfile -n confine"
-    local TINC_PID=$( ps | grep -e "$TINC_CMD" | grep -v grep | awk '{print $1}' )
+    local TINC_PID=$( $BIN_PS aux | grep -e "$TINC_CMD" | grep -v grep | awk '{print $1}' )
     local TINC_CNT=0
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
