@@ -1001,7 +1001,7 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
 		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir && \
-		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
+		    $BIN_TAR --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
 		    echo "installed sliver template to $LXC_TEMPLATES_PATH/$FS_NAME.dir" || {
 			rm -rf $LXC_TEMPLATES_PATH/$FS_NAME.dir
 			rm -f $LXC_TEMPLATES_PATH/$FS_NAME
@@ -1328,7 +1328,7 @@ confine_sliver_dump_overlay() {
 	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
 	   [ "$CT_NR" ] && \
 	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
-		tar --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		$BIN_TAR --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
 		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
 		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
 	else
