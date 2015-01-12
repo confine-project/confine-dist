@@ -1,6 +1,7 @@
 import os
 
 from django import forms
+from django.conf import settings
 from django.core import validators
 from django.core.exceptions import ValidationError
 
@@ -24,7 +25,7 @@ else:
     EXISTS_SLIVER_DEFAULTS = True
 from slices import settings as slices_settings
 
-from . import settings 
+from . import settings as vct_settings
 from .actions import vm_management
 
 
@@ -52,13 +53,16 @@ def local_files_form_factory(model_class, field_names, extensions=None, base_cla
             field = model_class._meta.get_field_by_name(field_name)[0]
             choices = []
             for name in os.listdir(path):
+                # get file path relative to MEDIA_ROOT
+                file_path = os.path.join(path, name)
+                file_path = os.path.relpath(file_path, settings.MEDIA_ROOT)
                 if extensions:
                     for extension in extensions:
                         if name.endswith(extension):
-                            choices.append((name, name))
+                            choices.append((file_path, name))
                             break
                 else:
-                    choices.append((name, name))
+                    choices.append((file_path, name))
             if field.blank:
                 choices = (('empty', '---------'),) + tuple(choices)
                 self.fields[field_name].required = False
@@ -79,12 +83,12 @@ if is_installed('firmware'):
     from firmware.models import BaseImage
     from firmware.settings import FIRMWARE_BASE_IMAGE_EXTENSIONS
     
-    if settings.VCT_LOCAL_FILES:
+    if vct_settings.VCT_LOCAL_FILES:
         BaseImageInline.form = local_files_form_factory(BaseImage, 'image',
                 extensions=FIRMWARE_BASE_IMAGE_EXTENSIONS)
     
     # Replace node firmware download for "VM manager"
-    if settings.VCT_VM_MANAGEMENT:
+    if vct_settings.VCT_VM_MANAGEMENT:
         insert_change_view_action(Node, vm_management)
         insertattr(Node, 'actions', vm_management)
         node_modeladmin = get_modeladmin(Node)
@@ -96,7 +100,7 @@ if is_installed('firmware'):
 
 
 # Slices customization
-if settings.VCT_LOCAL_FILES:
+if vct_settings.VCT_LOCAL_FILES:
     TemplateAdmin.form = local_files_form_factory(Template, 'image',
             extensions=slices_settings.SLICES_TEMPLATE_IMAGE_EXTENSIONS)
     if EXISTS_SLIVER_DEFAULTS:

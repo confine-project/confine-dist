@@ -106,20 +106,15 @@ TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers
-SLICES_TEMPLATE_IMAGE_DIR = '.'
 SLICES_TEMPLATE_IMAGE_NAME = None
-SLICES_SLICE_DATA_DIR = '.'
 SLICES_SLICE_DATA_NAME = None
-SLICES_SLIVER_DATA_DIR = '.'
 SLICES_SLIVER_DATA_NAME = None
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
 
 # Slices and slivers - #200 backwards compatibility preventing warnings
 from slices import settings as slc_settings
 if 'SLICES_SLICE_OVERLAY_DIR' in dir(slc_settings):
-    SLICES_SLICE_OVERLAY_DIR = '.'
     SLICES_SLICE_OVERLAY_NAME = None
-    SLICES_SLIVER_OVERLAY_DIR = '.'
     SLICES_SLIVER_OVERLAY_NAME = None
 
 # Slices and slivers - #234 backwards compatibility preventing warnings
