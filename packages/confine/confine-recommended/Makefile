@@ -48,11 +48,6 @@ define Package/confine-recommended
 	\
 	+python +python-mini \
 	\
-	+ruby +ruby-core \
-	+ruby-dl +ruby-erb +ruby-gems +ruby-irb +ruby-openssl +ruby-rake \
-	+ruby-readline +ruby-rexml +ruby-webrick +ruby-xmlrpc \
-	+ruby-yaml +ruby-zlib \
-	\
 	+nano +less +fdisk \
 	+less +vim \
 	+bzip2 \
