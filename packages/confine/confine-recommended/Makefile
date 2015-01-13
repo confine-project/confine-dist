@@ -76,7 +76,6 @@ define Package/confine-recommended
 	+airview +broadcastflood \
 	\
 	+htop \
-	+debootstrap \
 	\
 	+usbip +usbip-client +usbip-server \
 	\
