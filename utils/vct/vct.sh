@@ -1625,6 +1625,8 @@ vct_build_node_base_image_clean() {
     rm -rf $BUILD_PATH/.prepared
     rm -rf $BUILD_PATH/openwrt
     mkdir $BUILD_PATH/openwrt
+    git submodule sync
+    git submodule update --init
     vct_build_node_base_image $@
 }
 
