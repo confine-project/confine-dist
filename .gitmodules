@@ -1,3 +1,12 @@
 [submodule "openwrt"]
 	path = openwrt
 	url = git://git.openwrt.org/14.07/openwrt.git
+[submodule "packages/luci"]
+	path = packages/luci
+	url = https://github.com/openwrt/luci.git
+[submodule "packages/packages"]
+	path = packages/packages
+	url = https://github.com/openwrt/packages.git
+[submodule "packages/oldpackages"]
+	path = packages/oldpackages
+	url = http://git.openwrt.org/14.07/packages.git
