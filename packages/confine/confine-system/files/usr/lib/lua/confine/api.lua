@@ -222,7 +222,7 @@ function conditional_response(request, response)
     local request_etag = request['headers']["If-None-Match"]
     local modified = true
     if request_etag and request_etag == response['headers']['ETag'] then
-        response['headers']['Status'] = "HTTP/1.0 304 Not Modified"
+        response['headers']['Status'] = "304 Not Modified"
         response['content'] = ''
         modified = false
     end
@@ -258,16 +258,15 @@ end
 
 function cgi_response(response)
     -- Formats response as CGI expects
-    local headers = response['headers']['Status'] .. '\r\n'
+    local headers = 'Status: ' .. response['headers']['Status'] .. '\r\n'
     for name, value in pairs(response['headers']) do
         if name ~= 'Status' then
             headers = headers .. name .. ': ' .. value .. '\r\n'
         end
     end
-    local content = headers .. '\r\n'
-    content = content .. response['content']
-    return content
+    return headers .. '\r\n' .. response['content']
 end
+
 
 
 -- VIEWS
@@ -276,7 +275,7 @@ function redirect(request, url)
     -- 303 redirection to url   
     local content =''
     local headers = {
-        ['Status'] = "HTTP/1.1 303 See Other",
+        ['Status'] = "303 See Other",
         ['Location'] = url,
         ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
 --        ['ETag'] = get_etag(content),
@@ -293,7 +292,7 @@ end
 function _redirect(request, url)
     -- 303 redirection to url
     local headers = {
-        ['Status'] = "HTTP/1.1 303 See Other",
+        ['Status'] = "303 See Other",
         ['Location'] = url
     }
     local response = {
@@ -307,7 +306,7 @@ end
 function not_found(request, url)
     -- 404 URL not found
     local headers = {
-        ['Status'] = "HTTP/1.0 404 Not Found"
+        ['Status'] = "404 Not Found"
     }
     local content = '{\n    "detail": "Requested ' .. url ..' not found"\n}'
     local response = {
@@ -403,11 +402,11 @@ function pullrequest_view(request, name, patterns)
             os.execute('touch ' .. PULL_REQUEST_LOCK_FILE)
             content = '{\n    "detail": "Node instructed to refresh itself"\n}'
         else
-            headers['Status'] = "HTTP/1.0 500 Internal Server Error"
+            headers['Status'] = "500 Internal Server Error"
             content = '{\n    "detail": "Confine daemon is not running"\n}'
         end
     else
-        headers['Status'] = "HTTP/1.0 429 Too Many Requests"
+        headers['Status'] = "429 Too Many Requests"
         content = '{\n    "detail": "Too many requests"\n}'
     end
     local response = {
@@ -431,7 +430,7 @@ function handle_response(request, response)
     response['headers']['Allow'] = 'GET HEAD'
     
     if not response['headers']['Status'] then
-        response['headers']['Status'] = "HTTP/1.0 200 OK"
+        response['headers']['Status'] = "200 OK"
     end
     
     -- Conditional response
@@ -473,7 +472,7 @@ function internal_server_error(request, err_msg)
 --    err_msg = '{\n    "detail": "Internal Server Error"\n}'
 
     local headers = {
-        ['Status'] = "HTTP/1.0 500 Internal Server Error",
+        ['Status'] = "500 Internal Server Error",
         ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
 --        ['ETag'] = get_etag(err_msg),
         ['Allow'] = 'GET HEAD',
