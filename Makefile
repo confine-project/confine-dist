@@ -112,7 +112,6 @@ define create_configs
 
 	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
 		grep -v "CONFIG_NOHIGHMEM"  				$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
-		echo "CONFIG_MATOM=y" 					>> $(KCONFIG) && \
 		echo "CONFIG_SMP=y" 					>> $(KCONFIG) && \
 		echo "CONFIG_SCHED_SMT=y" 				>> $(KCONFIG) && \
 		echo "CONFIG_HIGHMEM4G=y"				>> $(KCONFIG) && \
