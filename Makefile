@@ -159,10 +159,6 @@ define create_configs
 		echo "CONFIG_PACKAGE_grub=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_certtool=y" >> $(CONFIG) && \
 		\
-		echo "CONFIG_PACKAGE_oonf-dlep-plugin-service=y" >> $(CONFIG) && \
-		echo "CONFIG_PACKAGE_oonf-plugin-layer2-viewer=y" >> $(CONFIG) && \
-		echo "CONFIG_PACKAGE_oonf-plugin-nl80211-listener=y" >> $(CONFIG) && \
-		\
 		echo "CONFIG_PACKAGE_bridge=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_dnsmasq-dhcpv6=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_kmod-r6040=y" >> $(CONFIG) && \
