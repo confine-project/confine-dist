@@ -59,6 +59,7 @@ function get_server_node(sys_conf, cache)
 	
 	node.local_base     = data.http_get_keys_as_table(sys_conf.server_base_uri.."/", cert_file, cache)
 
+--[[
 	node.local_server   = data.http_get_keys_as_table(sys_conf.server_base_uri.."/server/", cert_file, cache)
 	
 	
@@ -71,7 +72,7 @@ function get_server_node(sys_conf, cache)
 		assert( ((gw_obj.mgmt_net or {}).tinc_server or {}).name, "Gateway response does not define mgmt_net.tinc_server.name")
 		node.local_gateways[gw_obj.mgmt_net.tinc_server.name] = gw_obj
 	end
-
+]]--
 	get_local_group(sys_conf, node, cert_file, cache)
 
 	node.local_slivers = { }
