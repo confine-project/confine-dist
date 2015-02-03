@@ -57,6 +57,22 @@ function get( config, section, option, default )
 	return val
 end
 
+function get_bool( config, section, option, default )
+
+	local uci = is_clean(config)
+	assert( uci, "uci.get_bool config=%s DIRTY when getting option=%s" %{tostring(config), tostring(section).."."..tostring(option)})
+	
+	local val = uci:get( config, section, option)
+
+	if val == "1" or val == "yes" or val == "on" or val == "true" or val == "enabled" then
+		return true
+	
+	elseif val == "0" or val == "no" or val == "off" or val == "false" or val == "disabled" then
+		return false
+	else	
+		return default
+	end
+end
 
 function get_all( config, section )
 

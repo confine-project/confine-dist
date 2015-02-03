@@ -166,8 +166,7 @@ function get_system_conf(sys_conf, arg)
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
 	conf.node_cert_file        = "/etc/uhttpd.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 
-	conf.sync_node_admins      = uci.get("confine", "node", "sync_node_admins") ~= "0" and true or false
-	tools.dbg("sync_node_admins="..tostring(conf.sync_node_admins).."  "..tostring(uci.get("confine", "node", "sync_node_admins")))
+	conf.sync_node_admins      = uci.get_bool("confine", "node", "sync_node_admins", true)
 	
 	conf.local_iface           = uci.get("confine", "node", "local_ifname")
 
