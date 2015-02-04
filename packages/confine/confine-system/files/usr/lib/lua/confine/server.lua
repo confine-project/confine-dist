@@ -55,7 +55,7 @@ function get_server_node(sys_conf, cache)
 		return nil
 	end
 	
-	local node = data.http_get_keys_as_table(sys_conf.server_base_uri.."/nodes/%d" % sys_conf.id, cert_file, cache)
+	local node = data.http_get_keys_as_table(sys_conf.server_base_uri.."/nodes/%d/" % sys_conf.id, cert_file, cache)
 	
 	node.local_base     = data.http_get_keys_as_table(sys_conf.server_base_uri.."/", cert_file, cache)
 
