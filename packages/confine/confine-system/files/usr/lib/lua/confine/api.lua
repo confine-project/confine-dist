@@ -5,6 +5,16 @@
 local json   = require "luci.json"
 local ltn12  = require "luci.ltn12"
 
+function get_table_by_key_val( t, val, key )
+	
+    local k,v
+    for k,v in pairs(t) do
+        if t[k][key] == val then
+            return t[k]
+        end
+    end
+    return nil
+end
 
 function file_get( file )
     local fd = io.open(file, "r")
@@ -20,7 +30,9 @@ end
 
 function set_configuration()
     local sys_conf = file_get("/var/run/confine/system_state")
-    
+
+    SERVER_STATE = file_get("/var/run/confine/server_state")
+    LINK_BASE_REL = sys_conf.link_base_rel
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
     SERVER_URI = sys_conf.server_base_uri:match('://(.*)')
     API_PATH_PREFIX = sys_conf.node_base_path
@@ -160,59 +172,36 @@ function get_links(request, name, patterns)
         ['node_templates'] = {'templates/', 'node/template-list'},
         ['node_refresh'] = {'node/ctl/refresh', 'node/do-refresh'},
     }
-    local server_links = {
-        ['server_base'] = {'', 'server/base'},
-        ['server_server'] = {'server/', 'server/server'},
-        ['server_nodes'] = {'nodes/', 'server/node-list'},
-        ['server_slices'] = {'slices/', 'server/slice-list'},
-        ['server_slivers'] = { 'slivers/', 'server/sliver-list'},
-        ['server_users'] = { 'users/', 'server/user-list'},
-        ['server_groups'] = {'groups/', 'server/group-list'},
-        ['server_gateways'] = {'gateways/', 'server/gateway-list'},
-        ['server_hosts'] = {'hosts/', 'server/host-list'},
-        ['server_templates'] = {'templates/', 'server/template-list'},
-        ['server_islands'] = {'islands/', 'server/island-list'},
-        ['server_reboot'] = {'nodes/${node_id}/ctl/reboot', 'server/do-reboot'},
-        ['server_req_api_cert'] = {'nodes/${node_id}/ctl/request-api-cert', 'controller/do-request-api-cert'},
-        ['server_node_source'] = {'nodes/${node_id}', 'node/source'},
-        ['server_update'] = {'slivers/${object_id}/ctl/update', 'server/do-update'},
-        ['server_upload_data'] = {'slivers/${object_id}/ctl/upload-data', 'controller/do-upload-data'},
-        ['server_sliver_source'] = {'slivers/${object_id}', 'node/source'},
-        ['server_upload_image'] = {'templates/${object_id}/ctl/upload-image', 'controller/do-upload-image'},
-        ['server_template_source'] = {'templates/${object_id}', 'node/source'},
-    }
+
     local links, url, rel = {}
     for k, link in pairs(node_links) do
         url = '<' .. proto .. '://' .. addr .. API_PATH_PREFIX .. '/' .. link[1] .. '>; '
-        rel = 'rel="http://confine-project.eu/rel/'..link[2]..'"'
-        links[k] = url .. rel
-    end
-    
-    for k, link in pairs(server_links) do
-        url = '<' .. proto .. '://' .. SERVER_URI .. '/' .. link[1] .. '>; '
-        url = interp(url, {node_id=NODE_ID, object_id=patterns})
-        rel = 'rel="http://confine-project.eu/rel/' .. link[2] .. '"'
+        rel = 'rel="' .. LINK_BASE_REL .. link[2] .. '"'
         links[k] = url .. rel
     end
     
     local map = {
-        ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates',
-                    'server_node_source', 'server_base', 'server_server', 'server_nodes',
-                    'server_users', 'server_groups', 'server_gateways', 'server_slivers',
-                    'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'node_refresh', 'server_nodes', 'server_node_source',
-                    'server_reboot'},
-        ['slivers'] = {'node_base', 'server_slivers'},
-        ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
-                      'server_update', 'server_upload_data'},
-        ['templates'] = {'node_base', 'server_templates'},
-        ['template'] = {'node_base', 'node_templates', 'server_templates',
-                        'server_template_source', 'server_upload_image'},
+        ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates'},
+        ['node'] = {'node_base',  'node_refresh'},
+        ['slivers'] = {'node_base'},
+        ['sliver'] = {'node_base', 'node_slivers'},
+        ['templates'] = {'node_base'},
+        ['template'] = {'node_base', 'node_templates'},
     }
     local rendered_links = {}
     for i, link in ipairs(map[name]) do
         rendered_links[i] = links[link]
     end
+
+    for k,v in pairs(
+        (name=='base'     and SERVER_STATE.local_base.header_links) or
+        (name=='node'     and SERVER_STATE.header_links) or
+        (name=='template' and SERVER_STATE.local_templates[tostring(patterns)].header_links) or
+        (name=='sliver'   and (get_table_by_key_val(SERVER_STATE.local_slivers, tostring(patterns), "uri_id") or {}).header_links) or
+        {} ) do
+            rendered_links[#rendered_links+1] = v .. '; rel="' .. k .. '"'
+    end
+
     return table.concat(rendered_links, ", ")
 end
 
