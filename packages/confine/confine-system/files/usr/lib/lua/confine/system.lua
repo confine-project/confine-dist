@@ -229,6 +229,7 @@ function get_system_conf(sys_conf, arg)
 	conf.node_base_uri         = "http://["..conf.mgmt_ipv6_prefix48..":".."%X"%conf.id.."::2]"..conf.node_base_path
 
 	conf.server_base_uri       = (uci.get("confine", "registry", "base_uri") or "http://[" .. conf.mgmt_ipv6_prefix48 .. "::2]/api"):gsub("/$","")
+	conf.link_base_rel         = (uci.get("confine", "registry", "link_base_rel")) or "http://confine-project.eu/rel/"
 	
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))

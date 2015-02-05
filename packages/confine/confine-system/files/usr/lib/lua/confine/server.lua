@@ -22,7 +22,7 @@ local function get_local_group(sys_conf, obj, cert_file, cache)
 	if obj.group and obj.group.uri then
 		
 		local group_id
-		obj.local_group = data.http_get_keys_as_table(obj.group.uri, cert_file, cache)
+		obj.local_group = data.http_get_keys_as_table(obj.group.uri, cert_file, cache, sys_conf)
 
 		if obj.local_group and obj.local_group.user_roles then
 			
@@ -31,7 +31,7 @@ local function get_local_group(sys_conf, obj, cert_file, cache)
 			local role_id, role_uri
 			for role_id, role_uri in pairs(obj.local_group.user_roles) do
 	--			dbg("calling http_get_keys_as_table uri=%s", user_uri.uri)
-				local user_obj,user_id = data.http_get_keys_as_table(role_uri.user.uri, cert_file, cache)
+				local user_obj,user_id = data.http_get_keys_as_table(role_uri.user.uri, cert_file, cache, sys_conf)
 				assert(user_id and user_id == role_id, "Unable to retrieve referenced user_url=%s user_id=%s role_id=%s" %{role_uri.user.uri, tostring(user_id), tostring(role_id)})
 	
 				obj.local_group.user_roles[user_id].local_user = user_obj
@@ -55,19 +55,19 @@ function get_server_node(sys_conf, cache)
 		return nil
 	end
 	
-	local node = data.http_get_keys_as_table(sys_conf.server_base_uri.."/nodes/%d/" % sys_conf.id, cert_file, cache)
+	local node = data.http_get_keys_as_table(sys_conf.server_base_uri.."/nodes/%d/" % sys_conf.id, cert_file, cache, sys_conf)
 	
-	node.local_base     = data.http_get_keys_as_table(sys_conf.server_base_uri.."/", cert_file, cache)
+	node.local_base     = data.http_get_keys_as_table(sys_conf.server_base_uri.."/", cert_file, cache, sys_conf)
 
 --[[
-	node.local_server   = data.http_get_keys_as_table(sys_conf.server_base_uri.."/server/", cert_file, cache)
+	node.local_server   = data.http_get_keys_as_table(sys_conf.server_base_uri.."/server/", cert_file, cache, sys_conf)
 	
 	
 	node.local_gateways = {}
-	local gateways = data.http_get_keys_as_table(sys_conf.server_base_uri.."/gateways/", cert_file, nil)
+	local gateways = data.http_get_keys_as_table(sys_conf.server_base_uri.."/gateways/", cert_file, nil, sys_conf)
 	local gw_idx, gw_uri
 	for gw_idx, gw_uri in pairs(gateways) do
-		local gw_obj,gw_id = data.http_get_keys_as_table(gw_uri.uri, sys_conf.server_base_uri, cert_file, cache)
+		local gw_obj,gw_id = data.http_get_keys_as_table(gw_uri.uri, sys_conf.server_base_uri, cert_file, cache, sys_conf)
 		assert(gw_id, "Unable to retrieve referenced gateway_url=%s gw_id=%s" %{gw_uri.uri, tostring(gw_id)})
 		assert( ((gw_obj.mgmt_net or {}).tinc_server or {}).name, "Gateway response does not define mgmt_net.tinc_server.name")
 		node.local_gateways[gw_obj.mgmt_net.tinc_server.name] = gw_obj
@@ -76,15 +76,16 @@ function get_server_node(sys_conf, cache)
 	get_local_group(sys_conf, node, cert_file, cache)
 
 	node.local_slivers = { }
+	node.local_templates = { }
 	
 	local sliver_idx, sliver_uri
 	for sliver_idx, sliver_uri in pairs(node.slivers) do
 
-		local sliver_obj,sliver_uri_id = data.http_get_keys_as_table(sliver_uri.uri, cert_file, cache)
+		local sliver_obj,sliver_uri_id = data.http_get_keys_as_table(sliver_uri.uri, cert_file, cache, sys_conf)
 		assert(sliver_uri_id, "Unable to retrieve referenced sliver_url=%s sliver_uri_id=%s" %{sliver_uri.uri, tostring(sliver_uri_id)})
 		assert(sliver_obj.slice, "Sliver response does not define slice, sliver_url=%s sliver_uri_id=%s" %{sliver_uri.uri, tostring(sliver_uri_id)})
 
-		local slice_obj,slice_id = data.http_get_keys_as_table(sliver_obj.slice.uri, cert_file, cache)
+		local slice_obj,slice_id = data.http_get_keys_as_table(sliver_obj.slice.uri, cert_file, cache, sys_conf)
 		assert(slice_id, "Unable to retrieve referenced slice_url=%s slice_id=%s" %{sliver_obj.slice.uri, tostring(slice_id)} )
 		
 		--FIXME, REMOVEME once #234 got closed:
@@ -101,11 +102,13 @@ function get_server_node(sys_conf, cache)
 
 
 		if type(sliver_obj.template)=="table" and sliver_obj.template.uri then
-			local template_obj = data.http_get_keys_as_table(sliver_obj.template.uri, cert_file, cache)
+			local template_obj, template_id = data.http_get_keys_as_table(sliver_obj.template.uri, cert_file, cache, sys_conf)
 			sliver_obj.local_template = template_obj
+			node.local_templates[template_id] = template_obj
 		elseif type(slice_obj.sliver_defaults)=="table" and type(slice_obj.sliver_defaults.template)=="table" and slice_obj.sliver_defaults.template.uri then
-			local template_obj = data.http_get_keys_as_table(slice_obj.sliver_defaults.template.uri, cert_file, cache)
+			local template_obj, template_id = data.http_get_keys_as_table(slice_obj.sliver_defaults.template.uri, cert_file, cache, sys_conf)
 			sliver_obj.local_template = template_obj
+			node.local_templates[template_id] = template_obj			
 		end
 		
 		

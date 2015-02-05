@@ -121,7 +121,7 @@ local function get_url_keys( url )
 	return base_key, index_key
 end
 
-function http_get_keys_as_table(url, cert_file, cache)
+function http_get_keys_as_table(url, cert_file, cache, sys_conf)
 
 	if not url then return nil end
 	
@@ -157,11 +157,21 @@ function http_get_keys_as_table(url, cert_file, cache)
 			
 			header_etag = (header:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n",""):match("^[^;]+")
 			
+			local hls = header:match( "Link:[^\r][^\n]+\r\n" )
+			local hlt = tools.str2table(hls, '<http[^>]+>[ ]*;[ ]*rel="[^"]+"')
+			local k,v	
+			header_links = {[sys_conf.link_base_rel.."node/source"] = "<"..url..">"}
+			for k,v in pairs( hlt ) do
+				local K = v:match('rel="([^"]+)"')
+				if K then header_links[K] = v:match('<http[^>]+>') end
+			end
+
 			dbg("%6s url=%-60s base_key=%s index_key=%s etag=%s", cache and "MODIFIED" or "NO CACHE", url, tostring(base_key), tostring(index_key), tostring(header_etag))
 			
 			assert(result, "Failed processing json input from: %s"%{url} )
 			
 			result = jsd:get()
+			result.header_links = header_links
 			
 			assert(type(result)=="table", "Failed decoding json input from: %s"%{url} )
 			
