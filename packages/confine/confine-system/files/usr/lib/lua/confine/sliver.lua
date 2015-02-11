@@ -637,10 +637,10 @@ tmp_rules = deploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/addr",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/backend",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
-	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
 
 tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -655,10 +655,10 @@ tmp_rules = deployed_rules
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/addr",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/backend",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
-	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
 
 tmp_rules = undeploy_rules
 	table.insert(tmp_rules, {"/local_slivers/*/set_state",				cb2_set_state})
@@ -682,10 +682,10 @@ tmp_rules = start_rules
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/addr",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/mgmt_net/backend",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/resources",				cb2_set_sliver_resources})
-	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/template/uri",			crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_uri",				crules.cb2_set})
+--	table.insert(tmp_rules, {"/local_slivers/*/data_sha256",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group",			crules.cb2_set})
 	table.insert(tmp_rules, {"/local_slivers/*/local_slice/local_group/user_roles",		crules.cb2_set})
@@ -805,6 +805,8 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.slice = { uri = sv.api_slice_uri , id = tonumber(id) }
 			slv.state = sv.state
 			slv.template = { uri = slv.local_template.uri, id = slv.local_template.id }
+			slv.data_uri = slv.local_data.uri
+			slv.data_sha256 = slv.local_data.sha256
 			
 			otree.local_slivers[id] = slv
 		else
