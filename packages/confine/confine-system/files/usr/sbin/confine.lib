@@ -153,7 +153,7 @@ confine_allocate_public_ipv4() {
 		ip link set $DHCP_IF address $DHCP_MAC
 		ip link set $DHCP_IF up
 		
-		local DHCP_RESULT="$( udhcpc -fqn -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
+		local DHCP_RESULT="$( udhcpc -Cfqn -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
 		local DHCP_IP=$( echo $DHCP_RESULT | awk -F'addr=' '{print $2}' | awk '{print $1}' )
 		
 		ip link set $DHCP_IF down
