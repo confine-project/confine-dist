@@ -2,6 +2,7 @@
 
 set -u
 
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
 
 CONFINE_RPC_DIR=/var/run/confine/rpc
 
