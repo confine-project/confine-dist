@@ -422,7 +422,7 @@ install_url() {
 	else
 	    
 	    [ $CMD_INSTALL ] && rm -f $CACHE_DIR/${URL_NAME}.${URL_COMP}
-	    [ $CMD_INSTALL ] && rm -f $INSTALL_PATH
+	    [ $CMD_INSTALL ] && rm -rf $INSTALL_PATH
 	    
 	    err $FUNCNAME "Non-existing image: $INSTALL_PATH" $CMD_SOFT || return 1
 	    
