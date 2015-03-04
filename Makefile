@@ -33,6 +33,7 @@ TARGET ?= x86
 SUBTARGET ?= generic
 # Some targets (not x86) need a profile.
 PROFILE ?=
+SPECIFICS ?= #eg atom32
 PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-system confine-recommended
@@ -73,16 +74,14 @@ define create_configs
 # This command restores OpenWrt's default configuration and adds answers
 # to some options to avoid the configuration process asking for them.
 # This should be fixed in mainstream soon.
-	( cd $(BUILD_DIR) && git checkout -- $(KCONF) && \
-		echo "# CONFIG_MSI_LAPTOP is not set"     >> $(KCONF) && \
-		echo "# CONFIG_COMPAL_LAPTOP is not set"  >> $(KCONF) && \
-		echo "# CONFIG_SAMSUNG_LAPTOP is not set" >> $(KCONF) && \
-		echo "# CONFIG_INTEL_OAKTRAIL is not set" >> $(KCONF) )
+	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
 	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
 	@( echo "$(TARGET)" | grep -q -e "^x86$$" -e "^ar71xx$$" -e "^realview$$" && \
 		echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) && \
 		echo "CONFIG_KERNEL_CGROUPS=y"            >> $(CONFIG) && \
-		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) )
+		echo "CONFIG_KERNEL_NAMESPACES=y"         >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_DF=y"                >> $(CONFIG) && \
+		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY=y"  >> $(CONFIG) )
         @( [ "with gdb" ] && \
                 echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
                 echo "CONFIG_GDB=y"                       >> $(CONFIG) || true )
@@ -111,12 +110,73 @@ define create_configs
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
 	@( [ "$(PROFILE)" ] && \
 		echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
-	@( [ "$(PARTSIZE)" ] && \
+	@( [ -z "$(SPECIFICS)" ] && [ "$(PARTSIZE)" ] && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
+
+	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
+		grep -v "CONFIG_NOHIGHMEM"  				$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		grep -v "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE"	$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_MATOM=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_ACPI=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_SMT=y" 				>> $(KCONFIG) && \
+		echo "CONFIG_SMP=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y"   		>> $(KCONFIG) && \
+		echo "CONFIG_BRIDGE_NF_EBTABLES=y"			>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y"		>> $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM4G=y"				>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_RANDOM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_CPU_IDLE_GOV_MENU=y"			>> $(KCONFIG) && \
+		echo "CONFIG_NO_HZ=y"					>> $(KCONFIG) && \
+		echo "CONFIG_NR_CPUS=2"					>> $(KCONFIG) && \
+		echo "CONFIG_PROCESSOR_SELECT=y"			>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_MC=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_BM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_FSM=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TEXTSEARCH_KMP=y"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_ACPI_CPUFREQ=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_P4_CLOCKMOD=m"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_PCC_CPUFREQ=m"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_REBOOTFIXUPS=y"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_ICH=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_LIB=m"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_SPEEDSTEP_SMI=m"			>> $(KCONFIG) && \
+		true || true )
+
+	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
+		echo "CONFIG_X86_USE_GRUB2=y" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_KERNEL_PARTSIZE=32" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_MAXINODE=90000" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_libiptc=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libgnutls-openssl=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libdevmapper=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libnl=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_libpcre=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_gnutls-utils=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_dmidecode=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_grub=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_certtool=y" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_oonf-dlep-plugin-service=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_oonf-plugin-layer2-viewer=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_oonf-plugin-nl80211-listener=y" >> $(CONFIG) && \
+		\
+		echo "CONFIG_PACKAGE_bridge=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_dnsmasq-dhcpv6=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-r6040=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-sis190=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_kmod-8021q=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_hdparm=y" >> $(CONFIG) && \
+		echo "CONFIG_PACKAGE_bash-completion=y" >> $(CONFIG) && \
+		true || true )
+
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
 	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null
+	@yes "" | make -C "$(BUILD_DIR)" kernel_oldconfig > /dev/null
+
 endef
 
 
@@ -135,6 +195,7 @@ define kmenuconfig_owrt
 endef
 
 define set_version
+# Never change the order of these values (processed by confine node system)!!!
 	: > files/etc/confine.version
 	echo "$(TIMESTAMP)" >> files/etc/confine.version
 	echo "$(GIT_BRANCH)" >> files/etc/confine.version

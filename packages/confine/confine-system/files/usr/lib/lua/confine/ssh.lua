@@ -164,7 +164,7 @@ end
 
 
 
-function sys_set__lgroup_role( auth_file, node_not_slice_admin, otree, ntree, path, begin, changed )
+function sys_set__lgroup_role( auth_file, sync, node_not_slice_admin, otree, ntree, path, begin, changed )
 
 	local old = ctree.get_path_val(otree,path)
 	local new = ctree.get_path_val(ntree,path)
@@ -173,14 +173,17 @@ function sys_set__lgroup_role( auth_file, node_not_slice_admin, otree, ntree, pa
 		
 	if begin and old and not new then
 
-		del_ssh_keys(auth_file, user_id)
+		if sync then
+			del_ssh_keys(auth_file, user_id)
+		end
+		
 		ctree.set_path_val(otree, path, nil)
 		
 	elseif begin and not old and new then
 		
 		ctree.set_path_val(otree, path, {})
 				
-	elseif not begin and old and new and changed then
+	elseif not begin and old and new and changed and sync then
 		
 		dbg("updating auth_tokens for path=%s", path)
 		del_ssh_keys(auth_file, user_id)

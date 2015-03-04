@@ -35,7 +35,10 @@ function set_or_err( err_func, otree, ntree, path, valtype, patterns, no_set, de
 		assert( type(patterns)=="table" )
 		local i,v
 		for i,v in pairs(patterns) do
-			if ( (val==v) or type(val)=="string" and type(v)=="string" and val:match(v) ) then
+			if ( (val==v) or
+				((valtype==nil or valtype=="string") and type(val)=="string" and type(v)=="string" and val:match(v)) or
+				((valtype==nil or valtype=="number") and type(val)=="number" and type(v)=="number" and val <= v)
+				) then
 				success=true
 				break
 			end
@@ -98,6 +101,20 @@ function cb2_set_empty_table( rules, sys_conf, otree, ntree, path, begin, change
 	if not rules then return "cb2_set_empty_table" end
 	
 	if begin then
+		ctree.set_path_val(otree, path, {})
+	end
+end
+
+function cb2_set_table( rules, sys_conf, otree, ntree, path, begin, changed )
+	if not rules then return "cb2_set_table" end
+	
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	
+	assert(not old or old==null or type(old)=="table")
+	assert(not new or new==null or type(new)=="table")
+
+	if begin and (not old or old==null) then
 		ctree.set_path_val(otree, path, {})
 	end
 end

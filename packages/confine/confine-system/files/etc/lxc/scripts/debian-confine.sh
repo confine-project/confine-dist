@@ -117,7 +117,8 @@ EOF
 		
 		local MGMT_NAME="$(uci_get confine-slivers.$SL_ID.if${MGMT_KEY}_name)"
 		local MGMT_ADDR="$(uci_get confine-slivers.$SL_ID.if${MGMT_KEY}_ipv6)"
-		local MGMT_GW="$( uci_get confine.testbed.mgmt_ipv6_prefix48 ):$MY_NODE::2"
+		local MGMT_GW="$(  uci_get confine.testbed.mgmt_ipv6_prefix48 ):$MY_NODE::2"
+		local MGMT_NET="$( uci_get confine.testbed.mgmt_ipv6_prefix48 )::/48"
 
 		cat <<EOF >> $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/network/interfaces
 auto $MGMT_NAME
@@ -125,7 +126,9 @@ iface $MGMT_NAME inet6 static
 pre-up ip link set $MGMT_NAME down
 address $( echo $MGMT_ADDR | awk -F'/' '{print $1}' )
 netmask $( echo $MGMT_ADDR | awk -F'/' '{print $2}' )
-gateway $MGMT_GW
+#gateway $MGMT_GW
+up   ip -6 route add $MGMT_NET via $MGMT_GW dev $MGMT_NAME
+down ip -6 route del $MGMT_NET via $MGMT_GW dev $MGMT_NAME
 
 EOF
 	fi
@@ -135,6 +138,8 @@ EOF
 	mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/
 	[ "$USER_PUBKEY" ] && echo "$USER_PUBKEY" >> $LXC_IMAGES_PATH/$CT_NR/rootfs/root/.ssh/authorized_keys	    
 
+	[ -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_rsa_key ] || ssh-keygen -q -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_rsa_key -N '' -t rsa
+	[ -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_dsa_key ] || ssh-keygen -q -f $LXC_IMAGES_PATH/$CT_NR/rootfs/etc/ssh/ssh_host_dsa_key -N '' -t dsa	
 }
 
 

@@ -14,15 +14,6 @@ local cdata   = require "confine.data"
 local dbg    = tools.dbg
 
 
-function get_url_keys( url )
-	local api_first, api_last = url:find("/api")
-	local full_key = api_last and url:sub(api_last+1) or url
-	local base_key = full_key:match( "/[%l]+/" )
---	local index_key = (full_key:match( "/[%d]+[-]?[%d]*$" ) or ""):gsub("/","")
-	local index_key = (full_key:match( "/[%d]+$" ) or ""):gsub("/","")
-	
-	return base_key, index_key
-end
 
 
 function as_string( tree, maxdepth, spaces )
@@ -73,21 +64,11 @@ local function get_key(obj, def, parent)
 		
 		if obj.id then
 			
-			if def and obj.id ~= def then
-				dbg("get_key(): WARNING - obj_id=%s def=%s should have been assigned already!!?", obj.id, def)
-			end
-		
 			return tostring(obj.id)
-		
-		elseif obj.uri then
 			
-			local base_key,index_key = get_url_keys(obj.uri)
-			return index_key
+		elseif type(obj.user)=="table" and obj.user.id then
 			
-		elseif type(obj.user)=="table" and obj.user.uri then
-			
-			local base_key,index_key = get_url_keys(obj.user.uri)
-			return index_key
+			return tostring(obj.user.id)
 			
 		elseif obj.name then
 			return obj.name
@@ -135,7 +116,7 @@ function copy_recursive_rebase_keys(t, parent)
 	for k,v in pairs(t or {}) do
 			
 		local v_key = get_key(v, k, parent)
-		assert(not t2[k] and not t2[v_key], "copy_recursive_rebase_keys() key=%s for val=%s key=%s already used", tostring(v_key), tostring(v), tostring(k))
+		assert(not t2[k] and not t2[v_key], "copy_recursive_rebase_keys() v_key=%s(%s) for val=%s key=%s parent=%s already used, object:%s"%{tostring(v_key),type(v_key), tostring(v), tostring(k), tostring(parent), as_string(v)})
 		
 		if type(v) == "table" then
 			t2[v_key] = copy_recursive_rebase_keys(v, k)
@@ -358,7 +339,7 @@ function iterate(cb, rules, sys_conf, otree, ntree, path, unused, lvl)
 				--    pattern, up_changed and "upCHG" or "", down_changed and "downCHG" or "")
 				
 				if not ( ov~=nil or nv~=nil ) then
-					assert(false)
+					assert(false, "path=%s ov=%s nv=%s" %{path..tk.."/", tostring(ov), tostring(nv)})
 				elseif not (type(tk)=="number" and ((type(ncurr)=="table" and ncurr or {})[tostring(tk)]==nil) or ((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]==nil)) then
 					assert( false, "path=%s type(tk)=%s \nas number:\n%sas string:\n%s"
 					       %{path..tk.."/", type(tk), as_string((type(ncurr)=="table" and ncurr or {})[tonumber(tk)]), qs_string((type(ncurr)=="table" and ncurr or {})[tostring(tk)])})

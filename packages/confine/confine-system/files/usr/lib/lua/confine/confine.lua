@@ -27,7 +27,7 @@ local require_node_cert   = false
 
 
 
-local function get_local_base( sys_conf, node )
+local function get_local_base( sys_conf, node, server )
 	local base = {}
 
 	base.uri		= sys_conf.node_base_uri.."/"
@@ -40,25 +40,26 @@ local function get_local_base( sys_conf, node )
 		mgmt_ipv6_prefix	= sys_conf.mgmt_ipv6_prefix,
 		}
 
-	base.node_uri		= node.uri
-	base.slivers_uri	= sys_conf.node_base_uri.."/slivers"
-	base.templates_uri	= sys_conf.node_base_uri.."/templates"
+	base.testbed_resources	= server.local_base and server.local_base.testbed_resources or {}
 
 	return base	
 end
 
 
-local function upd_node_rest_conf( sys_conf, node )
+local function upd_node_rest_conf( sys_conf, node, server )
 
-	local base = get_local_base( sys_conf, node )
+	local base = get_local_base( sys_conf, node, server )
 	cdata.file_put(base, "index.html", system.rest_base_dir)
 
 	pcall(nixio.fs.remover, system.rest_templates_dir)
-	cdata.file_put(ctree.filter(sliver.template_out_filter, sliver.get_templates(node)), nil, system.rest_templates_dir)
+	local templates = sliver.get_templates(node)
+	cdata.file_put(ctree.filter(sliver.template_dir_filter, templates), "index.html", system.rest_templates_dir)
+	cdata.file_put(ctree.filter(sliver.template_out_filter, templates), nil, system.rest_templates_dir)
 
 	cdata.file_put(ctree.filter(cnode.out_filter, node), "index.html", system.rest_node_dir)	
 	
 	pcall(nixio.fs.remover, system.rest_slivers_dir)
+	cdata.file_put(ctree.filter(sliver.dir_filter, node.slivers), "index.html", system.rest_slivers_dir)
 	if node.local_slivers then
 		cdata.file_put(ctree.filter(sliver.out_filter, node.slivers), nil, system.rest_slivers_dir)
 	end
@@ -129,24 +130,9 @@ function main_loop( sys_conf )
 			end
 		end
 		
-		end_times = {nx=nixio.times(), os=os.time()}
-		dbg("times        %10s %10s %10s %10s %10s", "utime", "stime", "cutime", "cstime", "os.time")
-		dbg("start times: %10d %10d %10d %10d %10s", start_times.nx.utime, start_times.nx.stime, start_times.nx.cutime, start_times.nx.cstime, start_times.os)
-		dbg("  end times: %10d %10d %10d %10d %10s", end_times.nx.utime, end_times.nx.stime, end_times.nx.cutime, end_times.nx.cstime, end_times.os)
-		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
-		    os.difftime(end_times.os, start_times.os) )
-
 		cdata.file_put( local_node, system.node_state_file )
-
-		end_times = {nx=nixio.times(), os=os.time()}
-		dbg("times        %10s %10s %10s %10s %10s", "utime", "stime", "cutime", "cstime", "os.time")
-		dbg("start times: %10d %10d %10d %10d %10s", start_times.nx.utime, start_times.nx.stime, start_times.nx.cutime, start_times.nx.cstime, start_times.os)
-		dbg("  end times: %10d %10d %10d %10d %10s", end_times.nx.utime, end_times.nx.stime, end_times.nx.cutime, end_times.nx.cstime, end_times.os)
-		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
-		    os.difftime(end_times.os, start_times.os) )
 		
-		upd_node_rest_conf( sys_conf, local_node )
-
+		upd_node_rest_conf( sys_conf, local_node, server_node )
 		
 		end_times = {nx=nixio.times(), os=os.time()}
 		dbg("times        %10s %10s %10s %10s %10s", "utime", "stime", "cutime", "cstime", "os.time")
@@ -167,7 +153,7 @@ function main_loop( sys_conf )
 			else
 				tools.sleep(sys_conf.interval)
 			end
-
+			
 			if tools.stop then break end
 			dbg("next iteration=%d...",iteration)
 		else

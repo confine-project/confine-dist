@@ -181,9 +181,9 @@ fi
 
 /usr/sbin/confine.lib confine_daemon_stop
 sync
-sleep 2
+sleep 60
 kill_remaining TERM
-sleep 4
+sleep 60
 kill_remaining KILL
 
 grep /cgroup /proc/mounts > /dev/null && umount /cgroup
@@ -197,8 +197,9 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
 
     # Read files to save and touch them to place them in the overlay
     add_conffiles "$CONFFILES"
-    for d in $CONFFILES; do
-        find $d -exec touch {} \;
+    AUX=`cat $CONFFILES`
+    for d in $AUX; do
+        [ -e $d ] && find $d -exec touch {} \;
     done
 
     run_ramfs "set -x

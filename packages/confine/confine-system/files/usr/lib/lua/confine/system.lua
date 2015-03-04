@@ -24,7 +24,6 @@ PID_FILE = RUNTIME_DIR.."pid"
 LOG_FILE = "/var/log/confine.log"
 LOG_SIZE = 1000000
 
-SERVER_BASE_PATH = "/confine/api"
 NODE_BASE_PATH = "/confine/api"
 
 DFLT_SLIVER_DISK_MAX_MB      = 2000
@@ -81,7 +80,6 @@ function help()
 	      [--count=<max iterations>] \\\
 	      [--interval=<seconds per iteration>] \\\
 	      [--retry==<max failure retries>] \\\
-	      [--server-base-path==</confine/api>] \\\
 	      [--node-base-path==</confine/api>] \\\
 	      [--logfile=<path to logfile>] \\\
 	      [--logsize=<max-logfile-size-in-bytes>] \\\
@@ -149,16 +147,27 @@ function get_system_conf(sys_conf, arg)
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
 	conf.arch                  = tools.canon_arch(nixio.uname().machine)
-	conf.sys_revision          = ((tools.subfindex( nixio.fs.readfile( "/etc/banner" ) or "???", "show%?branch=", "\n" ) or "???"):gsub("&rev=","."))
+	
+	local cns_version_file     = io.open("/etc/confine.version", "r")
+	if cns_version_file then
+		local cns_timestamp        = cns_version_file:read() or "???"
+		local cns_branch           = cns_version_file:read() or "???"
+		local cns_revision         = cns_version_file:read() or "???"
+		conf.sys_revision = cns_branch .. "." .. (cns_revision:sub(1,7))
+		cns_version_file:close()
+	end
+	
 	conf.cns_version           = lutil.exec( "opkg info confine-system" )
 	conf.cns_version           = type(conf.cns_version) == "string" and conf.cns_version:match("Version: [^\n]+\n") or "???"
 	conf.cns_version           = conf.cns_version:gsub("Version: ",""):gsub(" ",""):gsub("\n","")
-	conf.soft_version          = conf.sys_revision .. "-" .. conf.cns_version
+	conf.soft_version          = (conf.sys_revision or "???.???") .. "-" .. conf.cns_version
 
 	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"
 	conf.node_cert_file        = "/etc/uhttpd.crt.pem" --must match /etc/uhttpd.crt and /etc/uhttpd.key -- http://wiki.openwrt.org/doc/howto/certificates.overview  http://man.cx/req
 
+	conf.sync_node_admins      = uci.get_bool("confine", "node", "sync_node_admins", true)
+	
 	conf.local_iface           = uci.get("confine", "node", "local_ifname")
 
 	conf.local_bridge          = lutil.exec( "ip addr show dev br-local" )
@@ -218,18 +227,16 @@ function get_system_conf(sys_conf, arg)
 	conf.node_base_path        = conf.node_base_path or flags["node-base-path"] or uci.get("confine", "node", "base_path") or NODE_BASE_PATH
 	assert(conf.node_base_path:match("/api$"), "node-base-path MUST end with /api")
 	conf.node_base_uri         = "http://["..conf.mgmt_ipv6_prefix48..":".."%X"%conf.id.."::2]"..conf.node_base_path
-	conf.server_base_path      = conf.server_base_path or flags["server-base-path"] or uci.get("confine", "server", "base_path") or SERVER_BASE_PATH
-	assert(conf.server_base_path:match("/api$"), "server-base-path MUST end with /api")
-	conf.server_tcp_proto      = uci.get("confine", "server", "tcp_proto") or "https"
-	assert(conf.server_tcp_proto == "http" or conf.server_tcp_proto == "https", "optional server.tcp_proto MUST be http or https")
-	conf.server_base_uri       = conf.server_tcp_proto .. "://[" .. conf.mgmt_ipv6_prefix48 .. "::2]" .. conf.server_base_path
+
+	conf.server_base_uri       = (uci.get("confine", "registry", "base_uri") or "http://[" .. conf.mgmt_ipv6_prefix48 .. "::2]/api"):gsub("/$","")
+	conf.link_base_rel         = (uci.get("confine", "registry", "link_base_rel")) or "http://confine-project.eu/rel/"
 	
 	conf.sys_state             = uci.get("confine", "node", "state")
 	conf.boot_sn               = tonumber(uci.get("confine", "node", "boot_sn", 0))
 
-
-	conf.tinc_node_key_priv    = "/etc/tinc/confine/rsa_key.priv" -- required
-	conf.tinc_node_key_pub     = "/etc/tinc/confine/rsa_key.pub"  -- created by confine_node_enable
+	conf.tinc_gateway          = uci.get("confine", "node", "tinc_gateway")
+--	conf.tinc_node_key_priv    = "/etc/tinc/confine/rsa_key.priv" -- required
+--	conf.tinc_node_key_pub     = "/etc/tinc/confine/rsa_key.pub"  -- created by confine_node_enable
 	conf.tinc_hosts_dir        = "/etc/tinc/confine/hosts/"       -- required
 	conf.tinc_conf_file        = "/etc/tinc/confine/tinc.conf"    -- created by confine_tinc_setup
 	conf.tinc_pid_file         = "/var/run/tinc.confine.pid"
@@ -241,10 +248,7 @@ function get_system_conf(sys_conf, arg)
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))	
 
-	conf.direct_ifaces = check_direct_ifaces(
-				ctree.copy_recursive_rebase_keys(
-				    tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+"),
-				    "direct_ifaces") )
+	conf.direct_ifaces = check_direct_ifaces( tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+") )
 
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
@@ -309,7 +313,7 @@ function set_system_conf( sys_conf, opt, val, section)
 			return get_system_conf(sys_conf)
 		end
 		
-	elseif opt == "disk_max_per_sliver" or opt == "disk_dflt_per_sliver" and
+	elseif (opt == "disk_max_per_sliver" or opt == "disk_dflt_per_sliver") and
 		type(val)=="number" and val <= 10000 and
 		uci.set("confine", "node", opt, val) then
 		

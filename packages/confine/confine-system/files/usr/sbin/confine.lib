@@ -153,7 +153,7 @@ confine_allocate_public_ipv4() {
 		ip link set $DHCP_IF address $DHCP_MAC
 		ip link set $DHCP_IF up
 		
-		local DHCP_RESULT="$( udhcpc -fqn -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
+		local DHCP_RESULT="$( udhcpc -Cfqn -t 3 -i $DHCP_IF -s /usr/sbin/confine.udhcpc.test | grep result )"
 		local DHCP_IP=$( echo $DHCP_RESULT | awk -F'addr=' '{print $2}' | awk '{print $1}' )
 		
 		ip link set $DHCP_IF down
@@ -668,7 +668,6 @@ confine_sliver_allocate() {
 	local FS_URL="$(        uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )"
 	local FS_TYPE="$(       uci_get $SRC_CFG.$SL_ID.fs_template_type soft,quiet,path=$SRC_DIR )"
 	local DATA_URL="$(      uci_get $SRC_CFG.$SL_ID.exp_data_url     soft,quiet,path=$SRC_DIR )"
-	local OVERLAY_URL="$(   uci_get $SRC_CFG.$SL_ID.overlay_url      soft,quiet,path=$SRC_DIR )"
 	local MAC_PREFIX16="$(  uci_get confine.node.mac_prefix16 )"
 	local PUBLIC4_PROTO="$( uci_get confine.node.sl_public_ipv4_proto soft)"
 
@@ -729,7 +728,6 @@ confine_sliver_allocate() {
 	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
 	[ "$FS_TYPE" ]     && uci_set $SLV_CFG.$SL_ID.fs_template_type="$FS_TYPE" path=$OUT_DIR
 	[ "$DATA_URL" ]    && uci_set $SLV_CFG.$SL_ID.exp_data_url="$DATA_URL"    path=$OUT_DIR
-	[ "$OVERLAY_URL" ] && uci_set $SLV_CFG.$SL_ID.overlay_url="$OVERLAY_URL"  path=$OUT_DIR
 
 
 
@@ -798,7 +796,7 @@ confine_sliver_allocate() {
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
-		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$(ip link show dev $IF_PARENT | grep "ether" | awk '{print $2}') path=$OUT_DIR
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_parent=$IF_PARENT   path=$OUT_DIR
 		    
 		else
@@ -1000,8 +998,8 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
 		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir && \
-		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" || {
-#		    install_url $FS_URL $FS_SITE $FS_NAME $FS_COMP $LXC_TEMPLATES_PATH $LXC_TEMPLATES_PATH/$FS_NAME.dir install,soft || {
+		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
+		    echo "installed sliver template to $LXC_TEMPLATES_PATH/$FS_NAME.dir" || {
 			rm -rf $LXC_TEMPLATES_PATH/$FS_NAME.dir
 			rm -f $LXC_TEMPLATES_PATH/$FS_NAME
 			err $FUNCNAME "installing sliver=$SL_ID template to $LXC_TEMPLATES_PATH/$FS_NAME.dir failed!"
@@ -1018,71 +1016,52 @@ CONFINE_SLIVER_DISK_MB=150
 		touch $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		fallocate-e2fsprogs -l ${FS_SIZE_MB}M $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ &&\
-		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 \
-		&&\
-		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount || {
+		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
+		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+		echo "loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
 		}
 
 
-	# Install sliver sliver overlay data:
-	local OVERLAY_URL=$( uci_get confine-slivers.$SL_ID.overlay_url soft,quiet )
-	
-	if [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ $OVERLAY_URL ]; then
+	# Install sliver sliver (overlay) data:
+	local DATA_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
 
-	    local OVERLAY_COMP=$( ( echo $OVERLAY_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
-                         ( echo $OVERLAY_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
-                         ( echo $OVERLAY_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+	if [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ $DATA_URL ]; then
 	    
-	    local OVERLAY_NAME=$(echo $OVERLAY_URL | awk -F'/' '{print $(NF)}' | awk -F".${OVERLAY_COMP}" '{print $1}')
-	    local OVERLAY_SITE=$(echo $OVERLAY_URL | awk -F"${OVERLAY_NAME}.${OVERLAY_COMP}" '{print $1}')
+	    local DATA_COMP=$( ( echo $DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+                         ( echo $DATA_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+                         ( echo $DATA_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
 	    
-	    [ "$OVERLAY_URL" = "${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}" ] ||\
-                   err $FUNCNAME "Invalid $OVERLAY_URL != ${OVERLAY_SITE}${OVERLAY_NAME}.${OVERLAY_COMP}"
+	    local DATA_NAME=$(echo $DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${DATA_COMP}" '{print $1}')
+	    local DATA_SITE=$(echo $DATA_URL | awk -F"${DATA_NAME}.${DATA_COMP}" '{print $1}')
+
+
+	    [ "$DATA_URL" = "${DATA_SITE}${DATA_NAME}.${DATA_COMP}" ] ||\
+                   err $FUNCNAME "Invalid $DATA_URL != ${DATA_SITE}${DATA_NAME}.${DATA_COMP}"
 	    
-	    install_url $OVERLAY_URL $OVERLAY_SITE $OVERLAY_NAME $OVERLAY_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install,soft &&\
-    	    echo "installed overlay data $OVERLAY_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
+	    install_url $DATA_URL $DATA_SITE $DATA_NAME $DATA_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/overlay.mount install,soft,xattrs &&\
+    	    echo "installed overlay data $DATA_URL to $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 		confine_sliver_undeploy $SL_ID
 		err $FUNCNAME "installing sliver=$SL_ID overlay data failed!"
 	    }
 	    
-	else
-		echo "NO overlay data available"
+	    local f=
+	    for f in $(find $LXC_IMAGES_PATH/$CT_NR/overlay.mount -type l ); do
+		ls -l $f | grep -qe "-> (overlay-whiteout)$" && \
+			setfattr --no-dereference --name=trusted.overlay.whiteout --value=y $f
+	    done
+	    
 	fi
-
 
 	# Install sliver rootfs:
 	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
-		echo "installed sliver rootfs" &&\
-		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ || {
+		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+		echo "mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
 		}
-
-
-	# Install sliver exp_data:
-	local EXP_URL=$( uci_get confine-slivers.$SL_ID.exp_data_url soft,quiet )
-	
-	if [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] && [ $EXP_URL ]; then
-
-	    local EXP_COMP=$( ( echo $EXP_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
-                         ( echo $EXP_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
-                         ( echo $EXP_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
-	    
-	    local EXP_NAME=$(echo $EXP_URL | awk -F'/' '{print $(NF)}' | awk -F".${EXP_COMP}" '{print $1}')
-	    local EXP_SITE=$(echo $EXP_URL | awk -F"${EXP_NAME}.${EXP_COMP}" '{print $1}')
-	    
-	    [ "$EXP_URL" = "${EXP_SITE}${EXP_NAME}.${EXP_COMP}" ] ||\
-                   err $FUNCNAME "Invalid $EXP_URL != ${EXP_SITE}${EXP_NAME}.${EXP_COMP}"
-	    	    
-	    install_url $EXP_URL $EXP_SITE $EXP_NAME $EXP_COMP $LXC_TEMPLATES_PATH $LXC_IMAGES_PATH/$CT_NR/rootfs install,soft &&\
-	    echo "installed sliver exp_data" || {
-		confine_sliver_undeploy $SL_ID
-		err $FUNCNAME "installing sliver=$SL_ID exp_data failed!"
-	    }
-	fi
 
 
 	# Install ro sliver confine data:
@@ -1161,7 +1140,7 @@ confine_sliver_firewall_restart() {
 
 	    # set default policy ...
 	    # however, due to a supposed ebtables bug causing IPv4/UDP fragmentation on ACCEPTED UPD ports to fail
-	    # the follosing line is sommented in favor of what follows afterwards:
+	    # the follosing line is commented in favor of what follows afterwards:
 	    # ebtables -I FORWARD -i $IF_PAIR -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p ! IPv4 -j DROP
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto ! UDP -j DROP
@@ -1175,7 +1154,7 @@ confine_sliver_firewall_restart() {
 		$EBTCMD
 	    done
 
-	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto UDP --ip-sport 0:1023  -j DROP
+#	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 --ip-proto UDP --ip-sport 0:1023  -j DROP # added via /etc/confine-ebtables.lst
 
 	    # set general rules ...
 	    ebtables -I FORWARD -i $IF_PAIR -p IPv4 $( [ "$IF_IPV4" ] && echo "--ip-src ! $IF_IPV4" || echo "--ip-src 0.0.0.0/0" ) -j DROP
@@ -1207,6 +1186,40 @@ confine_sliver_start() {
 
 	uci_set confine-slivers.$SL_ID.state=starting
 
+	# In case the node crashed, sliver overlay and rootfs mounts from previous deployments got lost and must be remounted...
+	#
+	# remount sliver overlay:
+	if mount | grep -e "^$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 on $LXC_IMAGES_PATH/$CT_NR/overlay.mount type" ; then
+		echo "sliver overlay already mounted"
+	else
+		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+			echo "re-loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
+				confine_sliver_undeploy $SL_ID
+				err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
+			}
+	fi
+	#
+	# remount sliver rootfs:
+	if mount | grep -e "^confine-sliver-$SL_ID on $LXC_IMAGES_PATH/$CT_NR/rootfs type overlayfs" ; then
+		echo "sliver rootfs already mounted"
+	else
+		local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
+		local FS_URL=$( uci_get confine-slivers.$SL_ID.fs_template_url soft,quiet )
+		local FS_COMP=$( ( echo $FS_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
+	                         ( echo $FS_URL | grep -e "\.tar\.gz$" >/dev/null && echo "tar.gz" ) ||\
+	                         ( echo $FS_URL | grep -e "\.gz$" >/dev/null && echo "gz" ) )
+		local FS_NAME=$(echo $FS_URL | awk -F'/' '{print $(NF)}' | awk -F".${FS_COMP}" '{print $1}')
+		
+		[ "$LXC_TEMPLATES_PATH" ] && [ "$FS_URL" ] && [ "$FS_COMP" ] && [ "$FS_NAME" ] &&\
+		[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] &&\
+			mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+			echo "re-mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
+				confine_sliver_undeploy $SL_ID
+				err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
+			}
+	fi
+
+	
 	confine_sliver_firewall_restart $SL_ID
 
 	lxc.lib lxc_start $CT_NR
@@ -1311,7 +1324,7 @@ confine_sliver_dump_overlay() {
 	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
 	   [ "$CT_NR" ] && \
 	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
-		tar -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		tar --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
 		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
 		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
 	else

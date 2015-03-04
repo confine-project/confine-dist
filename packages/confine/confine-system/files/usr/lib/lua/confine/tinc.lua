@@ -21,89 +21,82 @@ local dbg    = tools.dbg
 local TINC_PORT = 655
 
 
-
-local function get_mgmt_nets(sys_conf, all)
+local function get_tinc_net(sys_conf, name)
 	
-	local nets = {}
-	local node_name = "node_" .. sys_conf.id
+	local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..name )
+	
+--	dbg( sys_conf.tinc_hosts_dir..file.." = "..content )
+	if type(content)=="string" then
+		local is_mine = (name== ("node_" .. sys_conf.id))
+		local subnet = tools.subfind(content,"Subnet","\n")
+		subnet = subnet and subnet:gsub(" ",""):gsub("Subnet=",""):gsub("\n","")
+		subnet = subnet and subnet:gsub("/[%d]+$","")
+--		subnet = subnet and subnet:match("^[%x]+:.*/[%d]+")
+--		dbg(tostring(subnet))
+		subnet = subnet and tools.canon_ipv6(subnet) and subnet
+		
+		local addr  = tools.subfind(content,"Address","\n")
+		addr = addr and addr:match("[%d]+%.[%d]+%.[%d]+%.[%d]+")
+		
+		local port  = tools.subfind(content,"Port","\n") or (addr and tools.subfind(content,"Address","\n"):match(" [%d]+[^.]+\n"))
+		port = port and tonumber( (port and (port:match("[%d]+"))) or TINC_PORT )
+		
+		local pubkey = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
+		
+		if subnet and pubkey then
+			
+			local tinc = {
+				addresses	= addr and {[1]={addr=(addr or cdata.null), port=(port or cdata.null), island=cdata.null}} or {},
+				name		= name,
+				pubkey		= pubkey
+			} 
+			
+			local net = {
+				addr		= is_mine and sys_conf.addrs.mgmt or subnet,
+				tinc		= tinc
+			}
+			
+			return net
+		else
+			dbg("Missing host=%s subnet=%s addr=%s port=%s pubkey=%s",
+			    sys_conf.tinc_hosts_dir..name, tostring(subnet), tostring(addr), tostring(port), tostring(pubkey))
+		end
+		
+	end
+	
+	return nil
+end
+
+function get_tinc_mgmt_net(sys_conf)
+	local mgmt_net = {addr=sys_conf.addrs.mgmt, backend="tinc"}
+	local tinc_net = get_tinc_net(sys_conf, "node_" .. sys_conf.id)
+	return mgmt_net, tinc_net.tinc
+end
+
+
+
+local function get_mgmt_nets(sys_conf)
 	
 	local hosts = nixio.fs.dir( sys_conf.tinc_hosts_dir )
-	--if not (type(hosts)=="table" and hosts["server"] and hosts[node_name]) then
-	--	tools.err("Missing hosts in "..sys_conf.tinc_hosts_dir)
-	--end
+	local nets = {}
 	local name
+
 	for name in hosts do
 			
-		local is_mine = (name==node_name)
+		local is_mine = (name== ("node_" .. sys_conf.id))
 			
-		if all or not is_mine then
+		if not is_mine then
 			
-			local content = nixio.fs.readfile( sys_conf.tinc_hosts_dir..name )
+			nets[name] = get_tinc_net(sys_conf, name)
 			
---			dbg( sys_conf.tinc_hosts_dir..file.." = "..content )
-			if type(content)=="string" then
-				local subnet = tools.subfind(content,"Subnet","\n")
-				subnet = subnet and subnet:gsub(" ",""):gsub("Subnet=",""):gsub("\n","")
-				subnet = subnet and subnet:gsub("/[%d]+$","")
---				subnet = subnet and subnet:match("^[%x]+:.*/[%d]+")
---				dbg(tostring(subnet))
-				subnet = subnet and tools.canon_ipv6(subnet) and subnet
-				
-				local addr  = tools.subfind(content,"Address","\n")
-				addr = addr and addr:match("[%d]+%.[%d]+%.[%d]+%.[%d]+")
-				
-				local port  = tools.subfind(content,"Port","\n") or (addr and tools.subfind(content,"Address","\n"):match(" [%d]+[^.]+\n"))
-				port = port and tonumber( (port and (port:match("[%d]+"))) or TINC_PORT )
-				
-				local pubkey = tools.subfind(content,ssl.RSA_HEADER,ssl.RSA_TRAILER)
-				
-				if subnet and pubkey then
-					
-					local tinc = {
-						addresses	= not is_mine and {[1]={addr=(addr or cdata.null), port=(port or cdata.null)}} or nil,
-						is_active	= true,
-						name		= name,
-						pubkey		= pubkey
-					} 
-					
-					nets[name] = {
-						addr		= is_mine and sys_conf.addrs.mgmt or subnet,
-						backend		= is_mine and "tinc_client" or "tinc_server",
-						native		= cdata.null,
-						tinc_client	= is_mine and tinc or cdata.null,
-						tinc_server	= is_mine and cdata.null or tinc
-					}
-				else
-					dbg("Missing host=%s subnet=%s addr=%s port=%s pubkey=%s",
-					    sys_conf.tinc_hosts_dir..name, tostring(subnet), tostring(addr), tostring(port), tostring(pubkey))
-				end
-				
-			end
 		end
 	end
 	
 	return nets
 end
 
-function get_node_mgmt_net( sys_conf, cached_net )
-	local net = ((get_mgmt_nets( sys_conf, true) or {})["node_"..sys_conf.id]) or cdata.null
-	
-	if type(net)=="table" and type(cached_net)=="table" then
-		net.native = cached_net.native
-	end
-	
-	return net
-end
---
---function get_lserver( sys_conf )
---	return ((get_mgmt_nets( sys_conf, false) or {})["server"]) or cdata.null
---end
---
---function get_lgateways( sys_conf )
---	local gateways = get_mgmt_nets( sys_conf, false) or {}
---	gateways.server = nil
---	return gateways
---end
+
+
 
 
 
@@ -236,7 +229,7 @@ end
 
 
 
-function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
+local function cb2_mgmt_net( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_mgmt_net" end
 
 	local old = ctree.get_path_val(otree,path)

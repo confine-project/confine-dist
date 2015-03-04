@@ -230,10 +230,10 @@ vct_system_config_check() {
     VCT_SLICE_OWRT_TEMPLATE_NAME=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
     VCT_SLICE_OWRT_TEMPLATE_SITE=$(echo $VCT_SLICE_OWRT_TEMPLATE_URL | awk -F"${VCT_SLICE_OWRT_TEMPLATE_NAME}.${VCT_SLICE_OWRT_TEMPLATE_COMP}" '{print $1}')
 
-    variable_check VCT_SLICE_OWRT_EXP_DATA_URL  quiet
-    VCT_SLICE_OWRT_EXP_DATA_COMP=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
-    VCT_SLICE_OWRT_EXP_DATA_NAME=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
-    VCT_SLICE_OWRT_EXP_DATA_SITE=$(echo $VCT_SLICE_OWRT_EXP_DATA_URL | awk -F"${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}" '{print $1}')
+    variable_check VCT_SLICE_OWRT_DATA_URL  quiet
+    VCT_SLICE_OWRT_DATA_COMP=$(echo $VCT_SLICE_OWRT_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_OWRT_DATA_NAME=$(echo $VCT_SLICE_OWRT_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_OWRT_DATA_COMP}" '{print $1}')
+    VCT_SLICE_OWRT_DATA_SITE=$(echo $VCT_SLICE_OWRT_DATA_URL | awk -F"${VCT_SLICE_OWRT_DATA_NAME}.${VCT_SLICE_OWRT_DATA_COMP}" '{print $1}')
 
     variable_check VCT_SLICE_DEBIAN_TEMPLATE_URL  quiet
     VCT_SLICE_DEBIAN_TEMPLATE_COMP=$((echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" ) ||\
@@ -241,10 +241,10 @@ vct_system_config_check() {
     VCT_SLICE_DEBIAN_TEMPLATE_NAME=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
     VCT_SLICE_DEBIAN_TEMPLATE_SITE=$(echo $VCT_SLICE_DEBIAN_TEMPLATE_URL | awk -F"${VCT_SLICE_DEBIAN_TEMPLATE_NAME}.${VCT_SLICE_DEBIAN_TEMPLATE_COMP}" '{print $1}')
 
-    variable_check VCT_SLICE_DEBIAN_EXP_DATA_URL  quiet
-    VCT_SLICE_DEBIAN_EXP_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
-    VCT_SLICE_DEBIAN_EXP_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
-    VCT_SLICE_DEBIAN_EXP_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_EXP_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}" '{print $1}')
+    variable_check VCT_SLICE_DEBIAN_DATA_URL  quiet
+    VCT_SLICE_DEBIAN_DATA_COMP=$(echo $VCT_SLICE_DEBIAN_DATA_URL | grep -e "\.tgz$" >/dev/null && echo "tgz" )
+    VCT_SLICE_DEBIAN_DATA_NAME=$(echo $VCT_SLICE_DEBIAN_DATA_URL | awk -F'/' '{print $(NF)}' | awk -F".${VCT_SLICE_DEBIAN_DATA_COMP}" '{print $1}')
+    VCT_SLICE_DEBIAN_DATA_SITE=$(echo $VCT_SLICE_DEBIAN_DATA_URL | awk -F"${VCT_SLICE_DEBIAN_DATA_NAME}.${VCT_SLICE_DEBIAN_DATA_COMP}" '{print $1}')
 
 }
 
@@ -416,7 +416,9 @@ vct_system_install_server() {
     vct_sudo apt-get update
     vct_sudo apt-get install -y --force-yes python-pip
     
-    vct_do mkdir -p $VCT_SERVER_DIR/{media/templates,static,private/exp_data,private/overlay,pki/ca}
+    # Since controller v.0.8a32 slices files path has changed (rev ae55e13c)
+    vct_do mkdir -p $VCT_SERVER_DIR/{static,pki/ca}
+    vct_do mkdir -p $VCT_DL_DIR/{templates,exp_data,overlay}
     # Don't know why /pki gets created as root.. but here a quick fix:
     vct_sudo chown -R $VCT_USER $VCT_SERVER_DIR/pki
     
@@ -425,7 +427,7 @@ vct_system_install_server() {
     if [[ ! $(pip freeze|grep confine-controller) ]]; then
         # First time controller gets installed
         vct_sudo pip install confine-controller==$VCT_SERVER_VERSION
-        vct_sudo controller-admin.sh install_requirements --local
+        vct_sudo controller-admin.sh install_requirements
     else
         # An older version is present, just go ahead and proceed with normal way
         vct_sudo python "$VCT_DIR/server/manage.py" upgradecontroller --pip_only --controller_version $VCT_SERVER_VERSION
@@ -442,7 +444,7 @@ vct_system_install_server() {
     
     if [[ $CURRENT_VERSION != false ]]; then
         # Per version upgrade specific operations
-        ( cd $VCT_DIR/server && vct_sudo python manage.py postupgradecontroller --no-restart --local --from $CURRENT_VERSION )
+        ( cd $VCT_DIR/server && vct_sudo python manage.py postupgradecontroller --no-restart --from $CURRENT_VERSION )
     else
         vct_sudo python "$VCT_DIR/server/manage.py" syncdb --noinput
         vct_sudo python "$VCT_DIR/server/manage.py" migrate --noinput
@@ -480,6 +482,7 @@ vct_system_install_server() {
     
     # Create a vct user, default VCT group and provide initial auth token to vct user
     # WARNING the following code is sensitive to indentation !!
+    # NOTE you need to include an EMPTY line to clean indentation
     cat <<- EOF | python "$VCT_DIR/server/manage.py" shell
 	from users.models import *
 
@@ -488,7 +491,8 @@ vct_system_install_server() {
 	if not User.objects.filter(username='vct').exists():
 	    print 'Creating vct superuser'
 	    User.objects.create_superuser('vct', 'vct@localhost', 'vct', name='vct')
-    users['vct'] = User.objects.get(username='vct')
+
+	users['vct'] = User.objects.get(username='vct')
 
 	for username in ['admin', 'researcher', 'technician', 'member']:
 	    if not User.objects.filter(username=username).exists():
@@ -509,7 +513,17 @@ vct_system_install_server() {
 	for __, user in users.items():
 	    print '\nAdding auth token to user %s' % user.username
 	    AuthToken.objects.get_or_create(user=user, data=token_data)
-	
+
+	# Update VCT server API URIs as plain HTTP as has no configured certificate
+	from nodes.models import Server
+
+	print '\nUpdating ServerAPI to use plain HTTP'
+	server = Server.objects.first()
+	if hasattr(server, 'api'): # only version > 0.11 requires this patch
+	    for api in server.api.filter(base_uri__startswith='https'):
+	        api.base_uri = api.base_uri.replace('https', 'http', 1)
+	        api.save()
+
 	EOF
 
     # Load further data into the database
@@ -710,11 +724,11 @@ EOF
 	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_TEMPLATE_NAME.$VCT_SLICE_OWRT_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-openwrt-template.tgz
     fi
 
-    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_EXP_DATA_NAME}.${VCT_SLICE_OWRT_EXP_DATA_COMP}
-    if ! vct_do install_url $VCT_SLICE_OWRT_EXP_DATA_URL $VCT_SLICE_OWRT_EXP_DATA_SITE $VCT_SLICE_OWRT_EXP_DATA_NAME $VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
-	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_OWRT_DATA_NAME}.${VCT_SLICE_OWRT_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_OWRT_DATA_URL $VCT_SLICE_OWRT_DATA_SITE $VCT_SLICE_OWRT_DATA_NAME $VCT_SLICE_OWRT_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_OWRT_DATA_URL failed" $CMD_SOFT || return 1
     else
-	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_EXP_DATA_NAME.$VCT_SLICE_OWRT_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_OWRT_DATA_NAME.$VCT_SLICE_OWRT_DATA_COMP $VCT_DL_DIR/confine-slice-openwrt-exp-data.tgz
     fi
 
     # check for update and downloadable slice-debian-template file:
@@ -725,11 +739,11 @@ EOF
 	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_TEMPLATE_NAME.$VCT_SLICE_DEBIAN_TEMPLATE_COMP $VCT_DL_DIR/confine-slice-debian-template.tgz
     fi
 
-    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_EXP_DATA_NAME}.${VCT_SLICE_DEBIAN_EXP_DATA_COMP}
-    if ! vct_do install_url $VCT_SLICE_DEBIAN_EXP_DATA_URL $VCT_SLICE_DEBIAN_EXP_DATA_SITE $VCT_SLICE_DEBIAN_EXP_DATA_NAME $VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
-	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_EXP_DATA_URL failed" $CMD_SOFT || return 1
+    [ "$UPD_SLICE" ] && vct_do rm -f $VCT_DL_DIR/${VCT_SLICE_DEBIAN_DATA_NAME}.${VCT_SLICE_DEBIAN_DATA_COMP}
+    if ! vct_do install_url $VCT_SLICE_DEBIAN_DATA_URL $VCT_SLICE_DEBIAN_DATA_SITE $VCT_SLICE_DEBIAN_DATA_NAME $VCT_SLICE_DEBIAN_DATA_COMP $VCT_DL_DIR 0 "${CMD_SOFT}${CMD_INSTALL}" ; then
+	err $FUNCNAME "Installing ULR=$VCT_SLICE_DEBIAN_DATA_URL failed" $CMD_SOFT || return 1
     else
-	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_EXP_DATA_NAME.$VCT_SLICE_DEBIAN_EXP_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
+	ln -fs $VCT_DL_DIR/$VCT_SLICE_DEBIAN_DATA_NAME.$VCT_SLICE_DEBIAN_DATA_COMP $VCT_DL_DIR/confine-slice-debian-exp-data.tgz
     fi
 
 
@@ -1400,7 +1414,7 @@ vct_node_ssh() {
             vct_do_ping $IP >/dev/null && break
             
             [ "$COUNT" = 0 ] && \
-                echo -n "Waiting for $VCRD_ID to listen on $IP (frstboot may take upto 40 secs)" || \
+                echo -n "Waiting for $VCRD_ID to listen on $IP (first boot may take up to 40 secs)" || \
                 echo -n "."
 
             COUNT=$(( $COUNT + 1 ))
@@ -1453,7 +1467,7 @@ vct_node_scp() {
 
 	    vct_do_ping $IP >/dev/null && break
 	    
-	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IP (frstboot may take upto 40 secs)" >&2 || echo -n "." >&2
+	    [ "$COUNT" = 0 ] && echo -n "Waiting for $VCRD_ID on $IP (first boot may take up to 40 secs)" >&2 || echo -n "." >&2
 
 	    COUNT=$(( $COUNT + 1 ))
 	done
@@ -1549,7 +1563,7 @@ vct_node_mount() {
 
 	    mkdir -p $VCRD_MNTP
 	    
-	    vct_sudo mount -o loop,rw,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
+	    echo vct_sudo mount -o loop,rw,offset=$(( $IMG_UNIT_SIZE * $IMG_ROOTFS_START )) $VCRD_PATH $VCRD_MNTP || \
 		err $FUNCNAME "Failed mounting $VCRD_PATH"
 
 	    echo $VCRD_MNTP
@@ -1585,12 +1599,13 @@ vct_build_node_base_image() {
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
     
-    cd $BUILD_PATH/openwrt &&\
-    ./scripts/feeds update -a &&\
-    ./scripts/feeds install -a &&\
+    ( ! [ -d $BUILD_PATH/openwrt/scripts ] || (\
+      cd $BUILD_PATH/openwrt &&\
+      ./scripts/feeds update -a &&\
+      ./scripts/feeds install -a )) &&\
     cd $BUILD_PATH &&\
-    make confclean &&\
-    make J=${1:-$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')} V=${2:-} &&\
+    make confclean  $@  &&\
+    make J=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}') $@ &&\
     ln -fs $BUILD_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
     echo &&\
     echo "The new image is available at:" &&\
@@ -1605,36 +1620,48 @@ vct_build_node_base_image() {
     }
 }
 
+vct_build_node_base_image_clean() {
+    local BUILD_PATH="$VCT_DIR/../.."
+    rm -rf $BUILD_PATH/.prepared
+    rm -rf $BUILD_PATH/openwrt
+    mkdir $BUILD_PATH/openwrt
+    git submodule sync
+    git submodule update --init
+    make prepare
+    vct_build_node_base_image $@
+}
 
-vct_build_sliver_exp_data() {
+vct_build_sliver_data() {
     local EXP_PATH=$1
     local EXP_TAIL="$(echo $EXP_PATH | sed 's/\/$//' | awk -F'/' '{print $NF}')"
-    local EXP_NAME="vct-exp-data-build-$EXP_TAIL.tgz"
+    local EXP_NAME="vct-sliver-data-build-$EXP_TAIL.tgz"
 
     [ -d $EXP_PATH ] &&\
     tar -czvf $VCT_DL_DIR/$EXP_NAME  --exclude=*~ --numeric-owner --group=root --owner=root -C $EXP_PATH . &&\
     echo &&\
-    echo "The slice/sliver exp-data archive is available via the controller portal at:" &&\
-    echo "slices->[select slice]->exp_data as:" &&\
+    echo "The slice/sliver data archive is available via the controller portal at:" &&\
+    echo "slices->[select slice]->sliver data as:" &&\
     echo "$EXP_NAME" || {
 	rm -f $VCT_DL_DIR/$EXP_NAME
 	echo
-	echo "Building new slice/sliver exp-data failed!"
+	echo "Building new slice/sliver data failed!"
 	return 1
     }
 
 }
 
 vct_build_sliver_template() {
-    local OS_TYPE=$1
-
-    VCT_SLICE_TEMPLATE_PASSWD="confine"
+    local OS=${1:-"debian"}
+    local OS_TYPE=$(echo $OS | awk -F'/' '{print $1}')
+    local OS_VARIANT=$(echo $OS | awk -F'/' '{print $2}')
+    shift
 
     mkdir -p $VCT_VIRT_DIR/sliver-templates
 
-    if echo $OS_TYPE | grep "debian" >/dev/null; then
-	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/debian
-	local TMPL_NAME=vct-sliver-template-build-debian
+    if [ "$OS_TYPE" == "debian" ]; then
+	OS_VARIANT=${OS_VARIANT:-"wheezy"}
+	local TMPL_DIR=$VCT_VIRT_DIR/sliver-templates/$OS_TYPE-$OS_VARIANT
+	local TMPL_NAME=vct-sliver-template-build-$OS_TYPE-$OS_VARIANT
 	vct_sudo rm -rf $TMPL_DIR
 	mkdir -p $TMPL_DIR
 	
@@ -1660,7 +1687,7 @@ vct_build_sliver_template() {
 
 	    # Inspired by: http://www.wallix.org/2011/09/20/how-to-use-linux-containers-lxc-under-debian-squeeze/
 
-	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES wheezy $TMPL_DIR/rootfs http://ftp.debian.org/debian
+	    vct_sudo debootstrap --verbose --variant=minbase --arch=i386 --include $VCT_SLIVER_TEMPLATE_DEBIAN_PACKAGES $OS_VARIANT $TMPL_DIR/rootfs $VCT_SLIVER_TEMPLATE_DEBIAN_BASE_URL
 	    vct_sudo rm -f $TMPL_DIR/rootfs/var/cache/apt/archives/*.deb
 	    vct_sudo rm -f $TMPL_DIR/rootfs/dev/shm
 	    vct_sudo mkdir -p $TMPL_DIR/rootfs/dev/shm
@@ -1687,9 +1714,13 @@ PasswordAuthentication no
 EOF
 "
 	    vct_sudo chroot $TMPL_DIR/rootfs passwd<<EOF
-confine
-confine
+$VCT_SLIVER_TEMPLATE_PASSWD
+$VCT_SLIVER_TEMPLATE_PASSWD
 EOF
+
+	    vct_sudo rm -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_*_key*
+#	    vct_sudo ssh-keygen -q -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_rsa_key -N '' -t rsa
+#	    vct_sudo ssh-keygen -q -f $TMPL_DIR/rootfs/etc/ssh/ssh_host_dsa_key -N '' -t dsa
 
 	    vct_sudo_sh "cat <<EOF > $TMPL_DIR/rootfs/etc/inittab 
 id:2:initdefault:
@@ -1725,19 +1756,45 @@ EOF
 	    vct_sudo tar -czvf $VCT_DL_DIR/$TMPL_NAME.tgz --numeric-owner --directory $TMPL_DIR/rootfs .
 
 	    echo 
-            echo "The slice/sliver template image is available via the controller portal at:"
-            echo "Slices->Templates->[select template]->image as:"
-	    echo $TMPL_NAME.tgz
-	    echo "You may have to delete and recreate the template to consider the new image"
+            echo "The slice/sliver template image can be uploaded via the controller portal at:"
+            echo "Slices->Templates->[select template]->image from:"
+	    echo $VCT_DL_DIR/$TMPL_NAME.tgz
+	    ls -l $VCT_DL_DIR/$TMPL_NAME.tgz
 	    echo
 
 	fi
 	
 
 
-    elif echo $OS_TYPE | grep "openwrt" >/dev/null; then
+    elif [ "$OS_TYPE" == "openwrt" ]; then
+	OS_VARIANT=${OS_VARIANT:-"aa"}
+	local DL_PATH="$VCT_USER_HOME/dl"
+	local BUILD_DIR=$VCT_VIRT_DIR/sliver-templates/$OS_TYPE-$OS_VARIANT
+	local BUILD_NAME=vct-sliver-template-build-$OS_TYPE-$OS_VARIANT
+	local GIT_URL=$( ( [ "$OS_VARIANT" == "aa" ] && echo $VCT_SLIVER_TEMPLATE_OPENWRT_AA_SYSTEM_GIT_URL) ||  ( [ "$OS_VARIANT" == "bb" ] && echo $VCT_SLIVER_TEMPLATE_OPENWRT_BB_SYSTEM_GIT_URL) || echo "ERROR")
+	local BUILD_CONFIG="$BUILD_DIR/openwrt/.config"
 
-	echo "Sorry, not yet implemented"
+	mkdir -p $BUILD_DIR
+	mkdir -p $DL_PATH
+
+	(( [ -d $BUILD_DIR/openwrt ] && cd $BUILD_DIR/openwrt && git remote show origin  && git pull origin && git status) ||  git clone $GIT_URL $BUILD_DIR/openwrt) &&\
+	ln -fs $DL_PATH $BUILD_DIR/openwrt/dl &&\
+	( cd $BUILD_DIR/openwrt &&\
+	  scripts/feeds update -a &&\
+	  scripts/feeds install -a ) &&\
+	echo "$VCT_SLIVER_TEMPLATE_OPENWRT_BUILD_OPTS" > $BUILD_CONFIG &&\
+	( for PACKAGE in ${VCT_SLIVER_TEMPLATE_OPENWRT_PACKAGES}; do echo "CONFIG_PACKAGE_${PACKAGE}=y" >> $BUILD_CONFIG; done ) &&\
+	make -C $BUILD_DIR/openwrt defconfig > /dev/null &&\
+	time make -C $BUILD_DIR/openwrt J=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}') $@ &&\
+	cp $BUILD_DIR/openwrt/bin/x86/openwrt-x86-generic-rootfs.tar.gz $VCT_DL_DIR/$BUILD_NAME.tgz &&\
+	true || err $0 "Failed building $OS node image!!"  || return 1
+
+	echo 
+        echo "The slice/sliver template image can be uploaded via the controller portal at:"
+        echo "Slices->Templates->[select template]->image from:"
+	echo $VCT_DL_DIR/$BUILD_NAME.tgz
+	ls -l $VCT_DL_DIR/$BUILD_NAME.tgz
+	echo
 
     fi
     return 1
@@ -1775,8 +1832,9 @@ vct_help() {
     Build Functions
     ---------------
 
-    vct_build_node_base_image                   : Build node image from scratch 
-    vct_build_sliver_exp_data <EXP_DIR>         : Build sliver exp_data from dir
+    vct_build_node_base_image                   : Build node image
+    vct_build_node_base_image_clean             : Build node image from scratch 
+    vct_build_sliver_data <EXP_DIR>             : Build sliver data from dir
     vct_build_sliver_template <OS_TYPE>         : Build sliver template image
 
     Argument Definitions
@@ -1836,8 +1894,8 @@ else
         vct_node_mount)             $CMD "$@";;
         vct_node_unmount)           $CMD "$@";;
 
-        vct_build_node_base_image)  $CMD "$@";;
-        vct_build_sliver_exp_data)  $CMD "$@";;
+        vct_build_node_base_image*) $CMD "$@";;
+        vct_build_sliver_data)      $CMD "$@";;
         vct_build_sliver_template)  $CMD "$@";;
 
 	*) vct_help;;

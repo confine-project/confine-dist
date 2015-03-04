@@ -5,6 +5,16 @@
 local json   = require "luci.json"
 local ltn12  = require "luci.ltn12"
 
+function get_table_by_key_val( t, val, key )
+	
+    local k,v
+    for k,v in pairs(t) do
+        if t[k][key] == val then
+            return t[k]
+        end
+    end
+    return nil
+end
 
 function file_get( file )
     local fd = io.open(file, "r")
@@ -20,11 +30,13 @@ end
 
 function set_configuration()
     local sys_conf = file_get("/var/run/confine/system_state")
-    
+
+    SERVER_STATE = file_get("/var/run/confine/server_state")
+    LINK_BASE_REL = sys_conf.link_base_rel
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
+    SERVER_URI = sys_conf.server_base_uri:match('://(.*)')
     API_PATH_PREFIX = sys_conf.node_base_path
     NODE_URL = sys_conf.node_base_uri:gsub(API_PATH_PREFIX, '')
-    SERVER_API_PATH_PREFIX = sys_conf.server_base_path
     WWW_PATH = '/var/confine/'
     NODE_ID = sys_conf.id
     DAEMON_PID_FILE = '/var/run/confine/pid'
@@ -160,60 +172,36 @@ function get_links(request, name, patterns)
         ['node_templates'] = {'templates/', 'node/template-list'},
         ['node_refresh'] = {'node/ctl/refresh', 'node/do-refresh'},
     }
-    local server_links = {
-        ['server_base'] = {'', 'server/base'},
-        ['server_server'] = {'server/', 'server/server'},
-        ['server_nodes'] = {'nodes/', 'server/node-list'},
-        ['server_slices'] = {'slices/', 'server/slice-list'},
-        ['server_slivers'] = { 'slivers/', 'server/sliver-list'},
-        ['server_users'] = { 'users/', 'server/user-list'},
-        ['server_groups'] = {'groups/', 'server/group-list'},
-        ['server_gateways'] = {'gateways/', 'server/gateway-list'},
-        ['server_hosts'] = {'hosts/', 'server/host-list'},
-        ['server_templates'] = {'templates/', 'server/template-list'},
-        ['server_islands'] = {'islands/', 'server/island-list'},
-        ['server_reboot'] = {'nodes/${node_id}/ctl/reboot', 'server/do-reboot'},
-        ['server_req_api_cert'] = {'nodes/${node_id}/ctl/request-api-cert', 'controller/do-request-api-cert'},
-        ['server_node_source'] = {'nodes/${node_id}', 'node/source'},
-        ['server_update'] = {'slivers/${object_id}/ctl/update', 'server/do-update'},
-        ['server_upload_exp_data'] = {'slivers/${object_id}/ctl/upload-exp-data', 'controller/do-upload-exp-data'},
-        ['server_upload_overlay'] = {'slivers/${object_id}/ctl/upload-overlay', 'controller/do-upload-overlay'},
-        ['server_sliver_source'] = {'slivers/${object_id}', 'node/source'},
-        ['server_upload_image'] = {'templates/${object_id}/ctl/upload-image', 'controller/do-upload-image'},
-        ['server_template_source'] = {'templates/${object_id}', 'node/source'},
-    }
+
     local links, url, rel = {}
     for k, link in pairs(node_links) do
         url = '<' .. proto .. '://' .. addr .. API_PATH_PREFIX .. '/' .. link[1] .. '>; '
-        rel = 'rel="http://confine-project.eu/rel/'..link[2]..'"'
-        links[k] = url .. rel
-    end
-    
-    for k, link in pairs(server_links) do
-        url = '<' .. proto .. '://' .. SERVER_ADDR .. SERVER_API_PATH_PREFIX .. '/' .. link[1] .. '>; '
-        url = interp(url, {node_id=NODE_ID, object_id=patterns})
-        rel = 'rel="http://confine-project.eu/rel/' .. link[2] .. '"'
+        rel = 'rel="' .. LINK_BASE_REL .. link[2] .. '"'
         links[k] = url .. rel
     end
     
     local map = {
-        ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates',
-                    'server_node_source', 'server_base', 'server_server', 'server_nodes',
-                    'server_users', 'server_groups', 'server_gateways', 'server_slivers',
-                    'server_hosts', 'server_templates', 'server_islands'},
-        ['node'] = {'node_base',  'node_refresh', 'server_nodes', 'server_node_source',
-                    'server_reboot'},
-        ['slivers'] = {'node_base', 'server_slivers'},
-        ['sliver'] = {'node_base', 'node_slivers', 'server_slivers', 'server_sliver_source',
-                      'server_update', 'server_upload_exp_data', 'server_upload_overlay'},
-        ['templates'] = {'node_base', 'server_templates'},
-        ['template'] = {'node_base', 'node_templates', 'server_templates',
-                        'server_template_source', 'server_upload_image'},
+        ['base'] = {'node_base', 'node_node', 'node_slivers', 'node_templates'},
+        ['node'] = {'node_base',  'node_refresh'},
+        ['slivers'] = {'node_base'},
+        ['sliver'] = {'node_base', 'node_slivers'},
+        ['templates'] = {'node_base'},
+        ['template'] = {'node_base', 'node_templates'},
     }
     local rendered_links = {}
     for i, link in ipairs(map[name]) do
         rendered_links[i] = links[link]
     end
+
+    for k,v in pairs(
+        (name=='base'     and SERVER_STATE.local_base.header_links) or
+        (name=='node'     and SERVER_STATE.header_links) or
+        (name=='template' and SERVER_STATE.local_templates[tostring(patterns)].header_links) or
+        (name=='sliver'   and (get_table_by_key_val(SERVER_STATE.local_slivers, tostring(patterns), "uri_id") or {}).header_links) or
+        {} ) do
+            rendered_links[#rendered_links+1] = v .. '; rel="' .. k .. '"'
+    end
+
     return table.concat(rendered_links, ", ")
 end
 
@@ -247,7 +235,7 @@ end
 function encoding_negotiation(request, response)
     -- Encodes response based on Accept-Encoding request header
     local encoding = request['headers']["Accept-Encoding"] 
-    if encoding and string.find(encoding, "gzip") then
+    if encoding and string.find(encoding, "gzip") and string.len(response['content']) > 0 then
         response['headers']['Content-Encoding'] = "gzip"
         response['content'] = gzip(response['content'])
     else
@@ -274,6 +262,24 @@ end
 -- VIEWS
 
 function redirect(request, url)
+    -- 303 redirection to url   
+    local content =''
+    local headers = {
+        ['Status'] = "HTTP/1.1 303 See Other",
+        ['Location'] = url,
+        ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
+--        ['ETag'] = get_etag(content),
+--        ['Allow'] = 'GET HEAD',
+--        ['Content-Type'] = "text/plain",
+--        ['Content-Encoding'] = "chunked",
+--        ['Content-Length'] = string.len(content)
+    }
+    
+    return cgi_response( {['headers'] = headers, ['content'] = content} )
+end
+
+
+function _redirect(request, url)
     -- 303 redirection to url
     local headers = {
         ['Status'] = "HTTP/1.1 303 See Other",
@@ -334,7 +340,9 @@ function file_view(request, name, patterns)
     local map = {
         ['base'] = 'index.html',
         ['node'] = 'node/index.html',
+        ['slivers'] = 'slivers/index.html',
         ['sliver'] = 'slivers/%s/index.html',
+        ['templates'] = 'templates/index.html',
         ['template'] = 'templates/%s/index.html',
     }
     
@@ -433,9 +441,11 @@ function api_path_dispatch(request, api_path)
         ['^/node/ctl/refresh/$'] = {pullrequest_view, 'ctl'},
         ['^/node/$'] = {file_view, 'node'},
         ['^/slivers/(%d+)/$'] = {file_view, 'sliver'},
-        ['^/slivers/$'] = {listdir_view, 'slivers'},
+--      ['^/slivers/$'] = {listdir_view, 'slivers'},
+        ['^/slivers/$'] = {file_view, 'slivers'},
         ['^/templates/(%d+)/$'] = {file_view, 'template'},
-        ['^/templates/$'] = {listdir_view, 'templates'},
+--      ['^/templates/$'] = {listdir_view, 'templates'},
+        ['^/templates/$'] = {file_view, 'templates'},
     }
     for p, view in pairs(map) do
         local patterns = api_path:match(p)
@@ -449,30 +459,31 @@ end
 
 function internal_server_error(request, err_msg)
 
+--    err_msg = '{\n    "detail": "Internal Server Error"\n}'
+
     local headers = {
-        ['Status'] = "HTTP/1.0 500 Internal Server Error"
+        ['Status'] = "HTTP/1.0 500 Internal Server Error",
+        ['Date'] = os.date('%a, %d %b %Y %H:%M:%S +0000'),
+--        ['ETag'] = get_etag(err_msg),
+        ['Allow'] = 'GET HEAD',
+        ['Content-Type'] = "text/plain",
+        ['Content-Encoding'] = "chunked",
+        ['Content-Length'] = string.len(err_msg)
     }
-    local content = '{\n    "detail": "Internal Server Error"\n}'
---  alternatively, include a traceback! But howto wrap this correctly :-( ?:    
---  local content = '\ntraceback:\n'..tostring(err_msg)..'\n'
-    local response = {
-        ['headers'] = headers,
-        ['content'] = content
-    }
-    return handle_response(request, response)
+    
+    return cgi_response( {['headers'] = headers, ['content'] = err_msg} )
 end
 
 
 function handle_xpcall_error(e)
 	local trace = string.format(
-		"%s\n" ..
+		"\n%s\n" ..
 		"----------\n" ..
 		"%s\n" ..
 		"----------\n",
-		e or "(?)",
-		debug.traceback(2)
+		tostring(e) or "(?)",
+		tostring(debug.traceback(2))
 	)
-	err("%s",trace)
 	return trace
 end
 

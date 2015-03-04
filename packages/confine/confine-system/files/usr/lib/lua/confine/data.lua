@@ -47,9 +47,11 @@ function file_put( data, file, dir )
 	dbg("updating "..dir..(file or ""))
 	
 	if file and data then
+		local jstr = json.encode(data):gsub('"properties":%[%]', '"properties":{}')
 		local out = io.open(dir .. file, "w")
 		assert(out, "Failed to open %s" %dir .. file)	
-		ltn12.pump.all(json.Encoder(data):source(), ltn12.sink.file(out))
+		out:write(jstr)
+		out:close()
 		
 		local tmp = os.tmpname()
 		local cmd = "cat "..dir..file.." | "..json_pretty_print_tool.." > "..tmp
@@ -96,7 +98,7 @@ function curl(url, data, header, etag, cert, compressed, timeout, stderr)
 		local timeout_opt = timeout and ("--max-time %s --connect-timeout %s" %{timeout, timeout}) or "3600"
 		local stderr_log = stderr and "" or "2>/dev/null"
 		
-		local cmd = [[ /usr/bin/curl -gG %s %s %s --output %s %s %s %s %s ]]
+		local cmd = [[ /usr/bin/curl -gLG %s %s %s --output %s %s %s %s %s ]]
 				%{cert_opt, compressed_opt, timeout_opt, data, header_opt, etag_opt, url, stderr_log}
 				
 		return os.execute( cmd )
@@ -110,15 +112,23 @@ function http_get_raw( url, dst, cert_file )
 	return ( curl( url, dst, false, false, cert_file, false, "3600", true) == 0) and true or false
 end
 
+local function get_url_keys( url )
+	local api_first, api_last = url:find("/api")
+	local full_key = api_last and url:sub(api_last+1) or url
+	local base_key = full_key:match( "/[%l]+/" ) or "/"
+	local index_key = (full_key:match( "/[%d]+/?$" ) or ""):gsub("/","")
+	
+	return base_key, index_key
+end
 
-function http_get_keys_as_table(url, base_uri, cert_file, cache)
+function http_get_keys_as_table(url, cert_file, cache, sys_conf)
 
 	if not url then return nil end
 	
-	local base_key,index_key = ctree.get_url_keys( url )
+	local base_key,index_key = get_url_keys( url )
 	local cached             = cache and cache[base_key] and ((index_key and cache[base_key][index_key]) or (not index_key and cache[base_key])) or false
-	
-	url = base_uri..base_key..(index_key or "") --.. ".invalid"
+
+--	dbg("url=%s base_key=%s index_key=%s", url, tostring(base_key), tostring(index_key))
 	
 	if cached and cached.sqn and cached.sqn == cache.sqn then
 		
@@ -143,20 +153,25 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 		os.remove(header_file)
 		os.remove(data_file)
 		
-		if header:match("^HTTP/1.[%d] 404 ") then --NOT FOUND
-			
-			dbg("%6s url=%-60s base_key=%s index_key=%s", "MISSING", url, tostring(base_key), tostring(index_key))
-			assert( false, "wget returned: '404 NOT FOUND' full response: " .. tostring(header) )
-			
-		elseif header:match("^HTTP/1.[%d] 200 OK") then
+		if header:match("HTTP/1.[%d] 200 OK") then
 			
 			header_etag = (header:match( "ETag:[^\n]+\n") or ""):gsub(" ",""):gsub("ETag:",""):gsub([["]],""):gsub("\n",""):match("^[^;]+")
 			
+			local hls = header:match( "Link:[^\r][^\n]+\r\n" )
+			local hlt = tools.str2table(hls, '<http[^>]+>[ ]*;[ ]*rel="[^"]+"')
+			local k,v	
+			header_links = {[sys_conf.link_base_rel.."node/source"] = "<"..url..">"}
+			for k,v in pairs( hlt ) do
+				local K = v:match('rel="([^"]+)"')
+				if K then header_links[K] = v:match('<http[^>]+>') end
+			end
+
 			dbg("%6s url=%-60s base_key=%s index_key=%s etag=%s", cache and "MODIFIED" or "NO CACHE", url, tostring(base_key), tostring(index_key), tostring(header_etag))
 			
 			assert(result, "Failed processing json input from: %s"%{url} )
 			
 			result = jsd:get()
+			result.header_links = header_links
 			
 			assert(type(result)=="table", "Failed decoding json input from: %s"%{url} )
 			
@@ -175,17 +190,17 @@ function http_get_keys_as_table(url, base_uri, cert_file, cache)
 			
 			return result, index_key
 			
-		elseif header:match("^HTTP/1.[%d] 304 ") then --NOT MODIFIED
+		elseif header:match("HTTP/1.[%d] 304 ") then --NOT MODIFIED
 			
 			dbg("%6s url=%-60s base_key=%s index_key=%s", "UNCHANGED", url, tostring(base_key), tostring(index_key))
 			
-			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache")
+			assert( cache and cached and cached.sqn and cached.etag and cached.data, "Corrupted cache when retrieving "..url)
 			cached.sqn = cache.sqn
 			
 			return cached.data, index_key
 			
 		else
-			assert( false, "ERROR url=%-60s base_key=%s index_key=%s header=%s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
+			assert( false, "ERROR url=%s base_key=%s index_key=%s header: %s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
 		end		
 		
 	end

@@ -1,5 +1,7 @@
 #!/bin/sh
 
+TO_REMOVE="/etc/config/confine-defaults /usr/lib/opkg /.extroot.md5sum /etc/extroot.md5sum /var/www/confine /etc/banner /etc/confine.version"
+
 check_part() {
     local dev=$1
     local part=${dev}1
@@ -10,8 +12,9 @@ check_part() {
         mv -f ${dir}/fstab /etc/config/fstab
         mkdir /overlay /home
         mount ${dev}3 /overlay
-        rm -f /overlay/.extroot.md5sum
-        rm -f /overlay/etc/extroot.md5sum
+        for d in $TO_REMOVE; do
+            [ -e /overlay/$d ] && find /overlay/$d -exec rm -rf {} \;
+        done
         umount /overlay
         /etc/init.d/fstab enable
         sleep 2

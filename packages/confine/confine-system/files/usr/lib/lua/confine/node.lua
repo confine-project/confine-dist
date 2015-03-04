@@ -115,6 +115,16 @@ local function get_lnode_sliver_pub_ipv4 (sys_conf)
 	return sliver_pub_ipv4_proto, sliver_pub_ipv4_range
 end
 
+function get_node_mgmt_net(sys_conf)
+	
+	if type(sys_conf.tinc_gateway) == "string" then
+		return tinc.get_tinc_mgmt_net(sys_conf)
+	else
+		
+		return {addr=sys_conf.addrs.mgmt, backend="native"}, null
+	end
+end
+
 
 
 function get_new_cycle_lnode( sys_conf, cached_node )
@@ -128,12 +138,11 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	node.errors                = {}
 	
-	node.uri                   = sys_conf.node_base_uri.."/node"
+	node.uri                   = sys_conf.node_base_uri.."/node/"
 	node.id                    = sys_conf.id
 	node.uuid                  = sys_conf.uuid
---	node.pubkey                = tools.subfind(nixio.fs.readfile(sys_conf.node_pubkey_file),ssl.RSA_HEADER,ssl.RSA_TRAILER)
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
-	node.cert                  = type(node.cert)=="string" and node.cert:gsub("\r","") or null
+	node.api                   = { type="node", base_uri=sys_conf.node_base_uri.."/", cert=node.cert }
 	node.arch                  = sys_conf.arch
 	node.soft_version          = sys_conf.soft_version
 	
@@ -143,8 +152,8 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	node.addrs                 = sys_conf.addrs
 	
-	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
-	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
+--	node.disk_max_per_sliver   = sys_conf.disk_max_per_sliver
+--	node.disk_dflt_per_sliver  = sys_conf.disk_dflt_per_sliver
 	
 	node.boot_sn               = sys_conf.boot_sn
 	node.set_state             = cached_node.set_state
@@ -158,9 +167,9 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	
 	node.properties            = cached_node.properties --or {}
 ----	
-	node.mgmt_net		   = tinc.get_node_mgmt_net(sys_conf, cached_node.mgmt_net)
---	node.local_server          = tinc.get_lserver(sys_conf)
---	node.local_gateways        = tinc.get_lgateways(sys_conf)
+
+	node.mgmt_net,node.tinc    = get_node_mgmt_net(sys_conf)
+--	node.mgmt_net		   = get_tinc_net(sys_conf, "node_" .. sys_conf.id)
 	
 --	node.local_group           = ssh.sys_get__lgroup(sys_conf.ssh_node_auth_file, true)
 	node.group                 = cached_node.group or null --ssh.get_node_group(sys_conf, node.local_group)
@@ -171,22 +180,13 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	return node
 end
 
-function cb2_get_sys_key( rules, sys_conf, otree, ntree, path )
-	if not rules then return "cb2_get_sys_key" end
-	
-	local key = ctree.get_path_leaf(path)
-	
-	ctree.set_path_val( otree, path, sys_conf[key] )
-end
-
-
 
 function cb2_get_disk_avail( rules, sys_conf, otree, ntree, path )
 	if not rules then return "cb2_get_disk_avail" end
 
 	sliver.purge_templates( sys_conf, otree )
 	
-	return cb2_get_sys_key( rules, sys_conf, otree, ntree, path )	
+	ctree.set_path_val( otree, path, sys_conf.disk_avail )
 end
 
 function set_sys_key_and_more( sys_conf, otree, ntree, path, sys_state, reboot )
@@ -260,6 +260,65 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 	elseif not is_table and old ~= new then
 		
 		assert(false, "ERR_SETUP...")
+	end
+	
+end
+
+function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed, error_msg)
+	if not rules then return "cb2_set_resources" end
+
+	local new = ctree.get_path_val(ntree,path)
+
+	if begin then
+		
+		local resources = {
+			disk = {name="disk", unit="MiB", max_req=sys_conf.disk_max_per_sliver, dflt_req=sys_conf.disk_dflt_per_sliver, avail=0},
+			pub_ipv6 = {name="pub_ipv6", unit="addrs", max_req=0, dflt_req=0, avail=0},
+			pub_ipv4 = {name="pub_ipv4", unit="addrs", max_req=(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0), dflt_req=0, avail=0}
+		}
+		
+		ctree.set_path_val(otree, path, resources)
+		
+	elseif not begin then
+		
+		local failure = false
+		
+		if new then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path, "table") or failure
+		end
+		
+		if new and new.disk then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."disk", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/name", "string", {"^disk$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/unit", "string", {"^MiB$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_req", "number", {10000}, false, "Must be integer <= 10000 !") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_req", "number", {otree.resources.disk.max_req}, false, "Must be integer <= "..otree.resources.disk.max_req.." !") or failure
+		end
+		
+		if new and new.pub_ipv4 then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv4", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/name", "string", {"^pub_ipv4$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/unit", "string", {"^addrs$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_req", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_req", "number", {0}) or failure
+		end
+
+		if new and new.pub_ipv6 then
+			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv6", "table") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/name", "string", {"^pub_ipv6$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/unit", "string", {"^addrs$"} ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_req", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_req", "number", {0}) or failure
+		end
+		
+		if not failure then
+			if otree.resources.disk.max_req ~= sys_conf.disk_max_per_sliver then
+				system.set_system_conf(sys_conf, "disk_max_per_sliver", otree.resources.disk.max_req)
+			end
+			if otree.resources.disk.dflt_req ~= sys_conf.disk_dflt_per_sliver then
+				system.set_system_conf(sys_conf, "disk_dflt_per_sliver", otree.resources.disk.dflt_req)
+			end
+		end
 	end
 	
 end
@@ -355,7 +414,7 @@ end
 function cb2_lnode_lgroup_role( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_lnode_lgroup_role" end
 	
-	return ssh.sys_set__lgroup_role( sys_conf.ssh_node_auth_file, true, otree, ntree, path, begin, changed )
+	return ssh.sys_set__lgroup_role( sys_conf.ssh_node_auth_file, sys_conf.sync_node_admins, true, otree, ntree, path, begin, changed )
 end
 
 
@@ -371,52 +430,37 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
 	table.insert(tmp_rules, {"/island",				crules.cb2_set})
 	table.insert(tmp_rules, {"/island/uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/island/id",				crules.cb2_set})
 
 	table.insert(tmp_rules, {"/uri",				crules.cb2_nop}) --redefined by node
 	table.insert(tmp_rules, {"/id", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"}) --conflict
-	table.insert(tmp_rules, {"/cert", 				cb2_set_setup, "can only be changed manually (during customization or by installing pre-customized images)!"})
+	table.insert(tmp_rules, {"/api", 				crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/type", 				crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/base_uri",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/api/cert", 				crules.cb2_nop})
+
 	table.insert(tmp_rules, {"/arch",				cb2_set_setup, "differs from predefined RD hardware!"})
 
 	table.insert(tmp_rules, {"/mgmt_net",				crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/addr",			crules.cb2_nop})
 	table.insert(tmp_rules, {"/mgmt_net/backend",			crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/native",			crules.cb2_set})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_server",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name",		crules.cb2_nop})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey",	crules.cb2_nop})
 
+	table.insert(tmp_rules, {"/tinc",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/name",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/pubkey",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses/*",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/tinc/addresses/*/*",			crules.cb2_nop})
 
-	table.insert(tmp_rules, {"/local_server",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/uri",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/app_url",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/cn/cndb_uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/description",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net",				tinc.cb2_mgmt_net})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/addr",					crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/backend",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/native",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server",				crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/name",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/addr",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/port",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/addresses/*/island/uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/pubkey",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_server/mgmt_net/tinc_server/is_active",		crules.cb2_set})
-
-
-	table.insert(tmp_rules, {"/local_gateways",			crules.cb2_set})  --must exist
-	table.insert(tmp_rules, {"/local_gateways/*",			crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/uri",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn",		crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/description",	crules.cb2_set})
-	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",				tinc.cb2_mgmt_net})
+--[[
+	table.insert(tmp_rules, {"/local_gateways",						crules.cb2_set})  --must exist
+	table.insert(tmp_rules, {"/local_gateways/*",						crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/uri",					crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn",					crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn/app_url",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/cn/cndb_uri",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/description",				crules.cb2_set})
+	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net",					tinc.cb2_mgmt_net})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/addr",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/backend",				crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/native",				crules.cb2_set})
@@ -430,7 +474,7 @@ tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/addresses/*/island/uri",crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/pubkey",		crules.cb2_set})
 	table.insert(tmp_rules, {"/local_gateways/*/mgmt_net/tinc_server/is_active",		crules.cb2_set})
-	
+]]--
 
 
 	table.insert(tmp_rules, {"/direct_ifaces",			cb2_set_direct_ifaces})
@@ -449,22 +493,26 @@ tmp_rules = in_rules2
 --	
 	table.insert(tmp_rules, {"/group",				crules.cb2_set})
 	table.insert(tmp_rules, {"/group/uri",				crules.cb2_set})
-
-	table.insert(tmp_rules, {"/disk_dflt_per_sliver",		cb2_set_sys_key})
-	table.insert(tmp_rules, {"/disk_max_per_sliver",		cb2_set_sys_key})
+	table.insert(tmp_rules, {"/group/id",				crules.cb2_set})
 	
 --	
 	table.insert(tmp_rules, {"/boot_sn", 				cb2_set_sys_key_and_reboot})
 	table.insert(tmp_rules, {"/set_state",				crules.cb2_set})
 	table.insert(tmp_rules, {"/state",				cb2_set_state})
+	
+	table.insert(tmp_rules, {"/resources",				cb2_set_resources})
+	
 --
 	table.insert(tmp_rules, {"/local_slivers",			crules.cb2_nop}) --must exist
 	table.insert(tmp_rules, {"/local_slivers/*",			sliver.cb2_set_lsliver})
 	
 	table.insert(tmp_rules, {"/slivers",				sliver.cb2_set_slivers}) --point to local_slivers
 --
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
-	table.insert(tmp_rules, {"/disk_avail",				cb2_get_disk_avail})
+	table.insert(tmp_rules, {"/resources",				crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/pub_ipv4",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/pub_ipv4/avail",		sliver.cb2_lnode_sliver_pub_ipv4_avail})
+	table.insert(tmp_rules, {"/resources/disk",			crules.cb2_nop})
+	table.insert(tmp_rules, {"/resources/disk/avail",		cb2_get_disk_avail})
 	
 
 
@@ -480,12 +528,18 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/cn/cndb_uri"})
 	table.insert(tmp_rules, {"/island"})
 	table.insert(tmp_rules, {"/island/uri"})
+	table.insert(tmp_rules, {"/island/id"})
 
 	table.insert(tmp_rules, {"/uri"})
 	table.insert(tmp_rules, {"/id"})
 --	table.insert(tmp_rules, {"/uuid"})
 	table.insert(tmp_rules, {"/pubkey"})
-	table.insert(tmp_rules, {"/cert"})
+--	table.insert(tmp_rules, {"/cert"})
+	table.insert(tmp_rules, {"/api"})
+	table.insert(tmp_rules, {"/api/type"})
+	table.insert(tmp_rules, {"/api/base_uri"})
+	table.insert(tmp_rules, {"/api/cert"})
+
 	table.insert(tmp_rules, {"/arch"})
 
 	table.insert(tmp_rules, {"/addrs"})
@@ -501,24 +555,23 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/addrs/recovery_ipv6"})
 	table.insert(tmp_rules, {"/addrs/recovery_unique"})
 
-
-	table.insert(tmp_rules, {"/disk_dflt_per_sliver"})
-	table.insert(tmp_rules, {"/disk_max_per_sliver"})
-	table.insert(tmp_rules, {"/disk_avail"})
-
 	table.insert(tmp_rules, {"/mgmt_net"})
 	table.insert(tmp_rules, {"/mgmt_net/addr"})
 	table.insert(tmp_rules, {"/mgmt_net/backend"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_server"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/name"})
-	table.insert(tmp_rules, {"/mgmt_net/tinc_client/pubkey"})
+
+	table.insert(tmp_rules, {"/tinc"})
+	table.insert(tmp_rules, {"/tinc/name"})
+	table.insert(tmp_rules, {"/tinc/pubkey"})
+	table.insert(tmp_rules, {"/tinc/addresses"})
+	table.insert(tmp_rules, {"/tinc/addresses/*"})
+	table.insert(tmp_rules, {"/tinc/addresses/*/*"})
 
 	table.insert(tmp_rules, {"/direct_ifaces/*", "number"})
 	table.insert(tmp_rules, {"/direct_ifaces"})
 	
 	table.insert(tmp_rules, {"/group"})
 	table.insert(tmp_rules, {"/group/uri"})
+	table.insert(tmp_rules, {"/group/id"})
 	
 	table.insert(tmp_rules, {"/boot_sn"})
 	table.insert(tmp_rules, {"/set_state"})
@@ -528,8 +581,17 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/slivers"})
 	table.insert(tmp_rules, {"/slivers/*", "iterate"})
 	table.insert(tmp_rules, {"/slivers/*/uri"})
+	table.insert(tmp_rules, {"/slivers/*/id"})
 
-	table.insert(tmp_rules, {"/sliver_pub_ipv4_avail"})
+	table.insert(tmp_rules, {"/resources"})
+	table.insert(tmp_rules, {"/resources/disk", "iterate"})
+	table.insert(tmp_rules, {"/resources/pub_ipv4", "iterate"})
+	table.insert(tmp_rules, {"/resources/pub_ipv6", "iterate"})
+	table.insert(tmp_rules, {"/resources/*/name"})
+	table.insert(tmp_rules, {"/resources/*/unit"})
+	table.insert(tmp_rules, {"/resources/*/dflt_req"})
+	table.insert(tmp_rules, {"/resources/*/max_req"})
+	table.insert(tmp_rules, {"/resources/*/avail"})
 
 	table.insert(tmp_rules, {"/message"})
 	table.insert(tmp_rules, {"/errors"})
