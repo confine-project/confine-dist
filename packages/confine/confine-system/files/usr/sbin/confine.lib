@@ -2,6 +2,7 @@
 
 set -u
 
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
 
 CONFINE_RPC_DIR=/var/run/confine/rpc
 
@@ -13,6 +14,9 @@ CONFINE_VNET_PREFIX="slv"
 UCI_DEFAULT_PATH=/etc/config
 ERR_LOG_TAG='CONFINE'
 
+BIN_MOUNT=/usr/bin/mount
+BIN_UMOUNT=/usr/bin/umount
+BIN_PS=/usr/bin/ps
 
 . /usr/sbin/lxc.functions
 . /usr/sbin/confine.functions
@@ -246,7 +250,7 @@ confine_tinc_stop() {
     echo "$FUNCNAME $@" >&2
 
     local TINC_CMD="tincd --logfile -n confine"
-    local TINC_PID=$( ps | grep -e "$TINC_CMD" | grep -v grep | awk '{print $1}' )
+    local TINC_PID=$( $BIN_PS aux | grep -e "$TINC_CMD" | grep -v grep | awk '{print $1}' )
     local TINC_CNT=0
     local TINC_MAX=20
     if [ "$TINC_PID" ] ; then 
@@ -625,7 +629,7 @@ confine_node_enable() {
 	
 	uci_set confine.node.state=started
 
-	confine.lib confine_daemon_continue
+	[ "$(uci_get confine.node.cns_daemon   soft,quiet)" == "false" ] || confine_daemon_continue
 
 	return 0
     fi
@@ -935,8 +939,8 @@ confine_sliver_undeploy() {
 	fi
 
 	if [ "$CT_NR" ]; then
-	    umount -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
-	    umount -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
+	    $BIN_UMOUNT -f $LXC_IMAGES_PATH/$CT_NR/rootfs || true
+	    $BIN_UMOUNT -f $LXC_IMAGES_PATH/$CT_NR/overlay.mount || true
 	    rm -rf $LXC_IMAGES_PATH/$CT_NR/
 	fi
 	
@@ -998,7 +1002,7 @@ CONFINE_SLIVER_DISK_MB=150
 	    
 	    if ! [ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ]; then
 		    mkdir -p $LXC_TEMPLATES_PATH/$FS_NAME.dir && \
-		    tar --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
+		    $BIN_TAR --absolute-names --no-overwrite-dir -xzf $LXC_TEMPLATES_PATH/$FS_NAME.$FS_COMP  -C "$LXC_TEMPLATES_PATH/$FS_NAME.dir/" &&\
 		    echo "installed sliver template to $LXC_TEMPLATES_PATH/$FS_NAME.dir" || {
 			rm -rf $LXC_TEMPLATES_PATH/$FS_NAME.dir
 			rm -f $LXC_TEMPLATES_PATH/$FS_NAME
@@ -1017,7 +1021,7 @@ CONFINE_SLIVER_DISK_MB=150
 		fallocate-e2fsprogs -l ${FS_SIZE_MB}M $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ &&\
 		mkfs.ext4 -F $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 &&\
-		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+		$BIN_MOUNT -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
 		echo "loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
@@ -1057,7 +1061,7 @@ CONFINE_SLIVER_DISK_MB=150
 	# Install sliver rootfs:
 	[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] &&\
 		mkdir -p $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
-		mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+		$BIN_MOUNT -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
 		echo "mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
 			confine_sliver_undeploy $SL_ID
 			err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
@@ -1189,10 +1193,10 @@ confine_sliver_start() {
 	# In case the node crashed, sliver overlay and rootfs mounts from previous deployments got lost and must be remounted...
 	#
 	# remount sliver overlay:
-	if mount | grep -e "^$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 on $LXC_IMAGES_PATH/$CT_NR/overlay.mount type" ; then
+	if $BIN_MOUNT | grep -e "^$LXC_IMAGES_PATH/$CT_NR/overlay.ext4 on $LXC_IMAGES_PATH/$CT_NR/overlay.mount type" ; then
 		echo "sliver overlay already mounted"
 	else
-		mount -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
+		$BIN_MOUNT -w -o loop,noatime,nodiratime,norelatime $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount &&\
 			echo "re-loop-mounted empty sliver overlay $LXC_IMAGES_PATH/$CT_NR/overlay.ext4 $LXC_IMAGES_PATH/$CT_NR/overlay.mount" || {
 				confine_sliver_undeploy $SL_ID
 				err $FUNCNAME "installing sliver=$SL_ID overlay failed!"
@@ -1200,7 +1204,7 @@ confine_sliver_start() {
 	fi
 	#
 	# remount sliver rootfs:
-	if mount | grep -e "^confine-sliver-$SL_ID on $LXC_IMAGES_PATH/$CT_NR/rootfs type overlayfs" ; then
+	if $BIN_MOUNT | grep -e "^confine-sliver-$SL_ID on $LXC_IMAGES_PATH/$CT_NR/rootfs type overlayfs" ; then
 		echo "sliver rootfs already mounted"
 	else
 		local LXC_TEMPLATES_PATH=$( uci_get lxc.general.lxc_templates_path )
@@ -1212,7 +1216,7 @@ confine_sliver_start() {
 		
 		[ "$LXC_TEMPLATES_PATH" ] && [ "$FS_URL" ] && [ "$FS_COMP" ] && [ "$FS_NAME" ] &&\
 		[ -d $LXC_TEMPLATES_PATH/$FS_NAME.dir ] && [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] && [ -d $LXC_IMAGES_PATH/$CT_NR/rootfs ] &&\
-			mount -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
+			$BIN_MOUNT -t overlayfs -o lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir,upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/ &&\
 			echo "re-mounted sliver rootfs lowerdir=$LXC_TEMPLATES_PATH/$FS_NAME.dir upperdir=$LXC_IMAGES_PATH/$CT_NR/overlay.mount on confine-sliver-$SL_ID $LXC_IMAGES_PATH/$CT_NR/rootfs/" || {
 				confine_sliver_undeploy $SL_ID
 				err $FUNCNAME "installing sliver=$SL_ID rootfs failed!"
@@ -1224,7 +1228,7 @@ confine_sliver_start() {
 
 	lxc.lib lxc_start $CT_NR
 
-	if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	if [ "$(lxc.lib lxc_state $CT_NR)" == "RUNNING" ] ; then
 	    uci_set confine-slivers.$SL_ID.state=started
 	else
 	    lxc.lib lxc_stop $CT_NR
@@ -1256,13 +1260,14 @@ confine_sliver_stop() {
 
 	if  [ "$CT_NR" ] ; then
 	    
-	    if lxc-info -n $CT_NR 2>/dev/null | grep -e "^state:" | grep -e "RUNNING" >/dev/null ; then
+	    if [ "$(lxc.lib lxc_state $CT_NR)" == "RUNNING" ] ; then
 		lxc.lib lxc_stop $CT_NR
 	    fi
 
 	    confine_sliver_firewall_stop $CT_NR
+	    local SL_STATE=$( uci_get confine-slivers.$SL_ID.state soft )
 	    
-	    if [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "started" ] ; then
+	    if [ "$SL_STATE" = "started" ] || [ "$SL_STATE" = "starting" ]; then
 		uci_set confine-slivers.$SL_ID.state=deployed
 	    fi
 	    
@@ -1324,7 +1329,7 @@ confine_sliver_dump_overlay() {
 	   [ "$( uci_get confine-slivers.$SL_ID.state soft )" = "deployed" ] && \
 	   [ "$CT_NR" ] && \
 	   [ -d $LXC_IMAGES_PATH/$CT_NR/overlay.mount ] ; then
-		tar --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
+		$BIN_TAR --xattrs -czvf $DUMP_PATH -C $LXC_IMAGES_PATH/$CT_NR/overlay.mount/ .
 		echo "overlay of sliver=$SL_ID dumped to $DUMP_PATH"
 		echo "overlay can be downloaded with: vct_node_scp $NODE_ID remote:/$DUMP_PATH /var/lib/vct/downloads/"
 	else
@@ -1352,12 +1357,12 @@ confine_info() {
 
 	local SLIVER_NR="$( uci_get confine-slivers.$SLICE_ID.sliver_nr soft,quiet )"
 	local SLIVER_STATE="$( uci_get confine-slivers.$SLICE_ID.state soft,quiet )"
-	local LXC_PID="$( lxc-info -n $SLIVER_NR 2>/dev/null | grep pid: | awk '{print $2}' )"
+	local LXC_PID="$( lxc.lib lxc_pid $SLIVER_NR )"
 	local SLIVER_EXP_NAME="$( uci_get confine-slivers.$SLICE_ID.exp_name soft,quiet )"
 
 
 	printf "0x%-14s %-3s %-5s %-10s %-30s \n" \
-	    $SLICE_ID $SLIVER_NR $LXC_PID $SLIVER_STATE "'$SLIVER_EXP_NAME'"
+	    $SLICE_ID $SLIVER_NR ${LXC_PID:-"-1"} $SLIVER_STATE "'$SLIVER_EXP_NAME'"
 
     done
 }

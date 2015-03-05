@@ -1525,14 +1525,11 @@ vct_node_scp_cns() {
     vct_node_scp $VCRD_ID remote:/usr/sbin/confine.remote-upgrade $SFS_FILES_DIR/usr/sbin/
     vct_node_scp $VCRD_ID remote:/usr/sbin/confine.disk-parted $SFS_FILES_DIR/usr/sbin/
     vct_node_scp $VCRD_ID remote:/usr/sbin/confine.sysupgrade  $SFS_FILES_DIR/usr/sbin/
-
-    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*-confine.sh $CNS_FILES_DIR/etc/lxc/scripts/
+    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*               $CNS_FILES_DIR/usr/sbin/
+    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/*.sh         $CNS_FILES_DIR/etc/lxc/scripts/
     vct_node_scp $VCRD_ID remote:/etc/config/confine-default s $CNS_FILES_DIR/etc/config/
     vct_node_scp $VCRD_ID remote:/etc/init.d/confine           $CNS_FILES_DIR/etc/init.d/
     vct_node_scp $VCRD_ID remote:/etc/confine-ebtables.lst     $CNS_FILES_DIR/etc/
-    vct_node_scp $VCRD_ID remote:/usr/sbin/lxc.*               $LXC_FILES_DIR/usr/sbin/
-    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/debian.sh    $LXC_FILES_DIR/etc/lxc/scripts/
-    vct_node_scp $VCRD_ID remote:/etc/lxc/scripts/openwrt.sh   $LXC_FILES_DIR/etc/lxc/scripts/
 }
 
 vct_node_mount() {

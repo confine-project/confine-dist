@@ -29,27 +29,84 @@ PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
+
 define Package/confine-system
   SECTION:=net
   CATEGORY:=Base system
   TITLE:=Basic system requirements for confine nodes
   URL:=http://confine-project.eu
   DEPENDS:= \
+	\
+	+@KERNEL_IKCONFIG \
+	+@KERNEL_CGROUPS \
+	+@KERNEL_CGROUP_FREEZER +@KERNEL_CGROUP_DEVICE +@KERNEL_CPUSETS +@KERNEL_CGROUP_CPUACCT +@KERNEL_RESOURCE_COUNTERS +@KERNEL_MEMCG +@KERNEL_CGROUP_SCHED +@KERNEL_FAIR_GROUP_SCHED \
+	+@KERNEL_NAMESPACES \
+	+@KERNEL_UTS_NS +@KERNEL_IPC_NS +@KERNEL_USER_NS +@KERNEL_PID_NS +@KERNEL_NET_NS \
+	+@KERNEL_LXC_MISC \
+	+@KERNEL_TTY +@KERNEL_UNIX98_PTYS +@KERNEL_DEVPTS_MULTIPLE_INSTANCES \
+	+@KERNEL_NETDEVICES +@KERNEL_MACVLAN +@KERNEL_VETH \
+	\
+	+libopenssl +openssh-keygen +openssl-util \
+	+@LIBCURL_OPENSSL +@LIBCURL_CRYPTO_AUTH +@LIBCURL_TLS-SRP +@LIBCURL_PROXY +@LIBCURL_ZLIB \
+	+libcurl \
+	\
 	+confine-parted \
+	\
+	+lxc \
+	+lxc-attach \
+	+lxc-autostart \
+	+lxc-cgroup \
+	+lxc-checkconfig \
+	+lxc-clone \
+	+lxc-common \
+	+lxc-config \
+	+lxc-console \
+	+lxc-create \
+	+lxc-destroy \
+	+lxc-execute \
+	+lxc-freeze \
+	+lxc-hooks \
+	+lxc-info \
+	+lxc-ls \
+	+lxc-lua \
+	+lxc-monitor \
+	+lxc-monitord \
+	+lxc-snapshot \
+	+lxc-start \
+	+lxc-stop \
+	+lxc-unfreeze \
+	+lxc-unshare \
+	+lxc-user-nic \
+	+lxc-usernsexec \
+	+lxc-wait \
+	\
+	\
+	+veth +swconfig \
+	+kmod-veth +kmod-macvlan +kmod-bridge +kmod-swconfig \
+	+kmod-ipv6 \
+	\
+	+coreutils +coreutils-rm +coreutils-timeout \
+	+coreutils-chroot +coreutils-sha1sum \
+	+bzip2 +gzip +tar \
+	\
 	\
 	+grub2 \
 	+bash \
-	+lxc \
 	+strace \
 	+gawk \
 	+ip +tc +iw \
+	+wireless-tools \
 	+ebtables \
 	+tinc \
+	+radvd \
 	+file \
 	+diffutils \
 	+procps \
 	+losetup \
 	+coreutils-readlink \
+	+coreutils-dd \
+	+sysfsutils \
+	+e2fsprogs \
 	+fallocate-e2fsprogs \
 	+mount-utils \
 	+px5g \
@@ -69,41 +126,58 @@ define Package/confine-system
 	+luci-app-diag-core \
 	+luci-app-firewall \
 	+luci-i18n-english \
-	+luci-lib-core \
-	+luci-lib-ipkg \
 	+luci-lib-json \
-	+luci-lib-lmo \
 	+luci-lib-nixio \
-	+luci-lib-sys \
-	+luci-lib-web \
-	+luci-mod-admin-core \
 	+luci-mod-admin-full \
 	+luci-mod-rpc \
-	+luci-proto-core \
 	+luci-proto-ppp \
-	+luci-sgi-cgi \
-	+luci-sgi-uhttpd \
 	+luci-ssl \
-	+luci-theme-base \
 	+luci-theme-openwrt \
 	\
 	+uclibcxx \
 	+uhttpd \
 	+uhttpd-mod-lua \
 	+uhttpd-mod-tls \
-	+uhttpd-mod-tls_cyassl \
+	\
+	+kmod-llc +kmod-loop \
+	+kmod-sched +kmod-sched-core \
+	+kmod-sit +kmod-stp \
 	\
 	+kmod-ebtables +kmod-ebtables-ipv4 +kmod-ebtables-ipv6 +kmod-ebtables-watchers \
 	\
 	+kmod-e1000e \
+	+kmod-3c59x \
+	+kmod-8139cp \
+	+kmod-8139too \
+	+kmod-atl1 \
+	+kmod-atl1c \
+	+kmod-atl1e \
+	+kmod-atl2 \
+	+kmod-b44 \
+	+kmod-b43 \
+	+kmod-dm9000 \
+	+kmod-e100 \
+	+kmod-e1000 \
+	+kmod-et131x \
+	+kmod-gigaset \
+	+kmod-ne2k-pci \
+	+kmod-pcnet32 \
+	+kmod-r8169 \
+	+kmod-atm \
 	\
 	+kmod-dummy \
 	+kmod-gre \
 	+kmod-fs-ext4 \
+	+kmod-fs-vfat \
+	\
+	+kmod-usb-storage +kmod-usb-uhci +kmod-usb2 +kmod-usb-ohci +kmod-usb-core \
+	+kmod-usb-hid \
 	\
 	+kmod-cfg80211 +kmod-mac80211 \
 	+kmod-ath5k +kmod-ath9k \
-	+kmod-ath9k-common +kmod-ath9k-htc
+	+kmod-ath9k-common +kmod-ath9k-htc \
+	\
+
 
 endef
 
@@ -125,6 +199,7 @@ define Package/confine-system/conffiles
 /etc/config/confine
 /etc/config/confine-slivers
 /etc/config/confine-slice-attributes
+/etc/config/lxc
 endef
 
 define Build/Prepare
@@ -138,6 +213,37 @@ define Build/Compile
 endef
 
 define Package/confine-system/install
+
+	$(INSTALL_DIR) $(1)/home
+	$(INSTALL_DIR) $(1)/home/lxc
+	$(INSTALL_DIR) $(1)/home/lxc/images
+	$(INSTALL_DIR) $(1)/home/lxc/templates
+	$(INSTALL_DIR) $(1)/cgroup
+
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(INSTALL_DIR) $(1)/usr/lib/lxc/
+	$(INSTALL_DIR) $(1)/usr/lib/lxc/rootfs
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_DIR) $(1)/etc/lxc
+	$(INSTALL_DIR) $(1)/etc/lxc/scripts
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/etc/config
+
+	$(CP) ./files/etc/init.d/lxc           $(1)/etc/init.d/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/
+	$(CP) ./files/etc/config/lxc           $(1)/etc/config/lxc.orig
+	$(CP) ./files/etc/lxc/scripts/openwrt.sh   $(1)/etc/lxc/scripts/
+	$(CP) ./files/etc/lxc/scripts/debian.sh    $(1)/etc/lxc/scripts/
+	$(CP) ./files/usr/sbin/lxc.functions   $(1)/usr/sbin/
+	$(CP) ./files/usr/sbin/lxc.lib         $(1)/usr/sbin/
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_help
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_create
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_start
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_stop
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_remove
+	ln -sf lxc.lib                         $(1)/usr/sbin/lxc_purge
 
 	$(INSTALL_DIR) $(1)/usr
 	$(INSTALL_DIR) $(1)/usr/sbin

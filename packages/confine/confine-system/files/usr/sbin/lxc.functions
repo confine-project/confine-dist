@@ -12,6 +12,8 @@ fi
 
 MAIN_PID=$BASHPID
 
+BIN_TAR=/usr/bin/tar
+
 
 exit_all() {
 #   echo "terminating due to previous error, killing PID=$MAIN_PID from $BASHPID" >&2
@@ -409,8 +411,8 @@ install_url() {
 
 	if [ $CMD_INSTALL ] && ( [ "$URL_COMP" = "tgz" ] || [ "$URL_COMP" = "tar.gz" ] ) && \
             ( [ -d $INSTALL_PATH ] && \
-	    tar --no-overwrite-dir $CMD_XATTRS -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
-	    tar --no-overwrite-dir $CMD_XATTRS -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
+	    $BIN_TAR --no-overwrite-dir $CMD_XATTRS -xzf $CACHE_DIR/${URL_NAME}.${URL_COMP}  -C "$INSTALL_PATH" || \
+	    $BIN_TAR --no-overwrite-dir $CMD_XATTRS -xzOf $CACHE_DIR/${URL_NAME}.${URL_COMP} > "$INSTALL_PATH" ) ; then
 	    
 	    echo "nop" > /dev/null
 	    

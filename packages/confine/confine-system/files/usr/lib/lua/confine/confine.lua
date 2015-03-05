@@ -141,6 +141,8 @@ function main_loop( sys_conf )
 		dbg(" diff times: %10d %10d %10d %10d %10s", end_times.nx.utime - start_times.nx.utime,  end_times.nx.stime - start_times.nx.stime, end_times.nx.cutime - start_times.nx.cutime, end_times.nx.cstime - start_times.nx.cstime,
 		    os.difftime(end_times.os, start_times.os) )
 
+    		tools.execute( "confine_info" )
+
 		if sys_conf.count==0 or sys_conf.count > iteration then
 			
 			if tools.stop then break end
@@ -171,6 +173,8 @@ if system.check_pid() then
 	sig.signal(sig.SIGINT,  tools.handler)
 	sig.signal(sig.SIGTERM, tools.handler)
 	sig.signal(sig.SIGCONT, tools.wakeup)
+	
+	os.execute( "date >> /root/confine.daemon-starts" )
 	
 	local sys_conf = system.get_system_conf( nil, arg )
 	assert(sys_conf)
