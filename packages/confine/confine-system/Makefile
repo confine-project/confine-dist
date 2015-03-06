@@ -88,8 +88,8 @@ define Package/confine-system
 	\
 	+coreutils +coreutils-rm +coreutils-timeout \
 	+coreutils-chroot +coreutils-sha1sum \
-	+bzip2 +gzip +tar \
-	\
+	+bzip2 +gzip \
+	+tar-xattr \
 	\
 	+grub2 \
 	+bash \
