@@ -43,6 +43,7 @@ define Package/confine-system
 	+strace \
 	+gawk \
 	+ip +tc +iw \
+	+ethtool \
 	+ebtables \
 	+tinc \
 	+file \

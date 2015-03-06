@@ -84,7 +84,7 @@ define Package/confine-recommended
 	+ipv6calc \
 	+bmon +bwm \
 	\
-	+snmp-utils +snmpd +ifstat +iftop +fping +ethtool \
+	+snmp-utils +snmpd +ifstat +iftop +fping  \
 	+airview +broadcastflood \
 	\
 	+htop \

@@ -144,8 +144,24 @@ function cb2_set( rules, sys_conf, otree, ntree, path, begin, changed )
 		
 		ctree.set_path_val(otree,path,new)
 	end
+end
+
+function cb2_overwrite( rules, sys_conf, otree, ntree, path, begin, changed )
 	
+	if not rules then return "cb2_set" end
 	
+	local old = ctree.get_path_val(otree,path)
+	local new = ctree.get_path_val(ntree,path)
+	local is_table = type(old)=="table" or type(new)=="table"
+	
+	if is_table and begin and ((not old or old==null) and new) then
+
+		ctree.set_path_val(otree,path,{})
+		
+	elseif not is_table and old ~= new and new then
+		
+		ctree.set_path_val(otree,path,new)
+	end
 end
 
 function cb2( task, rules, sys_conf, otree, ntree, path, begin, changed, misc, is_val )

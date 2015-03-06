@@ -144,6 +144,7 @@ function get_new_cycle_lnode( sys_conf, cached_node )
 	node.cert                  = tools.subfind(nixio.fs.readfile(sys_conf.node_cert_file) or "",ssl.CERT_HEADER,ssl.CERT_TRAILER) or null
 	node.api                   = { type="node", base_uri=sys_conf.node_base_uri.."/", cert=node.cert }
 	node.arch                  = sys_conf.arch
+	node.properties            = ctree.copy_recursive(sys_conf.properties)
 	node.soft_version          = sys_conf.soft_version
 	
 	node.sliver_pub_ipv6       = "none"
@@ -422,9 +423,9 @@ in_rules2 = {}
 tmp_rules = in_rules2
 	table.insert(tmp_rules, {"/description",			crules.cb2_set})
 	table.insert(tmp_rules, {"/name",				crules.cb2_set})
-	table.insert(tmp_rules, {"/properties",				crules.cb2_set})
-	table.insert(tmp_rules, {"/properties/*",			crules.cb2_set})
-	table.insert(tmp_rules, {"/properties/*/*",			crules.cb2_set})
+	table.insert(tmp_rules, {"/properties",				crules.cb2_overwrite})
+	table.insert(tmp_rules, {"/properties/*",			crules.cb2_overwrite})
+	table.insert(tmp_rules, {"/properties/*/*",			crules.cb2_overwrite})
 	table.insert(tmp_rules, {"/cn",					crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/app_url",				crules.cb2_set})
 	table.insert(tmp_rules, {"/cn/cndb_uri",			crules.cb2_set})
