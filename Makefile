@@ -77,8 +77,6 @@ define create_configs
 	@( echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) )
 	@( [ "$(SUBTARGET)" ] && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
 	@( [ "$(PROFILE)" ]   && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
-	echo "CONFIG_BUSYBOX_CONFIG_FEATURE_DF_FANCY=y"  >> $(CONFIG)
-	echo "CONFIG_BUSYBOX_CONFIG_DF=y"                >> $(CONFIG)
 	echo "CONFIG_LIBCURL_OPENSSL=y"                  >> $(CONFIG)
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
 

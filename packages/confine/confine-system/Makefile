@@ -51,6 +51,7 @@ define Package/confine-system
 	+libcurl \
 	\
 	+confine-parted \
+	+busybox +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_DF +@BUSYBOX_CONFIG_FEATURE_DF_FANCY \
 	\
 	+lxc \
 	+lxc-attach \
