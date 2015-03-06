@@ -58,6 +58,7 @@ define prepare_workspace
 	rm -f $(BUILD_DIR)/dl
 	ln -s "`readlink -f $(DOWNLOAD_DIR)`" "$(BUILD_DIR)/dl"
 	rm -rf "$(BUILD_DIR)/files"
+	mkdir -p $(FILES_DIR)
 	ln -s "../$(FILES_DIR)" "$(BUILD_DIR)/files"
 endef
 
@@ -167,10 +168,11 @@ endef
 
 define set_version
 # Never change the order of these values (processed by confine node system)!!!
-	: > files/etc/confine.version
-	echo "$(TIMESTAMP)" >> files/etc/confine.version
-	echo "$(GIT_BRANCH)" >> files/etc/confine.version
-	echo "$(GIT_HASH)" >> files/etc/confine.version
+	mkdir -p $(FILES_DIR)/etc
+	: > $(FILES_DIR)/etc/confine.version
+	echo "$(TIMESTAMP)" >> $(FILES_DIR)/etc/confine.version
+	echo "$(GIT_BRANCH)" >> $(FILES_DIR)/etc/confine.version
+	echo "$(GIT_HASH)" >> $(FILES_DIR)/etc/confine.version
 endef
 
 define build_src
@@ -184,7 +186,7 @@ define post_build
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img"
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
-	cp -f files/etc/confine.version "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
+	cp -f $(FILES_DIR)/etc/confine.version "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
 
 	cat "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"|md5sum|sed -e "s/\ \ -//" >> "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
 
