@@ -47,7 +47,7 @@ define Package/confine-system
 	+@KERNEL_NETDEVICES +@KERNEL_MACVLAN +@KERNEL_VETH \
 	\
 	+libopenssl +openssh-keygen +openssl-util \
-	+@LIBCURL_OPENSSL +@LIBCURL_CRYPTO_AUTH +@LIBCURL_TLS-SRP +@LIBCURL_PROXY +@LIBCURL_ZLIB \
+	+@LIBCURL_CRYPTO_AUTH +@LIBCURL_TLS-SRP +@LIBCURL_PROXY +@LIBCURL_ZLIB \
 	+libcurl \
 	\
 	+confine-parted \
