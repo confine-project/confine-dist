@@ -178,6 +178,7 @@ define Package/confine-system
 	+kmod-ath5k +kmod-ath9k \
 	+kmod-ath9k-common +kmod-ath9k-htc \
 	\
+	+confine-community-lab \
 
 
 endef
