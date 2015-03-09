@@ -406,7 +406,14 @@ confine_node_enable() {
 		diff /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old >/dev/null 2>&1 || \
 		    /etc/init.d/dropbear restart
 
-	    elif [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
+	    else
+		    
+		if ! [ -f /etc/dropbear/dropbear_rsa_host_key ] || \
+			[ "$(ls -l /etc/dropbear/dropbear_rsa_host_key | awk '{print $5}')" == "0" ]; then
+		
+			dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+		fi
+		
 		dropbearconvert dropbear openssh /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/openssh_rsa_host_key 
 	    fi
 
