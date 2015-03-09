@@ -29,7 +29,7 @@ define Package/confine-community-lab
   CATEGORY:=Base system
   TITLE:=Community-lab.net settings for confine nodes
   URL:=http://community-lab.net
-  DEPENDS:= +confine-recommended
+  DEPENDS:= +confine-system
 endef
 
 
