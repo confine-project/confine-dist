@@ -145,7 +145,7 @@ kill_remaining() { # [ <signal> ]
 
         [ -n "$cmdline" ] || continue
         case "$name" in
-            *ash*|*init*|*watchdog*|*ssh*|*dropbear*|*telnet*|*login*|*hostapd*|*wpa_supplicant*) : ;;
+            *procd*|*ash*|*init*|*watchdog*|*ssh*|*dropbear*|*telnet*|*login*|*hostapd*|*wpa_supplicant*) : ;;
             *)
                 if [ $pid -ne $$ ] && [ $ppid -ne $$ ]; then
                     kill -$sig $pid 2>/dev/null
@@ -180,17 +180,20 @@ if [ $FORCE -eq 0 -a -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
 fi
 
 /usr/sbin/confine.lib confine_daemon_stop
+/usr/sbin/confine.lib confine_sliver_stop all
+
 sync
-sleep 60
+sleep 10
+
+echo "Sending TERM to all remaining processes"
 kill_remaining TERM
-sleep 60
+
+sleep 20
+
+echo "Sending KILL to all remaining processes"
 kill_remaining KILL
 
 grep /cgroup /proc/mounts > /dev/null && umount /cgroup
-grep /home /proc/mounts > /dev/null && {
-    mount -o ro,remount /home
-    umount -l /home
-}
 
 if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     cp /etc/config/fstab /tmp/fstab
@@ -203,53 +206,53 @@ if [ -b ${DEVICE}4 -a $IGNORE_FSTAB -eq 0 ]; then
     done
 
     run_ramfs "set -x
-sync
-sleep 2
-dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
-$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
-sync
-sleep 2
+        sync
+        sleep 2
+        dd if=$DEVICE of=/tmp/mbr.bin bs=512 count=1
+        $CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
+        dd if=/tmp/mbr.bin of=$DEVICE bs=1 count=64 skip=446 seek=446
+        sync
+        sleep 2
 
-mkdir /part
-mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
+        mkdir /part
+        mount ${DEVICE}1 /part || mount -t ext2 -o rw,noatime ${DEVICE}1 /part
 
-cp /tmp/fstab /part/fstab
-umount ${DEVICE}1
+        cp /tmp/fstab /part/fstab
+        umount ${DEVICE}1
 
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
+        reboot -f
+        sleep 5
+        echo b 2>/dev/null >/proc/sysrq-trigger"
 else
     if [ $SAVE_CONFIG -ne 0 ]; then
         add_conffiles "$CONFFILES"
         tar czf "$CONF_TAR" -T "$CONFFILES" 2>/dev/null
         run_ramfs "set -x
-sync
-sleep 2
-$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-sync
-sleep 2
+            sync
+            sleep 2
+            $CMD \"$IMAGE\" | dd of=$DEVICE bs=1M conv=fsync
+            sync
+            sleep 2
 
-mkdir /part
-mount -t ext2 -o rw,noatime ${DEVICE}1 /part
-cp \"$CONF_TAR\" /part
-umount ${DEVICE}1
+            mkdir /part
+            mount -t ext2 -o rw,noatime ${DEVICE}1 /part
+            cp \"$CONF_TAR\" /part
+            umount ${DEVICE}1
 
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
+            reboot -f
+            sleep 5
+            echo b 2>/dev/null >/proc/sysrq-trigger"
     else
         run_ramfs "set -x
-sync
-sleep 2
-$CMD \"$IMAGE\" | dd of=$DEVICE bs=4096 conv=fsync
-sync
-sleep 2
+            sync
+            sleep 2
+            $CMD \"$IMAGE\" | dd of=$DEVICE bs=1M conv=fsync
+            sync
+            sleep 2
 
-reboot -f
-sleep 5
-echo b 2>/dev/null >/proc/sysrq-trigger"
+            reboot -f
+            sleep 5
+            echo b 2>/dev/null >/proc/sysrq-trigger"
     fi
 fi
 
