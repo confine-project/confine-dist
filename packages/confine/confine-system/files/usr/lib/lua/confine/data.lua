@@ -87,7 +87,7 @@ function file_get( file )
 
 end
 
-function curl(url, data, header, etag, cert, compressed, timeout, stderr)
+function curl(url, data, header, etag, cert, compressed, timeout, logfile)
 		
 		assert(url)
 		assert(data)
@@ -100,10 +100,10 @@ function curl(url, data, header, etag, cert, compressed, timeout, stderr)
 		local cmd = [[ /usr/bin/curl -gLG %s %s %s --output %s %s %s %s ]]
 				%{cert_opt, compressed_opt, timeout_opt, data, header_opt, etag_opt, url}
 		
-		if stderr then
-			return tools.execute( cmd )
+		if logfile then
+			return os.execute( cmd .. " >" .. logfile .. " 2>&1")
 		else
-			return os.execute( cmd .. " 2>/dev/null")
+			return tools.execute( cmd )
 		end
 end
 
@@ -112,7 +112,7 @@ function http_get_raw( url, dst, cert_file )
 	
 	assert(url and dst and not nixio.fs.stat(dst))
 	
-	return ( curl( url, dst, false, false, cert_file, false, "3600", true) == 0) and true or false
+	return ( curl( url, dst, false, false, cert_file, false, "3600", false) == 0) and true or false
 end
 
 local function get_url_keys( url )
@@ -143,11 +143,13 @@ function http_get_keys_as_table(url, cert_file, cache, sys_conf)
 		local etag = (cached and cached.etag or "0000")
 		local header_file = os.tmpname()
 		local data_file = os.tmpname()
+		local err_file = os.tmpname()
 		
-		curl( url, data_file, header_file, etag, cert_file, true, "20")
+		curl( url, data_file, header_file, etag, cert_file, true, "20", err_file)
 
 		local header = nixio.fs.readfile( header_file )
 		local data_fd = io.open(data_file, "r")
+		local curl_err = nixio.fs.readfile( err_file )
 		
 		local src = ltn12.source.file(data_fd)
 		local jsd = json.Decoder(true)
@@ -155,6 +157,7 @@ function http_get_keys_as_table(url, cert_file, cache, sys_conf)
 		
 		os.remove(header_file)
 		os.remove(data_file)
+		os.remove(err_file)
 		
 		if header:match("HTTP/1.[%d] 200 OK") then
 			
@@ -203,7 +206,7 @@ function http_get_keys_as_table(url, cert_file, cache, sys_conf)
 			return cached.data, index_key
 			
 		else
-			assert( false, "ERROR url=%s base_key=%s index_key=%s header: %s"%{url, tostring(base_key), tostring(index_key), tostring(header)})
+			assert( false, "ERROR url=%s base_key=%s index_key=%s err=%s header: %s"%{url, tostring(base_key), tostring(index_key), tostring(curl_err), tostring(header)})
 		end		
 		
 	end

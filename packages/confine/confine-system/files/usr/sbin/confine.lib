@@ -286,10 +286,12 @@ confine_tinc_setup() {
     mkdir -p /etc/tinc/confine/hosts
 
     if ! [ -f /etc/tinc/confine/rsa_key.priv ]; then
-	 echo "no /etc/tinc/confine/rsa_key.priv" >&2
-        cp /etc/dropbear/openssh_rsa_host_key /etc/tinc/confine/rsa_key.priv
+	echo "no /etc/tinc/confine/rsa_key.priv" >&2
+	
+	dropbearkey -t rsa -f /etc/tinc/confine/rsa_key.priv.dropbear
+	dropbearconvert dropbear openssh /etc/tinc/confine/rsa_key.priv.dropbear /etc/tinc/confine/rsa_key.priv 
     fi
-
+    
     ssh-keygen -e -m PEM -f /etc/tinc/confine/rsa_key.priv > /etc/tinc/confine/rsa_key.pub
 
     if ! [ -f /etc/tinc/confine/hosts/node_$VCRD_ID_DEC ]; then
@@ -400,28 +402,7 @@ confine_node_enable() {
 
 	    echo "rd${VCRD_ID}" > /proc/sys/kernel/hostname
 
-	    if [ -f /etc/dropbear/openssh_rsa_host_key ]; then
-		
-		[ -f /etc/dropbear/dropbear_rsa_host_key ] && \
-		    mv /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old
-		
-		dropbearconvert openssh dropbear /etc/dropbear/openssh_rsa_host_key /etc/dropbear/dropbear_rsa_host_key
-
-		diff /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/dropbear_rsa_host_key.old >/dev/null 2>&1 || \
-		    /etc/init.d/dropbear restart
-
-	    elif [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
-		dropbearconvert dropbear openssh /etc/dropbear/dropbear_rsa_host_key /etc/dropbear/openssh_rsa_host_key 
-	    fi
-
-#	    if [ -f /etc/dropbear/dropbear_rsa_host_key ]; then
-
-		dropbearkey -y -f /etc/dropbear/dropbear_rsa_host_key | grep ssh-rsa > /etc/dropbear/dropbear_rsa_host_key.pub
-		ssh-keygen -e -m PEM -f /etc/dropbear/dropbear_rsa_host_key.pub > /etc/dropbear/openssh_rsa_host_key.pub
-		
-		confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 # $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
-
-#	    fi
+	    confine_tinc_setup $VCRD_ID $SERVER_MGMT_IPV6_PREFIX48 # $SERVER_TINC_IP $SERVER_TINC_PORT "$SERVER_TINC_KEY"
 
 
 	    echo "Configuring wireless... " >&2

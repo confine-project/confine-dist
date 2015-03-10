@@ -97,6 +97,7 @@ define Package/confine-system
 	+gawk \
 	+ip +tc +iw \
 	+wireless-tools \
+	+ethtool \
 	+ebtables \
 	+tinc \
 	+radvd \

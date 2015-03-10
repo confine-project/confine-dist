@@ -106,10 +106,10 @@ TINC_NET_NAME = get_vct_config('VCT_TINC_NET')
 TINC_PORT_DFLT = get_vct_config('VCT_SERVER_TINC_PORT')
 
 # Slices and slivers
-SLICES_TEMPLATE_IMAGE_NAME = None
 SLICES_SLICE_DATA_NAME = None
 SLICES_SLIVER_DATA_NAME = None
 SLICES_TEMPLATE_ARCH_DFLT = 'i686'
+SLICES_TEMPLATE_IMAGE_NAME = None
 
 # Slices and slivers - #200 backwards compatibility preventing warnings
 from slices import settings as slc_settings

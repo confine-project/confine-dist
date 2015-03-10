@@ -146,21 +146,46 @@ function get_system_conf(sys_conf, arg)
 
 	conf.id                    = tonumber((uci.get("confine", "node", "id") or "x"), 16)
 	conf.uuid                  = uci.get("confine", "node", "uuid") or null
-	conf.arch                  = tools.canon_arch(nixio.uname().machine)
 	
-	local cns_version_file     = io.open("/etc/confine.version", "r")
-	if cns_version_file then
-		local cns_timestamp        = cns_version_file:read() or "???"
-		local cns_branch           = cns_version_file:read() or "???"
-		local cns_revision         = cns_version_file:read() or "???"
-		conf.sys_revision = cns_branch .. "." .. (cns_revision:sub(1,7))
-		cns_version_file:close()
+	if not conf.arch then
+		
+		conf.arch                  = tools.canon_arch(nixio.uname().machine)
+		
+		local cns_version_file     = io.open("/etc/confine.version", "r")
+		if cns_version_file then
+			local cns_timestamp        = cns_version_file:read() or "???"
+			local cns_branch           = cns_version_file:read() or "???"
+			local cns_revision         = cns_version_file:read() or "???"
+			conf.sys_revision = cns_branch .. "." .. (cns_revision:sub(1,7))
+			cns_version_file:close()
+		end
+		
+		conf.cns_version           = lutil.exec( "opkg info confine-system" )
+		conf.cns_version           = type(conf.cns_version) == "string" and conf.cns_version:match("Version: [^\n]+\n") or "???"
+		conf.cns_version           = conf.cns_version:gsub("Version: ",""):gsub(" ",""):gsub("\n","")
+		conf.soft_version          = (conf.sys_revision or "???.???") .. "-" .. conf.cns_version
+		
+		local meminfo = nixio.fs.readfile( "/proc/meminfo" ) or "0"
+		local ifname = (uci.get("confine", "node", "local_ifname")) or ""
+		local ethtool = (lutil.exec('ethtool ' .. ifname)) or ""
+		local cpuinfo = nixio.fs.readfile( "/proc/cpuinfo" ) or ""
+		local _, cpucount = string.gsub(cpuinfo, "model name", "")
+		conf.properties = {
+			hw_cpu_model = cpuinfo:match("model name[^%a]+([%a][^\n]+)\n"),
+		--	hw_cpu_op_mode = "64-bit",
+			hw_cpu_num_cores = tostring(cpucount),
+			hw_cpu_speed_MHz = cpuinfo:match("cpu MHz[^%d]+([%d]+)"),
+			hw_mem_total_MB = (meminfo:match("([%d]+) kB"))/1024,
+		--	hw_mem_free_MB = "2058",
+		--	hw_eth_model = "82579LM Gigabit Network Connection",
+			hw_eth_tx_mode = ethtool:match("Duplex: ([%a]+)"),
+		--	hw_eth_capacity_Mbps = "1000",
+			hw_eth_speed_Mbps = ethtool:match("Speed: ([%d]+)"),
+		--	hw_eth_model = "82579LM Gigabit Network Connection",
+		--	hw_disk_total_GB = "210",
+		--	hw_disk_free_GB = "73"
+		}
 	end
-	
-	conf.cns_version           = lutil.exec( "opkg info confine-system" )
-	conf.cns_version           = type(conf.cns_version) == "string" and conf.cns_version:match("Version: [^\n]+\n") or "???"
-	conf.cns_version           = conf.cns_version:gsub("Version: ",""):gsub(" ",""):gsub("\n","")
-	conf.soft_version          = (conf.sys_revision or "???.???") .. "-" .. conf.cns_version
 
 	conf.node_pubkey_file      = "/etc/dropbear/openssh_rsa_host_key.pub" --must match /etc/dropbear/dropbear_rsa_*
 --	conf.server_cert_file      = "/etc/confine/keys/server.ca"

@@ -18,10 +18,6 @@ check_rd_id() {
 	[  "$(( 16#${VCRD_ID} ))" -gt "$(( 16#${VCRD_MAX} ))" ] ; then
 	err $FUNCNAME "Invalid value=$VCRD_ID! node_id MUST be a 4-digit-hex (lower case) value within [$VCRD_MIN..$VCRD_MAX]" ${CMD_SOFT:-} ; return 1
     fi
-    
-    if [  "$(( 16#${VCRD_ID:2:2} ))" == 0 ] ||  [ "$(( 16#${VCRD_ID:2:2} ))" -gt 253 ]; then
-	err $FUNCNAME "sorry, two least significant digits 00, FE, FF are reserved"  ${CMD_SOFT:-} ; return 1
-    fi
 
     [ "$CMD_QUIET" ] || echo $VCRD_ID
 }
