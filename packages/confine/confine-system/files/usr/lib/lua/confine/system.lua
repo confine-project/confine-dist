@@ -175,7 +175,7 @@ function get_system_conf(sys_conf, arg)
 		--	hw_cpu_op_mode = "64-bit",
 			hw_cpu_num_cores = tostring(cpucount),
 			hw_cpu_speed_MHz = cpuinfo:match("cpu MHz[^%d]+([%d]+)"),
-			hw_mem_total_MB = (meminfo:match("([%d]+) kB"))/1024,
+			hw_mem_total_MiB = tostring(math.floor((meminfo:match("([%d]+) kB"))/1024) ),
 		--	hw_mem_free_MB = "2058",
 		--	hw_eth_model = "82579LM Gigabit Network Connection",
 			hw_eth_tx_mode = ethtool:match("Duplex: ([%a]+)"),
