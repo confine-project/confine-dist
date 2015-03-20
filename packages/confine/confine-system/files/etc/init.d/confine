@@ -2,6 +2,7 @@
 
 
 START=81
+STOP=20
 FIRSTB="/etc/firstboot"
 FIRSTB_BACKUP="/etc/firstboot.applied"
 ANYB="/etc/anyboot"
@@ -32,14 +33,6 @@ anyboot() {
 start() {
     firstboot
     anyboot
-
-    confine.lib confine_system_check
-
-    confine_sliver_stop all
-
-    if [ "$( uci -q get confine.node.state )" = "started" ] ; then
-	confine.lib uci_set confine.node.state=applied
-    fi
 
     confine_node_enable
 }

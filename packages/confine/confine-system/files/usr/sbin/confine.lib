@@ -351,9 +351,9 @@ confine_node_disable() {
     confine_sliver_remove all
 }
 
-confine_node_enable() {
+confine_node_init() {
 
-   echo "$FUNCNAME $@" >&2
+    echo "$FUNCNAME $@" >&2
 
     confine_system_check
     local NODE_STATE=$( uci_get confine.node.state soft )
@@ -573,12 +573,37 @@ confine_node_enable() {
 	    confine.lib confine_system_check
 	    
 	    uci_set confine.node.state=applied
-
 	else
 	    uci_set confine.node.state=unprepared
 	    err $FUNCNAME "Failed due to inproper confine.node config"
 	fi
+    fi
+}
 
+confine_node_enable() {
+
+    echo "$FUNCNAME $@" >&2
+
+    confine_system_check
+    local NODE_STATE=$( uci_get confine.node.state soft )
+    local VCRD_ID=$(    uci_get confine.node.id    soft )
+
+    if ! check_node_state $NODE_STATE quiet,soft ; then
+	
+	confine_sliver_remove all
+	return 1
+    fi
+
+    if [ "$NODE_STATE" = "started" ]; then
+
+	confine.lib confine_system_check
+    	echo "node-id=$VCRD_ID started"
+	return 0
+    fi
+
+
+    if [ "$NODE_STATE" = "prepared" ] ; then
+        confine.lib confine_node_init
     fi
 
     local NODE_STATE=$( uci_get confine.node.state soft )
@@ -1431,7 +1456,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
+	confine_node_init|confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove|confine_sliver_dump_overlay) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;

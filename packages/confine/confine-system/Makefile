@@ -266,6 +266,7 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
+	$(CP)  ./files/etc/init.d/confine-init             $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slice-attributes $(1)/etc/config/
@@ -281,6 +282,7 @@ define Package/confine-system/install
 
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
+	ln -sf confine.lib  $(1)/usr/sbin/confine_node_init
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_stop

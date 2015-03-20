@@ -2,7 +2,7 @@
 
 
 START=80
-
+STOP=15
 #EXTRA_COMMANDS=""
 
 
