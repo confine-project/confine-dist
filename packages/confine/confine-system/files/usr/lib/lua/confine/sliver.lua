@@ -186,7 +186,7 @@ function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree, ntree, path)
 	local slk,slv
 	for slk,slv in pairs(sys_conf.uci_slivers) do
 		local ifk,ifv
-		for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
+		for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[^%s]+") ) do
 				
 			local itk = "if"..ifv.."_type"
 			local itv = sys_conf.uci_slivers[slk][itk] or ""
@@ -769,7 +769,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.local_template.image_uri = sv.api_tmpl_image_uri
 			slv.local_template.is_active = true
 			slv.local_template.name = sv.api_tmpl_name
-			slv.local_template.node_archs = ctree.copy_recursive_rebase_keys(tools.str2table(sv.api_tmpl_node_archs,"[^ ]+"), "node_archs" )
+			slv.local_template.node_archs = ctree.copy_recursive_rebase_keys(tools.str2table(sv.api_tmpl_node_archs,"[^%s]+"), "node_archs" )
 			slv.local_template.type = sv.fs_template_type
 			slv.local_template.uri = sys_conf.node_base_uri.."/templates/"..sv.api_tmpl_id.."/"
 
@@ -785,7 +785,7 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			-- sys_get_lsliver_interfaces()
 			slv.interfaces = {}
 			local ifk,ifv
-			for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+") ) do
+			for ifk,ifv in pairs( tools.str2table(sys_conf.lxc_if_keys,"[^%s]+") ) do
 				if sv["if%s_type"%ifv] then
 					slv.interfaces[tostring( (tonumber(ifv, 16)) )] = {
 						nr          = tonumber(ifv, 16),
@@ -936,7 +936,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 			sliver_desc = sliver_desc.."	option vlan_nr '%.3x'\n" %{api_slv.local_slice.isolated_vlan_tag}
 		end
 		
-		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[%a%d]+")
+		local if_keys = tools.str2table(sys_conf.lxc_if_keys,"[^%s]+")
 		--ctree.dump (if_keys )
 		local ifk,ifv
 		for ifk,ifv in pairs( if_keys ) do

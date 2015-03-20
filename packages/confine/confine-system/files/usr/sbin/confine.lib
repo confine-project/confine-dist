@@ -484,8 +484,8 @@ confine_node_enable() {
 	    echo "Configuring network... " >&2
 
 
-#	    uci_del network.lan soft,quiet
-#	    uci_del network.wan soft,quiet
+	    uci_del network.lan soft,quiet
+	    uci_del network.wan soft,quiet
 
 	    uci_set network.internal=interface
 	    uci_set network.internal.type=bridge
@@ -498,7 +498,7 @@ confine_node_enable() {
 	    uci_set network.local=interface
 	    uci_set network.local.type=bridge
 	    uci_set network.local.ifname="$NODE_LOCAL_IFNAME dm-local" # NODE_LOCAL_IFNAME MUST be first for MAC
-#	    uci_set network.local.macaddr=$( ip link show dev eth0 | grep "link/ether" | awk '{print $2}' )
+#	    uci_set network.local.macaddr=$( ip link show dev $NODE_LOCAL_IFNAME | grep "link/ether" | awk '{print $2}' )
 	    uci_set network.local.proto=$NODE_RD_PUBL_IPV4_PROTO
 
 
@@ -558,11 +558,13 @@ confine_node_enable() {
 	    uci_set network.debug.ip6addr=$NODE_DBG_IPV6_PREFIX48:$VCRD_ID::2/48
 
 	    local ISO_DEV=
+            local ISO_DEV_UCI_NAME=
 	    for ISO_DEV in $NODE_RD_ISOLATED_PARENTS; do
-		uci_set network.$ISO_DEV=interface
-		uci_set network.$ISO_DEV.ifname=$ISO_DEV
-		uci_set network.$ISO_DEV.proto=static
-		uci_set network.$ISO_DEV.ipaddr=0.0.0.0
+                local ISO_DEV_UCI_NAME=$( echo $ISO_DEV | sed -e s/[.]/_/ )
+		uci_set network.$ISO_DEV_UCI_NAME=interface
+		uci_set network.$ISO_DEV_UCI_NAME.ifname=$ISO_DEV
+		uci_set network.$ISO_DEV_UCI_NAME.proto=static
+		uci_set network.$ISO_DEV_UCI_NAME.ipaddr=0.0.0.0
 	    done
 
 

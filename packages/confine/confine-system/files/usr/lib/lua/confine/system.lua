@@ -96,8 +96,8 @@ function check_direct_ifaces( ifaces, picky )
 	local k,v
 	local n=0
 	for k,v in pairs(ifaces) do
-		
-		if type(v)=="string" and (v:match("^eth[%d]+$") or v:match("^wlan[%d]+$")) and tools.get_table_by_key_val(sys_devices,v) then
+		local result = os.execute("ip >/dev/null link show dev" .. " " .. tostring(v))
+		if type(v)=="string" and result==0 and tools.get_table_by_key_val(sys_devices,v) then
 			
 			n=n+1
 			direct_ifaces[tostring(n)] = v
@@ -273,7 +273,7 @@ function get_system_conf(sys_conf, arg)
 	conf.sl_pub_ipv4_addrs     = uci.get("confine", "node", "sl_public_ipv4_addrs")
 	conf.sl_pub_ipv4_total     = tonumber(uci.get("confine", "node", "public_ipv4_avail"))	
 
-	conf.direct_ifaces = check_direct_ifaces( tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[%a%d_]+") )
+	conf.direct_ifaces = check_direct_ifaces( tools.str2table((uci.get("confine", "node", "rd_if_iso_parents") or ""),"[^%s]+") )
 
 	
 	conf.lxc_if_keys           = uci.get("lxc", "general", "lxc_if_keys" )
