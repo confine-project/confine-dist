@@ -178,9 +178,9 @@ define Package/confine-system
 	+kmod-cfg80211 +kmod-mac80211 \
 	+kmod-ath5k +kmod-ath9k \
 	+kmod-ath9k-common +kmod-ath9k-htc \
+	+kmod-rt2500-usb +kmod-rt2800-pci +kmod-rt2800-usb +kmod-rt2x00-lib \
 	\
-	+confine-community-lab \
-
+#	+confine-community-lab \
 
 endef
 
