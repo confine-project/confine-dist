@@ -360,7 +360,7 @@ confine_node_init() {
     local VCRD_ID=$(    uci_get confine.node.id    soft )
 
     if ! check_node_state $NODE_STATE quiet,soft ; then
-	
+
 	confine_sliver_remove all
 	return 1
     fi
@@ -568,8 +568,6 @@ confine_node_init() {
 	    done
 
 
-	    /etc/init.d/network restart
-
 	    confine.lib confine_system_check
 	    
 	    uci_set confine.node.state=applied
@@ -604,6 +602,7 @@ confine_node_enable() {
 
     if [ "$NODE_STATE" = "prepared" ] ; then
         confine.lib confine_node_init
+        /etc/init.d/network restart
     fi
 
     local NODE_STATE=$( uci_get confine.node.state soft )
