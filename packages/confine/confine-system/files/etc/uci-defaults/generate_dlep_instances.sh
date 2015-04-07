@@ -17,5 +17,3 @@ do
 
 	port=$(( $port + 1 ))
 done
-
-uci -q -c /etc/config commit dlep_proxy

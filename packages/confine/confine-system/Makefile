@@ -263,10 +263,11 @@ define Package/confine-system/install
 
 	$(CP) ./files/etc/firstboot/*                      $(1)/etc/firstboot
 	chmod +x $(1)/etc/firstboot/*
+	$(CP) ./files/etc/uci-defaults/*                   $(1)/etc/uci-defaults
+	chmod +x $(1)/etc/uci-defaults/*
 	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
-	$(CP)  ./files/etc/init.d/confine-init             $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slice-attributes $(1)/etc/config/
