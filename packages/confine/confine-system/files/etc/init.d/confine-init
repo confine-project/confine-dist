@@ -1,0 +1,11 @@
+#!/bin/sh /etc/rc.common
+
+START=19
+
+start() {
+    if [ "$( uci -q get confine.node.state )" = "started" ] ; then
+        uci -q set confine.node.state=applied
+        uci -q commit confine
+    fi
+    confine_node_init
+}

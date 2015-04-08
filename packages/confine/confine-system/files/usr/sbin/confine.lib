@@ -478,11 +478,7 @@ confine_node_init() {
 		fi
 	    done
 
-	    wifi
-
-
 	    echo "Configuring network... " >&2
-
 
 	    uci_del network.lan soft,quiet
 	    uci_del network.wan soft,quiet
@@ -500,9 +496,6 @@ confine_node_init() {
 	    uci_set network.local.ifname="$NODE_LOCAL_IFNAME dm-local" # NODE_LOCAL_IFNAME MUST be first for MAC
 #	    uci_set network.local.macaddr=$( ip link show dev $NODE_LOCAL_IFNAME | grep "link/ether" | awk '{print $2}' )
 	    uci_set network.local.proto=$NODE_RD_PUBL_IPV4_PROTO
-
-
-
 
 	    if [ "$NODE_RD_PUBL_IPV4_PROTO" = "static" ] && [ "$NODE_RD_PUBL_IPV4" ]; then
 

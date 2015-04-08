@@ -148,7 +148,7 @@ eui64_from_mac() {
 
 eui64_from_link() {
 
-    local DEVICE=$1
+    local DEVICE=$( echo "$1" | sed -e s/[.].*$// )
     local OPT_CMD=${2:-}
     local CMD_SOFT=$( echo "$OPT_CMD" | grep -e "soft" > /dev/null && echo "soft," )
     local CMD_QUIET=$( echo "$OPT_CMD" | grep -e "quiet" > /dev/null && echo "quiet," )
