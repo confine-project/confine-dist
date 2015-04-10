@@ -193,6 +193,7 @@ define Build/Compile
 endef
 
 define Package/confine-recommended/install
+	$(INSTALL_DIR) $(1)/etc
 endef
 
 
