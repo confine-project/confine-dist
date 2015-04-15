@@ -338,7 +338,7 @@ EOF
 }
 
 
-confine_node_disable() {
+confine_node_stop() {
 
     echo "$FUNCNAME $@" >&2
 
@@ -1419,7 +1419,7 @@ help() {
        cat <<EOF
 confine_info
 confine_node_start                             # enable confine system
-confine_node_disable                            # disable confine system
+confine_node_stop                            # disable confine system
 confine_daemon_stop                             # temporary stop confine daemon, (slivers persist)
 confine_daemon_continue                         # continue confine daemon
 confine_daemon_update   <URL>                   # update (stop,update,continue) confine daemon with opkg of given URL
@@ -1448,7 +1448,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_configure|confine_node_start|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
+	confine_node_configure|confine_node_start|confine_node_stop|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove|confine_sliver_dump_overlay) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;
