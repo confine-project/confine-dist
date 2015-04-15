@@ -287,7 +287,7 @@ define Package/confine-system/install
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_configure
-	ln -sf confine.lib  $(1)/usr/sbin/confine_node_enable
+	ln -sf confine.lib  $(1)/usr/sbin/confine_node_start
 	ln -sf confine.lib  $(1)/usr/sbin/confine_node_disable
 	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_stop
 	ln -sf confine.lib  $(1)/usr/sbin/confine_daemon_continue

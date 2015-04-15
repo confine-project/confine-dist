@@ -34,7 +34,7 @@ start() {
     firstboot
     anyboot
 
-    confine_node_enable
+    confine_node_start
 }
 
 
