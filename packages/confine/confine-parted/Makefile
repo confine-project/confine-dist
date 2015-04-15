@@ -57,10 +57,13 @@ define Package/confine-parted/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_DIR) $(1)/etc
 	$(INSTALL_DIR) $(1)/etc/firstboot
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/lib
 	$(INSTALL_DIR) $(1)/lib/upgrade
 	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
 
+	$(CP) ./files/etc/uci-defaults/* $(1)/etc/uci-defaults
+	chmod +x $(1)/etc/uci-defaults/*
 	$(INSTALL_BIN) ./files/usr/sbin/* $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/etc/firstboot/* $(1)/etc/firstboot/
 	$(CP) ./files/lib/upgrade/keep.d/* $(1)/lib/upgrade/keep.d/
