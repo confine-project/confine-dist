@@ -7,5 +7,5 @@ start() {
         uci -q set confine.node.state=applied
         uci -q commit confine
     fi
-    confine_node_init
+    confine_node_configure
 }

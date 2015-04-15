@@ -351,7 +351,7 @@ confine_node_disable() {
     confine_sliver_remove all
 }
 
-confine_node_init() {
+confine_node_configure() {
 
     echo "$FUNCNAME $@" >&2
 
@@ -594,7 +594,7 @@ confine_node_enable() {
 
 
     if [ "$NODE_STATE" = "prepared" ] ; then
-        confine.lib confine_node_init
+        confine.lib confine_node_configure
         /etc/init.d/network restart
     fi
 
@@ -1448,7 +1448,7 @@ if [ "$CMD" = "confine.lib" ]; then
 else
 
     case "$CMD" in
-	confine_node_init|confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
+	confine_node_configure|confine_node_enable|confine_node_disable|confine_daemon_stop|confine_daemon_continue|confine_daemon_update) $CMD "${1:-}";;
 	confine_sliver_allocate|confine_sliver_deploy) $CMD $1 ${2:-};;
 	confine_sliver_start|confine_sliver_stop|confine_sliver_undeploy|confine_sliver_remove|confine_sliver_dump_overlay) $CMD $1 ${2:-};;
 	confine_info) $CMD ${1:-} ${2:-};;
