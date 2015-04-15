@@ -260,6 +260,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/dropbear
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_DIR) $(1)/etc/crontabs
 
 	$(CP) ./files/etc/firstboot/*                      $(1)/etc/firstboot
 	chmod +x $(1)/etc/firstboot/*
@@ -281,6 +282,7 @@ define Package/confine-system/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/confine
 	$(CP)  ./files/usr/lib/lua/confine/*.lua           $(1)/usr/lib/lua/confine
 	$(CP)  ./files/etc/screenrc                        $(1)/etc/
+	$(CP)  ./files/etc/crontabs/*                      $(1)/etc/crontabs/
 
 	ln -sf confine.lib  $(1)/usr/sbin/confine_help
 	ln -sf confine.lib  $(1)/usr/sbin/confine_info
