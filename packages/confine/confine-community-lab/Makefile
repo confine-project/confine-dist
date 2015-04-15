@@ -52,6 +52,7 @@ define Build/Compile
 endef
 
 define Package/confine-community-lab/install
+	$(INSTALL_DIR) $(1)/etc
 	$(CP) -r ./files/etc                      $(1)/
 endef
 
