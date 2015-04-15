@@ -269,7 +269,7 @@ define Package/confine-system/install
 	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
-	$(CP)  ./files/etc/init.d/confine-init             $(1)/etc/init.d/
+	$(CP)  ./files/etc/init.d/confine-configure        $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slice-attributes $(1)/etc/config/
