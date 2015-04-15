@@ -268,7 +268,7 @@ define Package/confine-system/install
 	chmod +x $(1)/etc/uci-defaults/*
 	$(CP)  ./files/etc/lxc/scripts/openwrt-confine.sh  $(1)/etc/lxc/scripts/
 	$(CP)  ./files/etc/lxc/scripts/debian-confine.sh   $(1)/etc/lxc/scripts/
-	$(CP)  ./files/etc/init.d/confine                  $(1)/etc/init.d/
+	$(CP)  ./files/etc/init.d/confine-start            $(1)/etc/init.d/
 	$(CP)  ./files/etc/init.d/confine-configure        $(1)/etc/init.d/
 	$(CP)  ./files/etc/config/confine-defaults         $(1)/etc/config/
 	$(CP)  ./files/etc/config/confine-slivers          $(1)/etc/config/
