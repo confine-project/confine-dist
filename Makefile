@@ -35,7 +35,7 @@ PROFILE ?=
 SPECIFICS ?= #eg atom32
 PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
-PACKAGES ?= confine-system confine-recommended
+PACKAGES ?= confine-community-lab confine-system confine-recommended
 
 CONFIG := $(BUILD_DIR)/.config
 KCONF := target/linux/$(TARGET)/config-3.10
