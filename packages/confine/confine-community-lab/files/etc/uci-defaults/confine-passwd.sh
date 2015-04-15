@@ -1,5 +1,8 @@
 #!/bin/sh
 
+[ "$(grep "^root:" /etc/shadow | awk -F':' '{print $2}')" != "" ] && exit 0
+
+
 echo "Setting confine passwd (enabling ssh)"
 
 passwd <<EOF
