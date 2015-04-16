@@ -1595,14 +1595,23 @@ vct_node_unmount() {
 vct_build_node_base_image() {
     local BUILD_PATH="$VCT_DIR/../.."
     local IMAGE_NAME="vct-node-base-image-build.img.gz"
-    
+    local CPU_COUNT=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}')
+
+    for parameter in "$@"
+    do
+        if [ "$parameter" == "V=s" ]
+        then
+            CPU_COUNT=1
+        fi
+    done
+
     ( ! [ -d $BUILD_PATH/openwrt/scripts ] || (\
       cd $BUILD_PATH/openwrt &&\
       ./scripts/feeds update -a &&\
       ./scripts/feeds install -a )) &&\
     cd $BUILD_PATH &&\
     make confclean  $@  &&\
-    make J=$(cat /proc/cpuinfo  | grep processor | tail -1 | awk '{print $3}') $@ &&\
+    make J=$CPU_COUNT $@ &&\
     ln -fs $BUILD_PATH/images/CONFINE-owrt-current.img.gz $VCT_DL_DIR/$IMAGE_NAME &&\
     echo &&\
     echo "The new image is available at:" &&\
