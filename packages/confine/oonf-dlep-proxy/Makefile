@@ -55,9 +55,18 @@ TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include -I${STAGING_DIR}/usr/include/libnl
 
 define Package/oonf-dlep-proxy/install
 	$(INSTALL_BIN)  -D $(PKG_BUILD_DIR)/dlep_radio_static $(1)/usr/sbin/dlep_proxy
+
+	$(INSTALL_DIR)	$(1)/etc/init.d
 	$(INSTALL_BIN)  -D ./files/dlep_proxy.init            $(1)/etc/init.d/dlep_proxy
+	
+	$(INSTALL_DIR)	$(1)/etc/hotplug.d/iface
 	$(INSTALL_BIN)  -D ./files/dlep_proxy.hotplug         $(1)/etc/hotplug.d/iface/50-dlep_proxy
+
+	$(INSTALL_DIR)	$(1)/etc/config
 	$(INSTALL_DATA) -D ./files/dlep_proxy.uci             $(1)/etc/config/dlep_proxy
+
+	$(INSTALL_DIR)	$(1)/etc/uci-defaults
+	$(INSTALL_DATA) -D ./files/generate_dlep_instances.sh $(1)/etc/uci-defaults
 endef
 
 define Package/oonf-dlep-proxy/conffiles
