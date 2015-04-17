@@ -11,4 +11,8 @@ config log
 #	option 'debug'		'all'
 
 config telnet
-#	option 'port' '2009'
+#	option 'port'           '2009'
+	list   'bindto'         'fdbd:e804:6aa9::1'
+	list   'bindto'         '127.0.0.1'
+	list   'acl'            'fdbd:e804:6aa9::/64'
+	list   'acl'		'127.0.0.1'
