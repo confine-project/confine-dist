@@ -668,6 +668,7 @@ confine_sliver_allocate() {
 
 	local USER_PUBKEY="$(   uci_get $SRC_CFG.$SL_ID.user_pubkey      soft,quiet,path=$SRC_DIR )"
 	local EXP_NAME="$(      uci_get $SRC_CFG.$SL_ID.exp_name         soft,quiet,path=$SRC_DIR )"
+	local MEM_LIMIT="$(     uci_get $SRC_CFG.$SL_ID.mem_mb           soft,quiet,path=$SRC_DIR )"
 	local FS_SIZE="$(       uci_get $SRC_CFG.$SL_ID.disk_mb          soft,quiet,path=$SRC_DIR )"
 	local FS_URL="$(        uci_get $SRC_CFG.$SL_ID.fs_template_url  soft,quiet,path=$SRC_DIR )"
 	local FS_TYPE="$(       uci_get $SRC_CFG.$SL_ID.fs_template_type soft,quiet,path=$SRC_DIR )"
@@ -728,6 +729,7 @@ confine_sliver_allocate() {
 	[ "$USER_PUBKEY" ] && uci_set $SLV_CFG.$SL_ID.user_pubkey="$USER_PUBKEY"  path=$OUT_DIR
 	[ "$EXP_NAME" ]    && uci_set $SLV_CFG.$SL_ID.exp_name="$EXP_NAME"        path=$OUT_DIR
 	[ "$VLAN_NR" ]     && uci_set $SLV_CFG.$SL_ID.vlan_nr="$VLAN_NR"          path=$OUT_DIR
+	[ "$MEM_LIMIT" ]   && uci_set $SLV_CFG.$SL_ID.mem_mb="$MEM_LIMIT"         path=$OUT_DIR
 	[ "$FS_SIZE" ]     && uci_set $SLV_CFG.$SL_ID.disk_mb="$FS_SIZE"          path=$OUT_DIR
 	[ "$FS_URL" ]      && uci_set $SLV_CFG.$SL_ID.fs_template_url="$FS_URL"   path=$OUT_DIR
 	[ "$FS_TYPE" ]     && uci_set $SLV_CFG.$SL_ID.fs_template_type="$FS_TYPE" path=$OUT_DIR
@@ -845,6 +847,8 @@ confine_sliver_allocate() {
 	uci_set lxc.$CT_NR.remount="$LXC_IMAGES_PATH/$CT_NR/confine:confine" add
 	uci_set lxc.$CT_NR.hostname=${SL_ID}_${NODE_ID}
 	uci_set lxc.$CT_NR.tag=confine-sliver-$SL_ID
+
+	[ "$MEM_LIMIT" ] && uci_set lxc.$CT_NR.mem_limit="$(( $MEM_LIMIT * 1024 * 1024 ))"
 
 	local IF_KEY=
 	for IF_KEY in $IF_KEYS; do

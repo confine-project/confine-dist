@@ -228,6 +228,15 @@ lxc.pts = 1024
 
 EOF
 
+    local SL_MEM_LIMIT="$( uci_get lxc.$SL_NAME.mem_limit soft,quiet )"
+    if [ "$SL_MEM_LIMIT" ]; then
+	cat <<EOF >> $LXC_IMAGES_PATH/$SL_NAME/config
+
+lxc.cgroup.memory.limit_in_bytes = $SL_MEM_LIMIT
+
+EOF
+    fi
+    
     
     local SL_DROP="$( uci_get lxc.$SL_NAME.cap_drop soft )"
     if [ "$SL_DROP" ]; then

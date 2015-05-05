@@ -30,6 +30,10 @@ DFLT_SLIVER_DISK_MAX_MB      = 2000
 DFLT_SLIVER_DISK_DFLT_MB     = 1000
 DFLT_SLIVER_DISK_RESERVED_MB = 500
 
+DFLT_SLIVER_MEM_MAX_MB      = 2000
+DFLT_SLIVER_MEM_DFLT_MB     = 1000
+
+
 node_state_file     = RUNTIME_DIR.."node_state"
 server_state_file   = RUNTIME_DIR.."server_state"
 system_state_file   = RUNTIME_DIR.."system_state"
@@ -291,6 +295,8 @@ function get_system_conf(sys_conf, arg)
 	conf.disk_reserved         = tonumber(uci.get("confine", "node", "disk_reserved")        or DFLT_SLIVER_DISK_RESERVED_MB)
 	conf.disk_avail            = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_template_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.disk_reserved
 	
+	conf.mem_max_per_sliver   = tonumber(uci.get("confine", "node", "mem_max_per_sliver")  or DFLT_SLIVER_MEM_MAX_MB)
+	conf.mem_dflt_per_sliver  = tonumber(uci.get("confine", "node", "mem_dflt_per_sliver") or DFLT_SLIVER_MEM_DFLT_MB)
 
 	data.file_put( conf, system_state_file )
 
