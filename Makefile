@@ -188,7 +188,7 @@ define post_build
 #	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-ext4.vdi" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).vdi"
 	cp -f "$(BUILD_DIR)/bin/$(TARGET)/$(IMAGE)-$(IMAGE_TYPE).img.gz" "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"
 	cp -f $(FILES_DIR)/etc/confine.version "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
-	[ -n "$(IMAGEBUILDER)" ] && cp -f $(BUILD_DIR)/bin/$(TARGET)/OpenWrt-ImageBuilder-$(TARGET)*.tar.bz2 $(IMAGES)/CONFINE-ImageBuilder-$(TIMESTAMP).tar.bz2
+	[ -n "$(IMAGEBUILDER)" ] && cp -f $(BUILD_DIR)/bin/$(TARGET)/OpenWrt-ImageBuilder-$(TARGET)*.tar.bz2 $(IMAGES)/CONFINE-ImageBuilder-$(TIMESTAMP).tar.bz2 || true
 	cat "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).img.gz"|md5sum|sed -e "s/\ \ -//" >> "$(IMAGES)/CONFINE-owrt-$(TIMESTAMP).version"
 
 	ln -fs "CONFINE-owrt-$(TIMESTAMP).version" "$(IMAGES)/CONFINE-owrt-current.version"
