@@ -796,6 +796,16 @@ confine_sliver_allocate() {
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_MGMT_IPV6  path=$OUT_DIR
 		    
 		    
+		elif [ "$IF_TYPE" = "debug" ]; then
+
+		    local IF_DBG_IPV6=$( uci_get confine.testbed.dbg_ipv6_prefix48 soft || echo "fd5f:eee5:e6ad"):${NODE_ID}:10${IF_KEY}:${SL_ID:0:4}:${SL_ID:4:4}:${SL_ID:8:4}/48
+		    
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_name=$IF_NAME       path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_mac=$IF_MAC         path=$OUT_DIR
+		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_ipv6=$IF_DBG_IPV6   path=$OUT_DIR
+		    
+		    
 		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_PARENT" ] && [ "$IF_ISO_PARENTS" ] && echo "$IF_ISO_PARENTS" | grep -e "$IF_PARENT" >/dev/null && ip link show $IF_PARENT >/dev/null 2>&1; then
 		    
 		    uci_set $SLV_CFG.$SL_ID.if${IF_KEY}_type=$IF_TYPE       path=$OUT_DIR
@@ -890,6 +900,15 @@ confine_sliver_allocate() {
 #		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
 #		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
+		elif [ "$IF_TYPE" = "debug" ]; then
+		
+		    uci_set lxc.$CT_NR.if${IF_KEY}_type=veth
+		    uci_set lxc.$CT_NR.if${IF_KEY}_pair=$IF_PAIR
+		    uci_set lxc.$CT_NR.if${IF_KEY}_name=$IF_NAME
+		    uci_set lxc.$CT_NR.if${IF_KEY}_netconf=local
+		    uci_set lxc.$CT_NR.if${IF_KEY}_mac=$IF_MAC
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6_proto=static
+		    uci_set lxc.$CT_NR.if${IF_KEY}_ipv6=$IF_IPV6
 
 		elif [ "$IF_TYPE" = "isolated" ] && [ "$IF_VLANTAG" ]; then
 
