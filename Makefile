@@ -36,7 +36,7 @@ SPECIFICS ?= #eg atom32
 PARTSIZE ?= 256
 MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
 PACKAGES ?= confine-community-lab confine-system confine-recommended
-
+IMAGEBUILDER ?=
 CONFIG := $(BUILD_DIR)/.config
 KCONF := target/linux/$(TARGET)/config-3.10
 KCONFIG := $(BUILD_DIR)/$(KCONF)
@@ -80,6 +80,7 @@ define create_configs
 	@( [ "$(PROFILE)" ]   && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
 
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
+	@( [ -n "$(IMAGEBUILDER)" ] && echo "CONFIG_IB=y" >> $(CONFIG) )
 
         @( ! [ "with gdb" ] && \
                 echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
