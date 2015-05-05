@@ -80,7 +80,7 @@ define create_configs
 	@( [ "$(PROFILE)" ]   && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
 
 	@( for PACKAGE in ${PACKAGES}; do echo "CONFIG_PACKAGE_$${PACKAGE}=y" >> $(CONFIG); done )
-	@( [ -n "$(IMAGEBUILDER)" ] && echo "CONFIG_IB=y" >> $(CONFIG) )
+	@( [ -n "$(IMAGEBUILDER)" ] && echo "CONFIG_IB=y" >> $(CONFIG) || true )
 
         @( ! [ "with gdb" ] && \
                 echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
