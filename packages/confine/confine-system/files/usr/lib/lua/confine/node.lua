@@ -66,7 +66,7 @@ function set_node_state( sys_conf, node, val, path)
 	assert( STATE[val], "set_node_state(): Illegal node state=%s" %{tostring(val)})
 
 	if (val == STATE.failure or node.state == STATE.failure) then
-		sliver.remove_slivers( sys_conf, node, nil )
+		sliver.force_sliver( sys_conf, node, nil, sliver.NODE.registered )
 		node.state = val
 		system.set_system_conf(sys_conf, "sys_state", "failure")
 		system.stop()
@@ -75,12 +75,12 @@ function set_node_state( sys_conf, node, val, path)
 	
 	if (val == STATE.debug) then
 		node.state = val
-		sliver.remove_slivers( sys_conf, node, nil )
+		sliver.force_sliver( sys_conf, node, nil, sliver.NODE.registered )
 		
 	elseif (val == STATE.safe) then
 		if (node.state == STATE.production) then
 			node.state = val
-			sliver.remove_slivers( sys_conf, node, nil )
+			sliver.force_sliver( sys_conf, node, nil, sliver.NODE.deployed )
 		end
 
 	elseif (val == STATE.production) then
@@ -250,12 +250,12 @@ function cb2_set_sys_and_remove_slivers( rules, sys_conf, otree, ntree, path, be
 		
 	elseif is_table and not begin and changed and system.set_system_conf( sys_conf, key, new ) then
 
-		sliver.remove_slivers( sys_conf, otree, nil )
+		sliver.force_sliver( sys_conf, otree, nil, sliver.NODE.registered )
 		ctree.set_path_val(otree,path,sys_conf[key])
 		
 	elseif not is_table and old ~= new and system.set_system_conf( sys_conf, key, new ) then
 		
-		sliver.remove_slivers( sys_conf, otree, nil )
+		sliver.force_sliver( sys_conf, otree, nil, sliver.NODE.registered )
 		ctree.set_path_val(otree,path,sys_conf[key])
 		
 	elseif not is_table and old ~= new then
@@ -341,7 +341,7 @@ function cb2_set_direct_ifaces( rules, sys_conf, otree, ntree, path, begin, chan
 		if system.check_direct_ifaces( new, true ) then
 		
 			system.set_system_conf( sys_conf, key, new )
-			sliver.remove_slivers( sys_conf, otree, nil )
+			sliver.force_sliver( sys_conf, otree, nil, sliver.NODE.registered )
 			ctree.set_path_val(otree,path,sys_conf[key])
 			
 		else

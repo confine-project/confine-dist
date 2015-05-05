@@ -840,14 +840,18 @@ end
 
 
 
-function remove_slivers( sys_conf, otree, slv_key, next_state)
+function force_sliver( sys_conf, otree, slv_key, next_state)
 	
-	assert(not next_state or next_state==NODE.registered)
+	assert(next_state==NODE.registered or next_state==NODE.deployed)
 	
-	if slv_key then
+	local uci_key = slv_key and "%.12x" %tonumber(slv_key) or nil
+	local action = next_state==NODE.registered and  SLV_REMOVE_BIN or SLV_STOP_BIN
+	
+	dbg("Forcing uci_sliver=%s to %s", tostring(uci_key), next_state)
+	
+	if uci_key then
 		
-		local uci_key = "%.12x" %tonumber(slv_key)
-		assert((tools.execute( SLV_REMOVE_BIN.." "..uci_key )==0), "Failed removing uci_sliver=%s", uci_key )
+		assert((tools.execute( action .. " "  .. uci_key )==0), "Failed forcing uci_sliver=%s to %s", uci_key, next_state )
 		sys_conf.uci_slivers[uci_key] = nil
 		
 		if next_state then
@@ -862,19 +866,17 @@ function remove_slivers( sys_conf, otree, slv_key, next_state)
 			otree.local_slivers[slv_key] = nil
 		end
 		
-		csystem.get_system_conf( sys_conf )
-		sys_get_lslivers( sys_conf, otree, uci_key )
 		
 	else
 		
-		dbg("removing all")
-		assert((tools.execute( SLV_REMOVE_BIN.." all" )==0), "Failed removing all slivers" )
+		assert((tools.execute( action .. " all" )==0), "Failed forcing all slivers to %s", next_state )
 		sys_conf.uci_slivers = {}
 		otree.local_slivers = {}
 		
-		csystem.get_system_conf( sys_conf )
-		sys_get_lslivers( sys_conf, otree )
 	end
+
+	csystem.get_system_conf( sys_conf )
+	sys_get_lslivers( sys_conf, otree, uci_key )
 end
 
 
@@ -899,13 +901,13 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 
 	if next_state==nil then
 		
-		remove_slivers( sys_conf, otree, slv_key, nil )
+		force_sliver( sys_conf, otree, slv_key, NODE.registered )
 		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 		
 	elseif next_state==NODE.registered then
 		
-		remove_slivers( sys_conf, otree, slv_key, NODE.registered )
+		force_sliver( sys_conf, otree, slv_key, NODE.registered )
 		dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
 		return true
 	
@@ -1079,7 +1081,7 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 	
 	if start_state and start_state~=oslv.state then
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, start_state ) then
-			remove_slivers( a.sys_conf, a.otree, key, nil)
+			force_sliver( a.sys_conf, a.otree, key, NODE.registered)
 			return false
 		end
 	end
@@ -1101,7 +1103,7 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 	elseif oslv.errors then
 		assert( error_state )
 		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state ) then
-			remove_slivers( a.sys_conf, a.otree, key, nil)
+			force_sliver( a.sys_conf, a.otree, key, NODE.registered)
 			return false
 		end
 
@@ -1110,7 +1112,7 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 			dbg( add_lslv_err(a.otree, a.path, "Failed state transition"))
 			assert( error_state )
 			if not sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state ) then
-				remove_slivers( a.sys_conf, a.otree, key, nil)
+				force_sliver( a.sys_conf, a.otree, key, NODE.registered)
 				return false
 			end
 		end
@@ -1144,13 +1146,15 @@ end
 	
 function cb2_set_lsliver( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_set_lsliver" end
-	if begin then return dbg("------------------------") or true end
+	if begin then return (dbg("------------------------") or true) end
 
 	local key = ctree.get_path_leaf(path)
 	
 	local iargs = { cb=crules.cb2, sys_conf=sys_conf, otree=otree, ntree=ntree, path=path }
 	
-	if otree.state ~= cnode.STATE.production then
+	if otree.state == cnode.STATE.safe then
+		return true
+	elseif otree.state ~= cnode.STATE.production then
 		ntree.local_slivers[key] = nil
 	end
 	
@@ -1285,6 +1289,7 @@ end
 
 function cb2_set_slivers( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_set_slivers" end
+	if begin then return true end
 	otree.slivers = {}
 	local i,v
 	for i,v in pairs(otree.local_slivers) do
