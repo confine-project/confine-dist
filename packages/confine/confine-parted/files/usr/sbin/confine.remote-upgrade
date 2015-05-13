@@ -1,7 +1,9 @@
 #!/bin/sh
 
-# A list of URLs to download the image from.
-IMG_URLS="http://10.228.207.4/misc/CONFINE-owrt-master-atom-current.img.gz http://distro.confine-project.eu/misc/CONFINE-owrt-master-atom-current.img.gz"
+# A list of default URLs to download the image from.
+# Use UCI option ``confine.node.latest_image_uri`` to override it.
+# Use environment variable ``IMG_URLS`` to override both.
+IMG_DEFAULT_URLS="http://10.228.207.4/misc/CONFINE-owrt-master-atom-current.img.gz http://distro.confine-project.eu/misc/CONFINE-owrt-master-atom-current.img.gz"
 # The path to the downloaded image.
 LIMG="/tmp/confine.upgrade.img.gz"
 
@@ -26,6 +28,15 @@ upgrade_raw() {
     echo "Detected raw filesystem"
     confine.sysupgrade $OPTS -b $LIMG
 }
+
+# Select URL set to try.
+if [ "$IMG_URLS" ]; then
+    true  # use var as is
+elif UCI_URLS=$(uci -q get confine.node.latest_image_uri); then
+    IMG_URLS=$UCI_URLS
+else
+    IMG_URLS=$IMG_DEFAULT_URLS
+fi
 
 rm -f "$LIMG" 2>/dev/null
 
