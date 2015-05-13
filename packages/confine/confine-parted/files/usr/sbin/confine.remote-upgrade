@@ -1,8 +1,9 @@
 #!/bin/sh
-SERVERS="10.228.207.4 distro.confine-project.eu"
-IMG="/misc/CONFINE-owrt-master-atom-current.img.gz"
+
+# A list of URLs to download the image from.
+IMG_URLS="http://10.228.207.4/misc/CONFINE-owrt-master-atom-current.img.gz http://distro.confine-project.eu/misc/CONFINE-owrt-master-atom-current.img.gz"
+# The path to the downloaded image.
 LIMG="/tmp/confine.upgrade.img.gz"
-MD5="/misc/CONFINE-owrt-master-atom-current.version"
 
 error() {
     echo "ERROR: $@"
@@ -10,7 +11,7 @@ error() {
 }
 
 check_md5() {
-    local rmd5="$(wget -q http://$SERVER/$MD5 -O- | awk NR==4)"
+    local rmd5="$(wget -q "$MD5_URL" -O- | awk NR==4)"
     local fmd5="$(md5sum "$LIMG" | awk '{print $1}')"
     [ "$rmd5" != "$fmd5" ] && error Checksum does not match
     echo "Checksum match!"
@@ -28,14 +29,17 @@ upgrade_raw() {
 
 rm -f "$LIMG" 2>/dev/null
 
-for S in $SERVERS; do
-    echo "Trying to fetch the image from $S"
-    wget --progress=dot:mega -t 2 -T 10 "http://$S/$IMG" -O "$LIMG" && SERVER="$S" && break
+for IMG_URL in $IMG_URLS; do
+    echo "Trying to fetch the image from <$IMG_URL>..."
+    if wget --progress=dot:mega -t 2 -T 10 "$IMG_URL" -O "$LIMG"; then
+        MD5_URL="${IMG_URL%%.img.gz}.version"
+        break
+    fi
 done
 
-[ -z "$SERVER" ] && error Cannot download image from $IMG
+[ -z "$MD5_URL" ] && error "Cannot download image from <$IMG_URL>."
 echo "Firmware image download correctly!"
-[ -n "$MD5" ] && check_md5
+[ -n "$MD5_URL" ] && check_md5
 
 OPTS="$@"
 
