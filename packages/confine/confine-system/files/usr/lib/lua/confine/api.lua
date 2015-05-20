@@ -30,7 +30,7 @@ end
 
 function set_configuration()
     local sys_conf = file_get("/var/run/confine/system_state")
-
+    NODE_STATE = file_get("/var/run/confine/node_state")
     SERVER_STATE = file_get("/var/run/confine/server_state")
     LINK_BASE_REL = sys_conf.link_base_rel
     SERVER_ADDR = sys_conf.server_base_uri:match('://(.-)/')
@@ -306,6 +306,20 @@ function not_found(request, url)
 end
 
 
+function service_unavailable(request, url, reason)
+    -- 404 URL not found
+    local headers = {
+        ['Status'] = "503 Service Unavailable"
+    }
+    local content = '{\n    "detail": "Requested resource ' .. url ..' not available ' .. (reason or '') .. '"\n}'
+    local response = {
+        ['headers'] = headers,
+        ['content'] = content
+    }
+    return handle_response(request, response)
+end
+
+
 function listdir_view(request, name, patterns)
     -- Dir listing based content
     local directory = WWW_PATH .. name
@@ -344,6 +358,14 @@ function file_view(request, name, patterns)
         ['templates'] = 'templates/index.html',
         ['template'] = 'templates/%s/index.html',
     }
+    
+    if NODE_STATE.state ~= "production" and (
+        name == 'sliver' or
+        name == 'slivers' or
+        name == 'template' or
+        name == 'templates') then
+        return service_unavailable(request, request['REQUEST_URI'], "because node not in PRODUCTION state!")
+    end
     
     local file = WWW_PATH .. map[name]:format(patterns)
     local f = io.open(file, "rb")
