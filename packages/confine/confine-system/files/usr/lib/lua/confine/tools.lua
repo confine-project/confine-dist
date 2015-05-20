@@ -70,15 +70,21 @@ function handle_error(e)
 	return trace
 end
 
-function execute(cmd)
+function execute(cmd, errlog)
 	dbg(cmd)
 
 	local out_file = os.tmpname()
-	local result = os.execute(cmd .. " > " .. out_file .. " 2>&1")
+	local result = os.execute("("..cmd .. ") > " .. out_file .. " 2>&1")
 	local out_data = nixio.fs.readfile( out_file )
 	os.remove(out_file)
 	
 	dbg("return code=%s output:\n%s",result, out_data)
+	
+	if type(errlog)=="table" then
+		errlog.out=out_data
+		errlog.result=result
+	end
+	
 	return result
 end
 

@@ -881,7 +881,7 @@ end
 
 
 
-local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
+local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state, errlog)
 	
 	assert( type(otree)=="table" )
 	assert( type(tonumber(slv_key))=="number" )
@@ -912,7 +912,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		return true
 	
 	elseif next_state==NODE.allocated and uci_state==NODE.allocated then
-		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key, errlog )==0 then
 			local sliver_opts = {
 				api_slice_instance_sn = api_slv.local_slice.instance_sn,
 			}
@@ -961,7 +961,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		end		
 		
 		
-		if tools.execute( SLV_ALLOCATE_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n" )==0 then
+		if tools.execute( SLV_ALLOCATE_BIN.." "..uci_key.." <<EOF\n "..(sliver_desc:gsub("EOF","")).."EOF\n", errlog )==0 then
 		
 			local sliver_opts = {
 				api = "confine",
@@ -984,7 +984,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.allocated and uci_state==NODE.deployed then
 		
-		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_UNDEPLOY_BIN.." "..uci_key, errlog )==0 then
 			
 			local sliver_opts = {
 				api_slice_instance_sn = api_slv.local_slice.instance_sn,
@@ -1001,7 +1001,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 	
 	
 	elseif next_state==NODE.deployed and uci_state==NODE.deployed then
-		if tools.execute( SLV_STOP_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_STOP_BIN.." "..uci_key, errlog )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
 			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
@@ -1010,7 +1010,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.deployed and uci_state==NODE.allocated then
 		
-		if tools.execute( SLV_DEPLOY_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_DEPLOY_BIN.." "..uci_key, errlog )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
 			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
@@ -1019,7 +1019,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.deployed and uci_state==NODE.started then
 		
-		if tools.execute( SLV_STOP_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_STOP_BIN.." "..uci_key, errlog )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
 			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
@@ -1037,7 +1037,7 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state )
 		
 	elseif next_state==NODE.started and uci_state==NODE.deployed then
 		
-		if tools.execute( SLV_START_BIN.." "..uci_key )==0 then
+		if tools.execute( SLV_START_BIN.." "..uci_key, errlog )==0 then
 			csystem.get_system_conf( sys_conf )
 			sys_get_lsliver( sys_conf, otree, uci_key )
 			dbg( "next_state=%s lslivers=%s", tostring(next_state), ctree.as_string(otree.local_slivers) )
@@ -1108,8 +1108,11 @@ local function slv_iterate( iargs, rules, start_state, success_state, error_stat
 		end
 
 	elseif success_state~=oslv.state then
-		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, success_state ) then
-			dbg( add_lslv_err(a.otree, a.path, "Failed state transition"))
+		
+		local errlog = {out=""}
+		
+		if not sys_set_lsliver_state( a.sys_conf, a.otree, key, success_state, errlog ) then
+			dbg( add_lslv_err(a.otree, a.path, "Failed state transition:\n" .. errlog.out))
 			assert( error_state )
 			if not sys_set_lsliver_state( a.sys_conf, a.otree, key, error_state ) then
 				force_sliver( a.sys_conf, a.otree, key, NODE.registered)
