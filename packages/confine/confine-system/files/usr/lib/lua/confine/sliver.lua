@@ -226,8 +226,7 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 		local failure = false
 		failure = not crules.chk_or_err( add_lslv_err, otree, ntree, path.."type/", "string", IF_TYPES ) or failure
 		failure = not crules.set_or_err( add_lslv_err, otree, ntree, path.."nr/", "number" ) or failure
-		
-		
+				
 		if ( nval.type:match(IF_TYPES.private) or nval.type:match(IF_TYPES.management) or nval.type:match(IF_TYPES.public4) ) and
 			(tools.get_table_by_key_val(oslv.interfaces, nval.type, "type") ) then
 			
@@ -238,10 +237,9 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 			
 			failure = true
 			add_lslv_err( otree, path.."type/", "No available public ipv4 address", nval.type)
-			
-		else
-			ctree.set_path_val(otree,path.."type/", nval.type)
 		end
+		
+		ctree.set_path_val(otree, path.."type/", nval.type)
 		
 		
 		if type(nval.name)~="string" or not nval.name:match("^[%a]+[^%c%s]*$") then
@@ -250,14 +248,13 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 		elseif tools.get_table_by_key_val(oslv.interfaces, nval.name, "name") then
 			failure = true
 			add_lslv_err( otree, path.."name/", "Already used for other interface", nval.name)
-		else
-			ctree.set_path_val(otree,path.."name/", nval.name)
 		end
+		
+		ctree.set_path_val(otree, path.."name/", nval.name)
 		
 		
 		if nval.parent_name==null and not nval.type:match(IF_TYPES.isolated) then
 			
-			ctree.set_path_val(otree,path.."parent_name/", nval.parent_name)
 			
 		elseif type(nval.parent_name)=="string" and nval.type:match(IF_TYPES.isolated) then
 			
@@ -275,22 +272,18 @@ function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 				add_lslv_err( otree, path.."type/", "No isolated_vlan_tag defined", nval.type)
 			end
 			
-			if not failure then
-				ctree.set_path_val(otree,path.."parent_name/", nval.parent_name)
-			end
 		else
 			failure = true
 			add_lslv_err( otree, path.."parent_name/", "Invalid", nval.parent_name )
 		end
-
+		
+		ctree.set_path_val(otree, path.."parent_name/", nval.parent_name)
+		
+		
 		ctree.set_path_val(otree, path.."ipv4_addr/", nval.ipv4_addr or null)
 		ctree.set_path_val(otree, path.."ipv6_addr/", nval.ipv6_addr or null)
 		ctree.set_path_val(otree, path.."mac_addr/", nval.mac_addr or null)
 		ctree.set_path_val(otree, path.."vlan_tag/", nval.vlan_tag or null)
-
-		if failure then
-			ctree.set_path_val( otree, path, nil )
-		end		
 	end
 end
 
