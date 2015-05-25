@@ -28,10 +28,11 @@ NODE_BASE_PATH = "/confine/api"
 
 DFLT_SLIVER_DISK_MAX_MB      = 2000
 DFLT_SLIVER_DISK_DFLT_MB     = 1000
-DFLT_SLIVER_DISK_RESERVED_MB = 500
+DFLT_HOST_DISK_RESERVED_MB = 500
+DFLT_HOST_MEM_RESERVED_PERCENT = 25
 
-DFLT_SLIVER_MEM_MAX_MB      = 2000
-DFLT_SLIVER_MEM_DFLT_MB     = 1000
+DFLT_SLIVER_MEM_MAX_MB      = 2048
+DFLT_SLIVER_MEM_DFLT_MB     = 512
 
 
 node_state_file     = RUNTIME_DIR.."node_state"
@@ -154,6 +155,9 @@ function get_system_conf(sys_conf, arg)
 	if not conf.arch then
 		
 		conf.arch                  = tools.canon_arch(nixio.uname().machine)
+
+		local meminfo = nixio.fs.readfile( "/proc/meminfo" )
+		conf.mem_total = math.floor((meminfo and meminfo:match("MemTotal: +([%d]+) kB") or 0)/1024)
 		
 		local cns_version_file     = io.open("/etc/confine.version", "r")
 		if cns_version_file then
@@ -169,7 +173,6 @@ function get_system_conf(sys_conf, arg)
 		conf.cns_version           = conf.cns_version:gsub("Version: ",""):gsub(" ",""):gsub("\n","")
 		conf.soft_version          = (conf.sys_revision or "???.???") .. "-" .. conf.cns_version
 		
-		local meminfo = nixio.fs.readfile( "/proc/meminfo" ) or "0"
 		local ifname = (uci.get("confine", "node", "local_ifname")) or ""
 		local ethtool = (lutil.exec('ethtool ' .. ifname)) or ""
 		local cpuinfo = nixio.fs.readfile( "/proc/cpuinfo" ) or ""
@@ -179,7 +182,7 @@ function get_system_conf(sys_conf, arg)
 		--	hw_cpu_op_mode = "64-bit",
 			hw_cpu_num_cores = tostring(cpucount),
 			hw_cpu_speed_MHz = cpuinfo:match("cpu MHz[^%d]+([%d]+)"),
-			hw_mem_total_MiB = tostring(math.floor((meminfo:match("([%d]+) kB"))/1024) ),
+			hw_mem_total_MiB = tostring(conf.mem_total),
 		--	hw_mem_free_MB = "2058",
 		--	hw_eth_model = "82579LM Gigabit Network Connection",
 			hw_eth_tx_mode = ethtool:match("Duplex: ([%a]+)"),
@@ -292,11 +295,12 @@ function get_system_conf(sys_conf, arg)
 	
 	conf.disk_max_per_sliver   = tonumber(uci.get("confine", "node", "disk_max_per_sliver")  or DFLT_SLIVER_DISK_MAX_MB)
 	conf.disk_dflt_per_sliver  = tonumber(uci.get("confine", "node", "disk_dflt_per_sliver") or DFLT_SLIVER_DISK_DFLT_MB)
-	conf.disk_reserved         = tonumber(uci.get("confine", "node", "disk_reserved")        or DFLT_SLIVER_DISK_RESERVED_MB)
+	conf.disk_reserved         = tonumber(uci.get("confine", "node", "disk_reserved")        or DFLT_HOST_DISK_RESERVED_MB)
 	conf.disk_avail            = math.floor(tonumber(lutil.exec( "df -P "..conf.sliver_template_dir .."/ | tail -1 | awk '{print $4}'" )) / 1024) - conf.disk_reserved
 	
 	conf.mem_max_per_sliver   = tonumber(uci.get("confine", "node", "mem_max_per_sliver")  or DFLT_SLIVER_MEM_MAX_MB)
 	conf.mem_dflt_per_sliver  = tonumber(uci.get("confine", "node", "mem_dflt_per_sliver") or DFLT_SLIVER_MEM_DFLT_MB)
+	conf.mem_reserved_percent = tonumber(uci.get("confine", "node", "mem_reserved_percent") or DFLT_HOST_MEM_RESERVED_PERCENT)
 
 	data.file_put( conf, system_state_file )
 

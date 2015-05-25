@@ -204,7 +204,25 @@ function cb2_lnode_sliver_pub_ipv4_avail (rules, sys_conf, otree, ntree, path)
 	return sliver_pub_ipv4_avail
 end
 
+function cb2_get_memory_avail (rules, sys_conf, otree, ntree, path)
+	if not rules then return "cb2_get_memory_avail" end
 
+	local avail = math.floor((100 * sys_conf.mem_total) / (100 - sys_conf.mem_reserved_percent))
+		
+	local slk,slv
+	for slk,slv in pairs(sys_conf.uci_slivers) do
+
+		local slv_alloc = sys_conf.uci_slivers[slk].mem_mb or sys_conf.mem_dflt_per_sliver
+
+		avail = avail - slv_alloc
+	end
+
+	if path then
+		ctree.set_path_val( otree, path, avail)
+	end
+
+	return avail
+end
 
 function cb2_interface ( rules, sys_conf, otree, ntree, path, begin, changed )
 	if not rules then return "cb2_interface" end
@@ -349,7 +367,7 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 		req = ctree.get_path_val(ntree, pslv.."resources/disk/req/") or null,
 		alloc = (rules~=register_rules and rules~=dealloc_rules and rules~=undeploy_rules and
 			 oslv.resources.disk and oslv.resources.disk.alloc) or null
-		}
+	}
 	
 	if (rules==alloc_rules or rules==deploy_rules) then
 		
@@ -385,26 +403,26 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 		end
 	end
 
-	oslv.resources.mem = {
-		name = "mem",
+	oslv.resources.memory = {
+		name = "memory",
 		unit = "MiB",
-		req = ctree.get_path_val(ntree, pslv.."resources/mem/req/") or null,
-		alloc = (rules~=register_rules and rules~=dealloc_rules and rules~=undeploy_rules and
-			 oslv.resources.mem and oslv.resources.mem.alloc) or null
-		}
+		req = ctree.get_path_val(ntree, pslv.."resources/memory/req/") or null,
+		alloc = (rules~=register_rules and rules~=dealloc_rules and
+			 oslv.resources.memory and oslv.resources.memory.alloc) or null
+	}
 	
-	if (rules==alloc_rules or rules==deploy_rules) then
+	if (rules==alloc_rules) then
 		
 		local req_mb = sys_conf.mem_dflt_per_sliver
-		local nslvReq = ctree.get_path_val(ntree, pslv.."resources/mem/req")
-		local nslcReq = ctree.get_path_val(ntree, pslv.."local_slice/sliver_defaults/resources/mem/req")
+		local nslvReq = ctree.get_path_val(ntree, pslv.."resources/memory/req")
+		local nslcReq = ctree.get_path_val(ntree, pslv.."local_slice/sliver_defaults/resources/memory/req")
 
 		if nslvReq then
 			
 			if type(nslvReq) == "number" and nslvReq >= 1 and nslvReq <= sys_conf.mem_max_per_sliver then
 				req_mb = nslvReq
 			else
-				dbg( add_lslv_err( otree, pslv.."resources/mem/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslvReq) )
+				dbg( add_lslv_err( otree, pslv.."resources/memory/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslvReq) )
 			end
 			
 		elseif nslcReq then
@@ -412,12 +430,16 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 			if type(nslcReq) == "number" and nslcReq >= 1 and nslcReq <= sys_conf.mem_max_per_sliver then
 				req_mb = nslcReq
 			else
-				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources/mem/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslcReq) )
+				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources/memory/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslcReq) )
 			end
 		end
 
-		if not oslv.errors then
-			oslv.resources.mem.alloc = req_mb
+		if  req_mb > cb2_get_memory_avail(rules, sys_conf, otree) then
+
+			dbg( add_lslv_err( otree, pslv.."resources/memory/alloc", "Exceeded available memory for slivers", req_mb) )
+			oslv.resources.memory.alloc = null
+		elseif not oslv.errors then
+			oslv.resources.memory.alloc = req_mb
 		end
 	end
 
@@ -785,8 +807,8 @@ local function sys_get_lsliver( sys_conf, otree, sk )
 			slv.resources.disk.alloc = tonumber(sv.disk_mb)
 
 			if sv.mem_mb then
-				slv.resources.mem = slv.resources.mem or {}
-				slv.resources.mem.alloc = tonumber(sv.mem_mb)
+				slv.resources.memory = slv.resources.memory or {}
+				slv.resources.memory.alloc = tonumber(sv.mem_mb)
 			end
 			
 			slv.local_slice = slv.local_slice or {}
@@ -965,8 +987,8 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state, errl
 		sliver_desc = sliver_desc.."	option exp_name '%s'\n" %{api_slv.local_slice.name:gsub("\n","")}
 		sliver_desc = sliver_desc.."	option disk_mb '%s'\n" %{api_slv.resources.disk.alloc}
 
-		if api_slv.resources.mem and api_slv.resources.mem.alloc then
-			sliver_desc = sliver_desc.."	option mem_mb '%s'\n" %{api_slv.resources.mem.alloc}
+		if api_slv.resources.memory and api_slv.resources.memory.alloc then
+			sliver_desc = sliver_desc.."	option mem_mb '%s'\n" %{api_slv.resources.memory.alloc}
 		end
 		
 		if type(api_slv.local_data.sha256)=="string" then
