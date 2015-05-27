@@ -142,7 +142,7 @@ VCT_BR02_NAME="vct-direct-02"
 VCT_RD_NAME_PREFIX="vcrd-"
 VCT_RD_MEM="128"                                     # RD Memory in MB
 VCT_RD_LOCAL_BRIDGE="vct-local"
-VCT_SLIVER_DFLT_MEM="$((VCT_RD_MEM * 3/4 / 3))"      # 3 slivers with default mem req take 75% or RD RAM
+VCT_SLIVER_DFLT_MEM="$((VCT_RD_MEM * 3/4 / 3))"      # 3 slivers with default mem req take 75% of RD RAM
 
 
 #################################################
