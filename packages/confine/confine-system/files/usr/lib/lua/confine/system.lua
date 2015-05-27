@@ -353,6 +353,12 @@ function set_system_conf( sys_conf, opt, val, section)
 		uci.set("confine", "node", opt, val) then
 		
 		return get_system_conf(sys_conf)
+		
+	elseif (opt == "mem_max_per_sliver" or opt == "mem_dflt_per_sliver") and
+		type(val)=="number" and val <= 65536 and
+		uci.set("confine", "node", opt, val) then
+		
+		return get_system_conf(sys_conf)
 
 	elseif opt=="uci_sliver" and
 		type(val)=="table" and type(section)=="string" and
