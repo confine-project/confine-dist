@@ -184,6 +184,6 @@ MONITOR_MONITORS = (
 
 # Custom settings
 try:
-   from local_settings import *
+    from local_settings import *
 except ImportError:
-   pass
+    pass
