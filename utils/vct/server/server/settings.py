@@ -119,10 +119,8 @@ if 'SLICES_SLICE_OVERLAY_DIR' in dir(slc_settings):
     SLICES_SLIVER_OVERLAY_NAME = None
 
 # Slices and slivers - #234 backwards compatibility preventing warnings
-if 'SLICES_SLICE_EXP_DATA_DIR' in dir(slc_settings):
-    SLICES_SLICE_EXP_DATA_DIR = SLICES_SLICE_DATA_DIR
+if 'SLICES_SLICE_EXP_DATA_NAME' in dir(slc_settings):
     SLICES_SLICE_EXP_DATA_NAME = SLICES_SLICE_DATA_NAME
-    SLICES_SLIVER_EXP_DATA_DIR = SLICES_SLIVER_DATA_DIR
     SLICES_SLIVER_EXP_DATA_NAME = SLICES_SLIVER_DATA_NAME
 
 # State
