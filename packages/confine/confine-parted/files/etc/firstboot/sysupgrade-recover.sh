@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TO_REMOVE="/etc/config/confine-defaults /usr/lib/opkg /.extroot.md5sum /etc/extroot.md5sum /var/www/confine /etc/banner /etc/confine.version"
+TO_REMOVE="/etc/config/confine-defaults /usr/lib/opkg /.extroot.md5sum /etc/extroot.md5sum /etc/.extroot-uuid /var/www/confine /etc/banner /etc/confine.version"
 
 check_part() {
     local dev=$1
