@@ -207,7 +207,7 @@ end
 function cb2_get_memory_avail (rules, sys_conf, otree, ntree, path)
 	if not rules then return "cb2_get_memory_avail" end
 
-	local avail = math.floor((100 * sys_conf.mem_total) / (100 - sys_conf.mem_reserved_percent))
+	local avail = math.floor(sys_conf.mem_total * (100 - sys_conf.mem_reserved_percent) / 100 )
 		
 	local slk,slv
 	for slk,slv in pairs(sys_conf.uci_slivers) do
