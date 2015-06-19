@@ -32,9 +32,9 @@ TARGET ?= x86
 SUBTARGET ?= generic
 # Some targets (not x86) need a profile.
 PROFILE ?=
-SPECIFICS ?= #eg atom32
+SPECIFICS ?= i586 #eg i586, i686, ATOM32
 PARTSIZE ?= 256
-MAXINODE ?= $$(( $(PARTSIZE) * 100 ))
+MAXINODE ?= $$(( $(PARTSIZE) * 400 ))
 PACKAGES ?= confine-community-lab confine-system confine-recommended
 IMAGEBUILDER ?=
 CONFIG := $(BUILD_DIR)/.config
@@ -74,7 +74,7 @@ define create_configs
 # This command restores OpenWrt's default configuration and adds answers
 # to some options to avoid the configuration process asking for them.
 	( cd $(BUILD_DIR) && git checkout -- $(KCONF) )
-	@( echo "creating $(CONFIG) for TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
+	@( echo "creating $(CONFIG) for SPECIFICS=$(SPECIFICS) TARGET=$(TARGET) SUBTARGET=$(SUBTARGET) PROFILE=$(PROFILE) PARTSIZE=$(PARTSIZE) MAXINODE=$(MAXINODE) PACKAGES=\"$(PACKAGES)\"" )
 	@( echo "CONFIG_TARGET_$(TARGET)=y"           > $(CONFIG) )
 	@( [ "$(SUBTARGET)" ] && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)=y" >> $(CONFIG) || true )
 	@( [ "$(PROFILE)" ]   && echo "CONFIG_TARGET_$(TARGET)_$(SUBTARGET)_$(PROFILE)=y" >> $(CONFIG) || true )
@@ -85,6 +85,7 @@ define create_configs
         @( ! [ "with gdb" ] && \
                 echo "CONFIG_PACKAGE_gdbserver=y"         >> $(CONFIG) && \
                 echo "CONFIG_GDB=y"                       >> $(CONFIG) || true )
+
 	@( ! [ "static binaries for confine slivers" ] && \
 		echo "CONFIG_BUILD_STATIC_TOOLS=y"                                  >> $(CONFIG) && \
 		echo "CONFIG_BUSYBOX_CONFIG_STATIC=y"                               >> $(CONFIG) && \
@@ -106,27 +107,12 @@ define create_configs
 		echo "CONFIG_BUSYBOX_CONFIG_FEATURE_IPCALC_LONG_OPTIONS=y"          >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_openssh-client=y"                              >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_openssh-sftp-server=y"                         >> $(CONFIG) || true )
-	@( [ -z "$(SPECIFICS)" ] && [ "$(PARTSIZE)" ] && \
-		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
-		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) || true )
 
-	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
-		grep -v "CONFIG_NOHIGHMEM"  				$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
-		echo "CONFIG_SMP=y" 					>> $(KCONFIG) && \
-		echo "CONFIG_SCHED_SMT=y" 				>> $(KCONFIG) && \
-		echo "CONFIG_HIGHMEM4G=y"				>> $(KCONFIG) && \
-		echo "# CONFIG_X86_BIGSMP is not set"			>> $(KCONFIG) && \
-		echo "CONFIG_NR_CPUS=2"					>> $(KCONFIG) && \
-		echo "# CONFIG_NOHIGHMEM is not set"			>> $(KCONFIG) && \
-		echo "# CONFIG_HIGHMEM64G is not set"			>> $(KCONFIG) && \
-		echo "# CONFIG_HIGHPTE is not set"			>> $(KCONFIG) && \
-		true || true )
-
-	@( echo "$(SPECIFICS)" | grep -q -e "^atom32$$" && \
+	@( \
 		echo "CONFIG_X86_USE_GRUB2=y" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_KERNEL_PARTSIZE=32" >> $(CONFIG) && \
 		echo "CONFIG_TARGET_ROOTFS_PARTSIZE=$(PARTSIZE)" >> $(CONFIG) && \
-		echo "CONFIG_TARGET_ROOTFS_MAXINODE=90000" >> $(CONFIG) && \
+		echo "CONFIG_TARGET_ROOTFS_MAXINODE=$(MAXINODE)" >> $(CONFIG) && \
 		\
 		echo "CONFIG_PACKAGE_libiptc=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_libgnutls-openssl=y" >> $(CONFIG) && \
@@ -145,7 +131,73 @@ define create_configs
 		echo "CONFIG_PACKAGE_kmod-8021q=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_hdparm=y" >> $(CONFIG) && \
 		echo "CONFIG_PACKAGE_bash-completion=y" >> $(CONFIG) && \
-		true || true )
+		true )
+
+
+#resulting config is here:  /home/vct/confine-dist-bb/openwrt/build_dir/target-i386_i486_uClibc-0.9.33.2/linux-x86_generic/linux-3.10.49/.config
+
+	@( \
+	      ( [ "Confine defaults for all Kernel" ] && \
+		grep -v "CONFIG_M486"  					$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "# CONFIG_M486 is not set"					>> $(KCONFIG) && \
+		grep -v "HIGHMEM"  					$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM=y"						>> $(KCONFIG) && \
+		echo "# CONFIG_NOHIGHMEM is not set"				>> $(KCONFIG) && \
+		echo "# CONFIG_HIGHPTE is not set"				>> $(KCONFIG) && \
+		true ) )
+
+	@( \
+	      ( echo "$(SPECIFICS)" | grep -q -e "^i686$$" && \
+		grep -v "CONFIG_M686 is not set"		$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_M686=y"					>> $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM64G=y"				>> $(KCONFIG) && \
+		echo "# CONFIG_HIGHMEM4G is not set"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_MINIMUM_CPU_FAMILY=5"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_PAE=y"					>> $(KCONFIG) && \
+		true ) \
+|| \
+	      ( echo "$(SPECIFICS)" | grep -q -e "^ATOM32$$" && \
+		grep -v "CONFIG_MATOM is not set"		$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_MATOM=y"					>> $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM64G=y"				>> $(KCONFIG) && \
+		echo "# CONFIG_HIGHMEM4G is not set"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_MINIMUM_CPU_FAMILY=5"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_PAE=y"					>> $(KCONFIG) && \
+		grep -v "CONFIG_NR_CPUS"  			$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_NR_CPUS=2"					>> $(KCONFIG) && \
+		echo "CONFIG_SMP=y" 					>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_SMT=y" 				>> $(KCONFIG) && \
+		echo "# CONFIG_X86_BIGSMP is not set"			>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_DMA_ADDR_T_64BIT=y" 			>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y"		>> $(KCONFIG) && \
+		echo "CONFIG_ARCH_PHYS_ADDR_T_64BIT=y"			>> $(KCONFIG) && \
+		echo "CONFIG_CPU_RMAP=y"				>> $(KCONFIG) && \
+		echo "CONFIG_GENERIC_PENDING_IRQ=y"			>> $(KCONFIG) && \
+		echo "CONFIG_MUTEX_SPIN_ON_OWNER=y"			>> $(KCONFIG) && \
+		echo "CONFIG_PHYS_ADDR_T_64BIT=y"			>> $(KCONFIG) && \
+		echo "CONFIG_RCU_STALL_COMMON=y"			>> $(KCONFIG) && \
+		echo "CONFIG_RFS_ACCEL=y"				>> $(KCONFIG) && \
+		echo "CONFIG_RPS=y"					>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_HRTICK=y"				>> $(KCONFIG) && \
+		echo "CONFIG_SCHED_SMT=y"				>> $(KCONFIG) && \
+		echo "CONFIG_STOP_MACHINE=y"				>> $(KCONFIG) && \
+		echo "CONFIG_TREE_RCU=y"				>> $(KCONFIG) && \
+		echo "CONFIG_USE_GENERIC_SMP_HELPERS=y"			>> $(KCONFIG) && \
+		echo "CONFIG_X86_32_SMP=y"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_CMPXCHG64=y"				>> $(KCONFIG) && \
+		echo "CONFIG_X86_HT=y"					>> $(KCONFIG) && \
+		echo "CONFIG_XPS=y"					>> $(KCONFIG) && \
+		true ) \
+|| \
+	      ( [ "Default (i586), works always" ] && \
+		grep -v "CONFIG_M586 is not set"		$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_M586=y"					>> $(KCONFIG) && \
+		echo "CONFIG_HIGHMEM4G=y"				>> $(KCONFIG) && \
+		echo "# CONFIG_HIGHMEM64G is not set"			>> $(KCONFIG) && \
+		true ) \
+)
+
+
 
 	@( echo "created $(CONFIG) before calling defconfig:" && cat $(CONFIG) )
 	@make -C "$(BUILD_DIR)" defconfig > /dev/null

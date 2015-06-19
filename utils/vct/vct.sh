@@ -1319,7 +1319,7 @@ vct_node_create() {
 
 	local TEMPLATE_TYPE=$( [ "$VCT_NODE_TEMPLATE_TYPE" = "img" ] && echo "raw" || echo "$VCT_NODE_TEMPLATE_TYPE" )
 	local VIRT_CMD="\
-    virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --os-type linux \
+    virt-install --connect qemu:///system -n $VCRD_NAME -r $VCT_RD_MEM --cpu=pentiumpro --os-type linux \
 	--import --disk path=$VCRD_PATH,format=$TEMPLATE_TYPE \
 	--vcpus=1 --noautoconsole --virt-type kvm --hvm --accelerate --noacpi --noapic  --noreboot \
         $VCRD_NETW"
