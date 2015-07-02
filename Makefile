@@ -147,6 +147,25 @@ define create_configs
 		true ) )
 
 	@( \
+	      ( [ "Confine CPU governor for all Kernel" ] && \
+		grep -v "CONFIG_CPU_FREQ"				$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ=y"					>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_DEFAULT_GOV_CONSERVATIVE is not set"	>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y"			>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set"	>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_DEFAULT_GOV_POWERSAVE is not set"	>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_DEFAULT_GOV_USERSPACE is not set"	>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_GOV_CONSERVATIVE is not set"		>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_GOV_ONDEMAND=y"				>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_GOV_PERFORMANCE=y"			>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_GOV_POWERSAVE is not set"		>> $(KCONFIG) && \
+		echo "# CONFIG_CPU_FREQ_GOV_USERSPACE is not set"		>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_STAT=y"					>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_STAT_DETAILS=y"				>> $(KCONFIG) && \
+		echo "CONFIG_CPU_FREQ_TABLE=y"					>> $(KCONFIG) && \
+		true ) )
+
+	@( \
 	      ( echo "$(SPECIFICS)" | grep -q -e "^i686$$" && \
 		grep -v "CONFIG_M686 is not set"		$(KCONFIG) >> $(KCONFIG).tmp && mv $(KCONFIG).tmp $(KCONFIG) && \
 		echo "CONFIG_M686=y"					>> $(KCONFIG) && \
