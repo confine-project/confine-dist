@@ -291,37 +291,40 @@ function cb2_set_resources( rules, sys_conf, otree, ntree, path, begin, changed,
 		
 		if new and new.disk then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."disk", "table") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/name", "string", {"^disk$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/unit", "string", {"^MiB$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_req", "number", {10000}, false, "Must be integer <= 10000 !") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_req", "number", {otree.resources.disk.max_req}, false, "Must be integer <= "..otree.resources.disk.max_req.." !") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/name", "string", {"^disk$"}, false, "Invalid name", path  ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/unit", "string", {"^MiB$"}, false, "Invalid disk unit", path  ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/max_req", "number", {10000}, false, "Unsupported max_req. Must be integer <= 10000 !", path) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."disk/dflt_req", "number", {otree.resources.disk.max_req}, false, "Unsupported dflt_req. Must be integer <= "..otree.resources.disk.max_req.." !") or failure
 		end
 		
 		if new and new.memory then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."memory", "table") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/name", "string", {"^memory$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/unit", "string", {"^MiB$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/max_req", "number", {10000}, false, "Must be integer <= 10000 !") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/dflt_req", "number", {otree.resources.memory.max_req}, false, "Must be integer <= "..otree.resources.memory.max_req.." !") or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/name", "string", {"^memory$"}, false, "Invalid name", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/unit", "string", {"^MiB$"}, false, "Invalid memory unit", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/max_req", "number", {10000}, false, "Unsupported max_req. Must be integer <= 10000 !", path) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."memory/dflt_req", "number", {otree.resources.memory.max_req}, false, "Unsupported dflt_req. Must be integer <= "..otree.resources.memory.max_req.." !", path) or failure
 		end
 
 		if new and new.pub_ipv4 then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv4", "table") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/name", "string", {"^pub_ipv4$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/unit", "string", {"^addrs$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_req", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_req", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/name", "string", {"^pub_ipv4$"}, false, "Invalid name", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/unit", "string", {"^addrs$"}, false, "Invalid pub_ipv4 unit", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/max_req", "number", {(sys_conf.sl_pub_ipv4_total>=1 and 1 or 0)}, "Unsupported pub_ipv4 max_req", path) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv4/dflt_req", "number", {0}, false, "Unsupported pub_ipv4 dflt_req", path) or failure
 		end
 
 		if new and new.pub_ipv6 then
 			failure = not crules.chk_or_err( crules.add_error, otree, ntree, path.."pub_ipv6", "table") or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/name", "string", {"^pub_ipv6$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/unit", "string", {"^addrs$"} ) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_req", "number", {0}) or failure
-			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_req", "number", {0}) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/name", "string", {"^pub_ipv6$"}, false, "Invalid name", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/unit", "string", {"^addrs$"}, false, "Invalid pub_ipv6 unit", path  ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/max_req", "number", {0}, false, "Unsupported pub_ipv6 max_req", path ) or failure
+			failure = not crules.set_or_err( crules.add_error, otree, ntree, path.."pub_ipv6/dflt_req", "number", {0}, false, "Unsupported pub_ipv6 dflt_req", path ) or failure
 		end
-		
-		if not failure then
+
+		if failure then
+			set_node_state( sys_conf, otree, STATE.debug, path )
+			return true
+		else
 			if otree.resources.disk.max_req ~= sys_conf.disk_max_per_sliver then
 				system.set_system_conf(sys_conf, "disk_max_per_sliver", otree.resources.disk.max_req)
 			end
