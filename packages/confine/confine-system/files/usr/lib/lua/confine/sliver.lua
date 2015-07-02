@@ -1016,8 +1016,6 @@ local function sys_set_lsliver_state( sys_conf, otree, slv_key, next_state, errl
 					sliver_desc = sliver_desc.."	option if%s_parent '%s'\n" %{ifv, i.parent_name}
 				end
 				
-			else
-				break
 			end
 		end		
 		
@@ -1403,7 +1401,7 @@ tmp_rules = out_filter
 	table.insert(tmp_rules, {"/*/mgmt_net/addr"})
 	table.insert(tmp_rules, {"/*/mgmt_net/backend"})
 	table.insert(tmp_rules, {"/*/interfaces"})
-	table.insert(tmp_rules, {"/*/interfaces/*", "number_p1"})
+	table.insert(tmp_rules, {"/*/interfaces/*", "iterate"})
 	table.insert(tmp_rules, {"/*/interfaces/*/nr"})
 	table.insert(tmp_rules, {"/*/interfaces/*/name"})
 	table.insert(tmp_rules, {"/*/interfaces/*/type"})
