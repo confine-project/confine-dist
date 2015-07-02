@@ -96,13 +96,14 @@ local stop_rules = {}
 local function add_lslv_err( tree, path, msg, val )
 	assert(tree and path and msg)
 
-	local oslv = ctree.get_path_val(tree, path:match("^/local_slivers/[^/]+/"))
+	local slvPath = path:match("^/local_slivers/[^/]+/")
+	local oslv = ctree.get_path_val(tree, slvPath)
 
 	oslv.errors = oslv.errors or {}
 
 	local slv_key = ctree.get_path_leaf(path:match("^/local_slivers/[^/]+/"))
 	local member = path
-	member = member:gsub("/local_slivers/","/slivers/")
+	member = member:gsub(slvPath,"/")
 	member = member:gsub("/local_slice/","/slice/")
 	member = member:gsub("/local_template/","/template/")
 	member = member:gsub("/local_group/","/group/")
@@ -380,7 +381,7 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 			if type(nslvReq) == "number" and nslvReq >= 10 and nslvReq <= sys_conf.disk_max_per_sliver then
 				req_mb = nslvReq
 			else
-				dbg( add_lslv_err( otree, pslv.."resources/disk/req", "Invalid (max_req="..sys_conf.disk_max_per_sliver..")", nslvReq) )
+				dbg( add_lslv_err( otree, pslv.."resources", "Invalid disk-allocation request (max_req="..sys_conf.disk_max_per_sliver..")", nslvReq) )
 			end
 			
 		elseif nslcReq then
@@ -388,7 +389,7 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 			if type(nslcReq) == "number" and nslcReq >= 10 and nslcReq <= sys_conf.disk_max_per_sliver then
 				req_mb = nslcReq
 			else
-				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources/disk/req", "Invalid (max_req="..sys_conf.disk_max_per_sliver..")", nslcReq) )
+				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources", "Invalid disk-allocation request (max_req="..sys_conf.disk_max_per_sliver..")", nslcReq) )
 			end
 		end
 		
@@ -396,7 +397,7 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 
 		if  req_mb >= sys_conf.disk_avail then
 
-			dbg( add_lslv_err( otree, pslv.."resources/disk/alloc", "Exceeded available="..sys_conf.disk_avail.." disk space for slivers", req_mb) )
+			dbg( add_lslv_err( otree, pslv.."resources", "Disk-allocation request exceeds available="..sys_conf.disk_avail.." disk space for slivers", req_mb) )
 			oslv.resources.disk.alloc = null
 		elseif not oslv.errors then
 			oslv.resources.disk.alloc = req_mb
@@ -422,7 +423,7 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 			if type(nslvReq) == "number" and nslvReq >= 1 and nslvReq <= sys_conf.mem_max_per_sliver then
 				req_mb = nslvReq
 			else
-				dbg( add_lslv_err( otree, pslv.."resources/memory/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslvReq) )
+				dbg( add_lslv_err( otree, pslv.."resources", "Invalid memory-allocation request (max_req="..sys_conf.mem_max_per_sliver..")", nslvReq) )
 			end
 			
 		elseif nslcReq then
@@ -430,13 +431,13 @@ local function cb2_set_sliver_resources ( rules, sys_conf, otree, ntree, path, b
 			if type(nslcReq) == "number" and nslcReq >= 1 and nslcReq <= sys_conf.mem_max_per_sliver then
 				req_mb = nslcReq
 			else
-				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources/memory/req", "Invalid (max_req="..sys_conf.mem_max_per_sliver..")", nslcReq) )
+				dbg( add_lslv_err( otree, pslv.."local_slice/sliver_defaults/resources", "Invalid memory-allcoation request (max_req="..sys_conf.mem_max_per_sliver..")", nslcReq) )
 			end
 		end
 
 		if  req_mb > cb2_get_memory_avail(rules, sys_conf, otree) then
 
-			dbg( add_lslv_err( otree, pslv.."resources/memory/alloc", "Exceeded available memory for slivers", req_mb) )
+			dbg( add_lslv_err( otree, pslv.."resources", "Memory-allocation request exceeds available memory for slivers", req_mb) )
 			oslv.resources.memory.alloc = null
 		elseif not oslv.errors then
 			oslv.resources.memory.alloc = req_mb
