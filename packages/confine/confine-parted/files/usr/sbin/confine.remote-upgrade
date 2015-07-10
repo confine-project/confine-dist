@@ -3,7 +3,7 @@
 # A list of default URLs to download the image from.
 # Use UCI option ``confine.node.latest_image_uri`` to override it.
 # Use environment variable ``IMG_URLS`` to override both.
-IMG_DEFAULT_URLS="http://10.228.207.4/misc/CONFINE-owrt-master-atom-current.img.gz http://distro.confine-project.eu/misc/CONFINE-owrt-master-atom-current.img.gz"
+IMG_DEFAULT_URLS="http://10.228.207.4/node/CONFINE-owrt-master-i586-current.img.gz http://media.confine-project.eu/node/CONFINE-owrt-master-i586-current.img.gz"
 # The path to the downloaded image.
 LIMG="/tmp/confine.upgrade.img.gz"
 
