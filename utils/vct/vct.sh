@@ -463,7 +463,7 @@ vct_system_install_server() {
 
     # Setup https certificate for the management network
     vct_do python "$VCT_DIR/server/manage.py" setuppki --org_name VCT --noinput
-    vct_sudo apt-get install -y libapache2-mod-wsgi
+    vct_sudo apt-get install -y apache2 libapache2-mod-wsgi
     vct_sudo python "$VCT_DIR/server/manage.py" setupapache --noinput --user $VCT_USER --processes 2 --threads 25
 
     # Move static files in a place where apache can get them
