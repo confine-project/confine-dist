@@ -17,19 +17,6 @@
         "config": 1,
         "architectures": "i686"
     }
-},
-{
-    "pk": 11,
-    "model": "firmware.configfile",
-    "fields": {
-        "priority": 0,
-        "is_active": true,
-        "content": "'#!/bin/sh\\nif confine.disk-parted > /root/confine.disk-parted.log 2>&1; then reboot; fi\\n'",
-        "mode": "a+rx",
-        "is_optional": false,
-        "path": "/etc/uci-defaults/00.-confine-disk-parted.sh",
-        "config": 1
-    }
 }
 ]
 
