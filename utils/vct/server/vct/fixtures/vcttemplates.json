@@ -10,7 +10,7 @@
         "type": "debian",
         "description": "debian32-example",
 		"image_uri": "http://media.confine-project.eu/vct/debian32-02.tgz",
-		"image_sha256": "a66ba6d0ad1552f23182a66a9413ffdbf18556ba5116a781bacb8cdfde1038e4"
+		"image_sha256": "33042cebd15d068787ac03c6479425fc260dd7f5493519fc1e28e628d71b0240"
     }
 },
 {
@@ -24,7 +24,7 @@
         "type": "openwrt",
         "description": "openwrt-backfire-example",
 		"image_uri": "http://media.confine-project.eu/vct/CONFINE-sliver-openwrt-x86-generic-rootfs-070812_1023.tar.gz",
-		"image_sha256": "36ede67033a7e6eea5937163a2d1c544d86e7fa1f93aa786c282f3ecab41fe42"
+		"image_sha256": "2ac430432e996c40c028a02148933857fb471e017a37eac9d86c4a80e630e200"
     }
 }
 ]
